@@ -74,7 +74,7 @@ jobs:
   # Step 3: Publish release
   # ===========================================================================
   publish:
-    needs: [create-release, docker, binaries]
+    needs: [create-release, binaries]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +88,7 @@ jobs:
   # Cleanup on failure
   # ===========================================================================
   cleanup-on-failure:
-    needs: [create-release, docker, binaries, publish]
+    needs: [create-release, binaries, publish]
     if: failure() && needs.create-release.outputs.release_created == 'true'
     runs-on: ubuntu-latest
     steps:
