@@ -1,4 +1,4 @@
-.PHONY: help clean build-local build build-all docker-build docker-push test version
+.PHONY: help clean build-local build build-all version
 
 # =============================================================================
 # Variables
@@ -46,12 +46,6 @@ build-all: ## Build all platform binaries
 	@$(MAKE) build GOOS=darwin GOARCH=amd64
 	@$(MAKE) build GOOS=darwin GOARCH=arm64
 
-
-# =============================================================================
-# Test
-# =============================================================================
-test: ## Run tests
-	@go test -v ./...
 
 # =============================================================================
 # Version

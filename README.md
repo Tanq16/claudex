@@ -1,7 +1,9 @@
 <div align="center">
-  <img src=".github/assets/logo.svg" alt="Logo" width="200">
+  <img src=".github/assets/logo.svg" alt="Claude Usage Logo" width="200">
   <h1>Claude Usage</h1>
 
+  <a href="https://github.com/tanq16/claude-usage/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claude-usage/actions/workflows/release.yaml/badge.svg"></a><br>
+  <a href="https://github.com/tanq16/claude-usage/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claude-usage"></a><br><br>
   <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
 </div>
 
@@ -15,6 +17,7 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 |----------|----------|-------------|
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
 | History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
+| Conversations | `conversations` / `convos` | List recent conversations with session IDs, message counts, and projects |
 | Tasks | `task add`, `task list`, `task done`, `task remove` | Track pending work with size estimates |
 | Planning | `plan` | Fit pending tasks into available capacity across accounts |
 
@@ -73,6 +76,20 @@ claude-usage history --days 14
 **Flags:**
 - `--days, -d` - Number of days to show (default: `7`)
 - `--json` - Output as JSON
+
+### `conversations` / `convos`
+
+List recent conversations across all monitored accounts. Shows session ID, message count, project, first message, and last activity time.
+
+```bash
+claude-usage convos
+claude-usage convos --limit 5
+claude-usage conversations --json
+```
+
+**Flags:**
+- `--limit, -n` - Number of conversations to show (default: `10`)
+- `--json` - Output as JSON (includes full session UUIDs)
 
 ### `task`
 

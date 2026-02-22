@@ -18,13 +18,13 @@ var statusFlags struct {
 }
 
 var (
-	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#cba6f7"))
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#6c7086"))
-	valueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#cdd6f4"))
-	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#a6e3a1"))
-	yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#f9e2af"))
-	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#f38ba8"))
-	barBgStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#45475a"))
+	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13"))
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	valueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
+	yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
+	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
+	barBgStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
 )
 
 var statusCmd = &cobra.Command{

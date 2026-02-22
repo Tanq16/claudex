@@ -56,7 +56,7 @@ var planCmd = &cobra.Command{
 			return
 		}
 
-		acctStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#cba6f7"))
+		acctStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13"))
 
 		for _, sg := range suggestions {
 			u.PrintGeneric("\n" + acctStyle.Render(sg.AccountEmail))

@@ -77,3 +77,18 @@ type PlanSuggestion struct {
 	RemainingPct   float64 `json:"remainingPct"`
 	Warning        string  `json:"warning,omitempty"`
 }
+
+type HistoryEntry struct {
+	Display   string `json:"display"`
+	Timestamp int64  `json:"timestamp"`
+	Project   string `json:"project"`
+	SessionID string `json:"sessionId"`
+}
+
+type Conversation struct {
+	SessionID    string `json:"sessionId"`
+	MessageCount int    `json:"messageCount"`
+	Project      string `json:"project"`
+	FirstMessage string `json:"firstMessage"`
+	LastActivity int64  `json:"lastActivity"`
+}

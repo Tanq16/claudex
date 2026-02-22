@@ -8,16 +8,15 @@ import (
 var (
 	headerStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("#cdd6f4")).
-		Background(lipgloss.Color("#45475a")).
+		Foreground(lipgloss.Color("15")).
 		Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#cdd6f4")).
+		Foreground(lipgloss.Color("7")).
 		Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6c7086"))
+		Foreground(lipgloss.Color("8"))
 )
 
 func PrintTable(headers []string, rows [][]string) {

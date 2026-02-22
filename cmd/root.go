@@ -74,6 +74,7 @@ func init() {
 
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(convosCmd)
 	rootCmd.AddCommand(planCmd)
 	rootCmd.AddCommand(taskCmd.TaskCmd)
 }
