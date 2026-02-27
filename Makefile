@@ -1,4 +1,4 @@
-.PHONY: help clean build-local build build-all version
+.PHONY: help clean build build-for build-all version
 
 # =============================================================================
 # Variables
@@ -32,19 +32,19 @@ clean: ## Remove built binaries
 # =============================================================================
 # Build
 # =============================================================================
-build-local: ## Build binary for current platform
+build: ## Build binary for current platform
 	@go build -ldflags="-s -w -X 'github.com/tanq16/claude-usage/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)$(NC)"
 
-build: ## Build binary for specified GOOS/GOARCH
+build-for: ## Build binary for specified GOOS/GOARCH
 	@CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="-s -w -X 'github.com/tanq16/claude-usage/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME)-$(GOOS)-$(GOARCH) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)-$(GOOS)-$(GOARCH)$(NC)"
 
 build-all: ## Build all platform binaries
-	@$(MAKE) build GOOS=linux GOARCH=amd64
-	@$(MAKE) build GOOS=linux GOARCH=arm64
-	@$(MAKE) build GOOS=darwin GOARCH=amd64
-	@$(MAKE) build GOOS=darwin GOARCH=arm64
+	@$(MAKE) build-for GOOS=linux GOARCH=amd64
+	@$(MAKE) build-for GOOS=linux GOARCH=arm64
+	@$(MAKE) build-for GOOS=darwin GOARCH=amd64
+	@$(MAKE) build-for GOOS=darwin GOARCH=arm64
 
 
 # =============================================================================

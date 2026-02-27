@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/rs/zerolog/log"
 )
 
@@ -17,7 +17,7 @@ var (
 
 func PrintInfo(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Msg(msg)
+		log.Info().Str("package", "utils").Msg(msg)
 	} else {
 		fmt.Println(infoStyle.Render("→ " + msg))
 	}
@@ -25,7 +25,7 @@ func PrintInfo(msg string) {
 
 func PrintSuccess(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Msg(msg)
+		log.Info().Str("package", "utils").Msg(msg)
 	} else {
 		fmt.Println(successStyle.Render("✓ " + msg))
 	}
@@ -33,7 +33,7 @@ func PrintSuccess(msg string) {
 
 func PrintError(msg string, err error) {
 	if GlobalDebugFlag && err != nil {
-		log.Error().Err(err).Msg(msg)
+		log.Error().Str("package", "utils").Err(err).Msg(msg)
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
@@ -41,7 +41,7 @@ func PrintError(msg string, err error) {
 
 func PrintFatal(msg string, err error) {
 	if GlobalDebugFlag && err != nil {
-		log.Error().Err(err).Msg(msg)
+		log.Error().Str("package", "utils").Err(err).Msg(msg)
 	} else {
 		fmt.Println(errorStyle.Render("✗ " + msg))
 	}
@@ -50,7 +50,7 @@ func PrintFatal(msg string, err error) {
 
 func PrintWarn(msg string, err error) {
 	if GlobalDebugFlag && err != nil {
-		log.Warn().Err(err).Msg(msg)
+		log.Warn().Str("package", "utils").Err(err).Msg(msg)
 	} else {
 		fmt.Println(warnStyle.Render("! " + msg))
 	}
@@ -58,4 +58,8 @@ func PrintWarn(msg string, err error) {
 
 func PrintGeneric(msg string) {
 	fmt.Println(msg)
+}
+
+func PrintPrompt(msg string) {
+	fmt.Print(msg)
 }

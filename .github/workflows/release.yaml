@@ -60,7 +60,7 @@ jobs:
           go-version: '1.25'
 
       - name: Build Binary
-        run: make build GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} VERSION=${{ needs.create-release.outputs.version }}
+        run: make build-for GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} VERSION=${{ needs.create-release.outputs.version }}
 
       - name: Upload Release Asset
         run: |

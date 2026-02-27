@@ -39,7 +39,7 @@ sudo mv claude-usage /usr/local/bin/
 ```bash
 git clone https://github.com/tanq16/claude-usage
 cd claude-usage
-make build-local
+make build
 ```
 
 ## Usage

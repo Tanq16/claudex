@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/charmbracelet/lipgloss"
+	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claude-usage/internal/model"
 	"github.com/tanq16/claude-usage/internal/tracker"

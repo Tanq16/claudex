@@ -277,7 +277,7 @@ func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary 
 	}
 	u.PrintTable(headers, rows)
 
-	fmt.Print("\nSelect plugins (comma-separated numbers, or 'all'): ")
+	u.PrintPrompt("\nSelect plugins (comma-separated numbers, or 'all'): ")
 	scanner := bufio.NewScanner(os.Stdin)
 	if !scanner.Scan() {
 		return nil
