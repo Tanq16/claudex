@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claude-usage/internal/utils"
 
+	pluginCmd "github.com/tanq16/claude-usage/cmd/plugin-cmd"
 	taskCmd "github.com/tanq16/claude-usage/cmd/task-cmd"
 )
 
@@ -77,4 +78,5 @@ func init() {
 	rootCmd.AddCommand(convosCmd)
 	rootCmd.AddCommand(planCmd)
 	rootCmd.AddCommand(taskCmd.TaskCmd)
+	rootCmd.AddCommand(pluginCmd.PluginCmd)
 }
