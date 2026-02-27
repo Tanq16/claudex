@@ -12,6 +12,7 @@ import (
 )
 
 var convosFlags struct {
+	accounts   []string
 	limit      int
 	jsonOutput bool
 }
@@ -21,7 +22,8 @@ var convosCmd = &cobra.Command{
 	Aliases: []string{"convos"},
 	Short:   "List recent conversations across accounts",
 	Run: func(cmd *cobra.Command, args []string) {
-		for _, p := range AccountPaths {
+		accountPaths := ResolveAccountPaths(convosFlags.accounts)
+		for _, p := range accountPaths {
 			acct, _ := parser.ParseAccount(p)
 			convos, err := parser.ParseConversations(p)
 			if err != nil {
@@ -83,6 +85,7 @@ func truncate(s string, maxLen int) string {
 }
 
 func init() {
+	convosCmd.Flags().StringSliceVarP(&convosFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
 	convosCmd.Flags().IntVarP(&convosFlags.limit, "limit", "n", 10, "Number of conversations to show")
-	convosCmd.Flags().BoolVar(&convosFlags.jsonOutput, "json", false, "Output as JSON")
+	convosCmd.Flags().BoolVarP(&convosFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }

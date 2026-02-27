@@ -15,13 +15,23 @@ import (
 	taskCmd "github.com/tanq16/claude-usage/cmd/task-cmd"
 )
 
+// ResolveAccountPaths returns the default ~/.claude path plus any extra
+// account directories supplied via the per-command --accounts flag.
+func ResolveAccountPaths(extra []string) []string {
+	home, _ := os.UserHomeDir()
+	paths := []string{filepath.Join(home, ".claude")}
+	for _, p := range extra {
+		if len(p) > 0 && p[0] == '~' {
+			p = filepath.Join(home, p[1:])
+		}
+		paths = append(paths, p)
+	}
+	return paths
+}
+
 var AppVersion = "dev-build"
 
 var debugFlag bool
-var extraAccounts []string
-
-// AccountPaths is the resolved list of account config directories
-var AccountPaths []string
 
 var rootCmd = &cobra.Command{
 	Use:     "claude-usage",
@@ -54,24 +64,12 @@ func setupLogs() {
 	}
 }
 
-func buildAccountPaths() {
-	home, _ := os.UserHomeDir()
-	AccountPaths = []string{filepath.Join(home, ".claude")}
-	for _, p := range extraAccounts {
-		if len(p) > 0 && p[0] == '~' {
-			p = filepath.Join(home, p[1:])
-		}
-		AccountPaths = append(AccountPaths, p)
-	}
-}
-
 func init() {
 	rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})
 
 	rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, "Enable debug logging")
-	rootCmd.PersistentFlags().StringSliceVar(&extraAccounts, "accounts", []string{}, "Additional Claude config directories to monitor")
 
-	cobra.OnInitialize(setupLogs, buildAccountPaths)
+	cobra.OnInitialize(setupLogs)
 
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)

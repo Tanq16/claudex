@@ -52,8 +52,9 @@ var addCmd = &cobra.Command{
 }
 
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List all tasks",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List all tasks",
 	Run: func(cmd *cobra.Command, args []string) {
 		s, err := store.Open(store.DefaultPath())
 		if err != nil {
@@ -84,8 +85,9 @@ var listCmd = &cobra.Command{
 }
 
 var doneCmd = &cobra.Command{
-	Use:   "done [id]",
-	Short: "Mark a task as done",
+	Use:     "done [id]",
+	Aliases: []string{"complete"},
+	Short:   "Mark a task as done",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		s, err := store.Open(store.DefaultPath())
@@ -105,8 +107,9 @@ var doneCmd = &cobra.Command{
 }
 
 var removeCmd = &cobra.Command{
-	Use:   "remove [id]",
-	Short: "Remove a task",
+	Use:     "remove [id]",
+	Aliases: []string{"rm"},
+	Short:   "Remove a task",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		s, err := store.Open(store.DefaultPath())

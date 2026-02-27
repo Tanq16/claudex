@@ -15,15 +15,15 @@ import (
 )
 
 var instateFlags struct {
-	account string
-	project string
-	plugins string
-	all     bool
-	update  bool
+	configDir string
+	project   string
+	plugins   string
+	all       bool
+	update    bool
 }
 
 var cleanupFlags struct {
-	account     string
+	configDir   string
 	plugins     string
 	orphansOnly bool
 	all         bool
@@ -75,7 +75,7 @@ func resolveProjectDir(flag string) string {
 }
 
 func runInstate(cmd *cobra.Command, args []string) {
-	configDir := resolveConfigDir(instateFlags.account)
+	configDir := resolveConfigDir(instateFlags.configDir)
 	projectDir := resolveProjectDir(instateFlags.project)
 
 	// Optionally update marketplaces
@@ -188,7 +188,7 @@ func runInstate(cmd *cobra.Command, args []string) {
 }
 
 func runCleanup(cmd *cobra.Command, args []string) {
-	configDir := resolveConfigDir(cleanupFlags.account)
+	configDir := resolveConfigDir(cleanupFlags.configDir)
 
 	// Fast path: orphans-only + all
 	if cleanupFlags.orphansOnly && cleanupFlags.all {
@@ -312,16 +312,16 @@ func orDash(s string) string {
 }
 
 func init() {
-	instateCmd.Flags().StringVar(&instateFlags.account, "account", "", "Claude config directory (default ~/.claude)")
+	instateCmd.Flags().StringVarP(&instateFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
 	instateCmd.Flags().StringVarP(&instateFlags.project, "project", "p", "", "Project directory (default cwd)")
-	instateCmd.Flags().StringVar(&instateFlags.plugins, "plugins", "", "Comma-separated plugin keys (e.g. core@ai-brain,praetorian@ai-brain)")
-	instateCmd.Flags().BoolVar(&instateFlags.all, "all", false, "Instate all available plugins")
-	instateCmd.Flags().BoolVar(&instateFlags.update, "update", false, "Git pull marketplace repos before reconciling")
+	instateCmd.Flags().StringVarP(&instateFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys (e.g. core@ai-brain,praetorian@ai-brain)")
+	instateCmd.Flags().BoolVarP(&instateFlags.all, "all", "A", false, "Instate all available plugins")
+	instateCmd.Flags().BoolVarP(&instateFlags.update, "update", "u", false, "Git pull marketplace repos before reconciling")
 
-	cleanupCmd.Flags().StringVar(&cleanupFlags.account, "account", "", "Claude config directory (default ~/.claude)")
-	cleanupCmd.Flags().StringVar(&cleanupFlags.plugins, "plugins", "", "Comma-separated plugin keys")
-	cleanupCmd.Flags().BoolVar(&cleanupFlags.orphansOnly, "orphans-only", false, "Only remove orphaned version dirs")
-	cleanupCmd.Flags().BoolVar(&cleanupFlags.all, "all", false, "Target all plugins")
+	cleanupCmd.Flags().StringVarP(&cleanupFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
+	cleanupCmd.Flags().StringVarP(&cleanupFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys")
+	cleanupCmd.Flags().BoolVarP(&cleanupFlags.orphansOnly, "orphans-only", "o", false, "Only remove orphaned version dirs")
+	cleanupCmd.Flags().BoolVarP(&cleanupFlags.all, "all", "A", false, "Target all plugins")
 
 	PluginCmd.AddCommand(instateCmd, cleanupCmd)
 }

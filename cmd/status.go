@@ -14,6 +14,7 @@ import (
 )
 
 var statusFlags struct {
+	accounts   []string
 	jsonOutput bool
 }
 
@@ -31,8 +32,9 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current usage for all accounts",
 	Run: func(cmd *cobra.Command, args []string) {
+		accountPaths := ResolveAccountPaths(statusFlags.accounts)
 		var accounts []model.AccountUsage
-		for _, p := range AccountPaths {
+		for _, p := range accountPaths {
 			usage, err := tracker.ComputeAccountUsage(p)
 			if err != nil {
 				u.PrintWarn(fmt.Sprintf("skipping %s", p), err)
@@ -160,5 +162,6 @@ func renderBar(pct float64) string {
 }
 
 func init() {
-	statusCmd.Flags().BoolVar(&statusFlags.jsonOutput, "json", false, "Output as JSON")
+	statusCmd.Flags().StringSliceVarP(&statusFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
+	statusCmd.Flags().BoolVarP(&statusFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }

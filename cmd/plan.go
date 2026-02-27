@@ -15,6 +15,7 @@ import (
 )
 
 var planFlags struct {
+	accounts   []string
 	jsonOutput bool
 }
 
@@ -22,8 +23,9 @@ var planCmd = &cobra.Command{
 	Use:   "plan",
 	Short: "Plan task assignment across accounts based on available capacity",
 	Run: func(cmd *cobra.Command, args []string) {
+		accountPaths := ResolveAccountPaths(planFlags.accounts)
 		var accounts []model.AccountUsage
-		for _, p := range AccountPaths {
+		for _, p := range accountPaths {
 			usage, err := tracker.ComputeAccountUsage(p)
 			if err != nil {
 				u.PrintWarn(fmt.Sprintf("skipping %s", p), err)
@@ -81,5 +83,6 @@ var planCmd = &cobra.Command{
 }
 
 func init() {
-	planCmd.Flags().BoolVar(&planFlags.jsonOutput, "json", false, "Output as JSON")
+	planCmd.Flags().StringSliceVarP(&planFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
+	planCmd.Flags().BoolVarP(&planFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }

@@ -46,9 +46,6 @@ make build
 
 ### Global Flags
 
-These flags are available on all commands:
-
-- `--accounts` - Additional Claude config directories to monitor (default: `~/.claude` only)
 - `--debug` - Enable debug logging (zerolog)
 
 ### `status`
@@ -57,12 +54,13 @@ Show live usage for all monitored accounts. Displays 5-hour session, 7-day overa
 
 ```bash
 claude-usage status
-claude-usage status --json
-claude-usage status --accounts ~/.claude2
+claude-usage status -j
+claude-usage status -a ~/.claude2
 ```
 
 **Flags:**
-- `--json` - Output as JSON
+- `-a, --accounts` - Additional Claude config directories to monitor (default: `~/.claude` only)
+- `-j, --json` - Output as JSON
 
 ### `history`
 
@@ -70,12 +68,13 @@ Show daily usage history from the local stats-cache, including messages, session
 
 ```bash
 claude-usage history
-claude-usage history --days 14
+claude-usage history -d 14
 ```
 
 **Flags:**
-- `--days, -d` - Number of days to show (default: `7`)
-- `--json` - Output as JSON
+- `-a, --accounts` - Additional Claude config directories to monitor
+- `-d, --days` - Number of days to show (default: `7`)
+- `-j, --json` - Output as JSON
 
 ### `conversations` / `convos`
 
@@ -83,13 +82,14 @@ List recent conversations across all monitored accounts. Shows session ID, messa
 
 ```bash
 claude-usage convos
-claude-usage convos --limit 5
-claude-usage conversations --json
+claude-usage convos -n 5
+claude-usage conversations -j
 ```
 
 **Flags:**
-- `--limit, -n` - Number of conversations to show (default: `10`)
-- `--json` - Output as JSON (includes full session UUIDs)
+- `-a, --accounts` - Additional Claude config directories to monitor
+- `-n, --limit` - Number of conversations to show (default: `10`)
+- `-j, --json` - Output as JSON (includes full session UUIDs)
 
 ### `task`
 
@@ -97,11 +97,13 @@ Manage tasks for capacity planning. Each task has a size estimate (S/M/L/XL) tha
 
 ```bash
 claude-usage task add "Implement auth module" --size L
-claude-usage task add "Fix CSS bug" --size S
-claude-usage task list
-claude-usage task done <id>
-claude-usage task remove <id>
+claude-usage task add "Fix CSS bug" -s S
+claude-usage task list           # or: task ls
+claude-usage task done <id>      # or: task complete <id>
+claude-usage task remove <id>    # or: task rm <id>
 ```
+
+**Aliases:** `list` → `ls`, `done` → `complete`, `remove` → `rm`
 
 **Size Estimates:**
 
@@ -118,16 +120,51 @@ Assign pending tasks to accounts based on available capacity using greedy bin-pa
 
 ```bash
 claude-usage plan
-claude-usage plan --json
-claude-usage plan --accounts ~/.claude2
+claude-usage plan -j
+claude-usage plan -a ~/.claude2
 ```
 
 **Flags:**
-- `--json` - Output as JSON
+- `-a, --accounts` - Additional Claude config directories to monitor
+- `-j, --json` - Output as JSON
+
+### `plugin instate`
+
+Instantiate plugins for a local project with version reconciliation.
+
+```bash
+claude-usage plugin instate
+claude-usage plugin instate -c ~/.claude2 -p ./myproject
+claude-usage plugin instate -P core@ai-brain -u
+claude-usage plugin instate -A
+```
+
+**Flags:**
+- `-c, --config-dir` - Claude config directory (default `~/.claude`)
+- `-p, --project` - Project directory (default cwd)
+- `-P, --plugins` - Comma-separated plugin keys
+- `-A, --all` - Instate all available plugins
+- `-u, --update` - Git pull marketplace repos before reconciling
+
+### `plugin cleanup`
+
+Clean up orphaned or stale plugin cache entries.
+
+```bash
+claude-usage plugin cleanup
+claude-usage plugin cleanup -o -A
+claude-usage plugin cleanup -c ~/.claude2 -P core@ai-brain
+```
+
+**Flags:**
+- `-c, --config-dir` - Claude config directory (default `~/.claude`)
+- `-P, --plugins` - Comma-separated plugin keys
+- `-o, --orphans-only` - Only remove orphaned version dirs
+- `-A, --all` - Target all plugins
 
 ## Tips and Notes
 
-- Default monitoring is `~/.claude` only; use `--accounts` to add more (e.g., `--accounts ~/.claude2,~/.claude3`)
+- Default monitoring is `~/.claude` only; use `-a/--accounts` on each monitoring command to add more (e.g., `-a ~/.claude2,~/.claude3`)
 - Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
 - OAuth tokens are read from macOS Keychain; they refresh automatically when Claude Code is running
 - If a token is expired, launch Claude Code on that account to refresh it
