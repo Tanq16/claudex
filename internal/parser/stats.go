@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tanq16/claude-usage/internal/model"
+	"github.com/tanq16/claudex/internal/model"
 )
 
 func ParseStatsCache(configDir string) (model.StatsCache, error) {

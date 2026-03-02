@@ -35,7 +35,7 @@ jobs:
           gh release create "${{ steps.version.outputs.version }}" \
             --title "Release ${{ steps.version.outputs.version }}" \
             --draft \
-            --notes "claude-usage ${{ steps.version.outputs.version }}" \
+            --notes "claudex ${{ steps.version.outputs.version }}" \
             --target ${{ github.sha }}
           echo "release_created=true" >> "$GITHUB_OUTPUT"
         env:

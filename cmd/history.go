@@ -6,9 +6,9 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claude-usage/internal/model"
-	"github.com/tanq16/claude-usage/internal/parser"
-	u "github.com/tanq16/claude-usage/internal/utils"
+	"github.com/tanq16/claudex/internal/model"
+	"github.com/tanq16/claudex/internal/parser"
+	u "github.com/tanq16/claudex/internal/utils"
 )
 
 var historyFlags struct {

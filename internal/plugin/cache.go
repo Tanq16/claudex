@@ -9,13 +9,11 @@ import (
 	"strings"
 )
 
-// RemoveCacheDirectory removes the entire cache directory for a plugin.
 func RemoveCacheDirectory(configDir, marketplace, pluginName string) error {
 	dir := filepath.Join(configDir, "plugins", "cache", marketplace, pluginName)
 	return os.RemoveAll(dir)
 }
 
-// RemoveOrphanedVersions removes only version dirs that have an .orphaned_at marker.
 func RemoveOrphanedVersions(configDir, marketplace, pluginName string) (int, error) {
 	versions, err := ListCachedVersions(configDir, marketplace, pluginName)
 	if err != nil {
@@ -34,7 +32,6 @@ func RemoveOrphanedVersions(configDir, marketplace, pluginName string) (int, err
 	return removed, nil
 }
 
-// RemoveAllOrphans scans all cached plugins and removes every orphaned version directory.
 func RemoveAllOrphans(configDir string) (int, error) {
 	cacheRoot := filepath.Join(configDir, "plugins", "cache")
 	marketplaces, err := os.ReadDir(cacheRoot)
@@ -68,7 +65,6 @@ func RemoveAllOrphans(configDir string) (int, error) {
 	return total, nil
 }
 
-// copyDir recursively copies src to dst, skipping .git/ directories.
 func copyDir(src, dst string) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {
@@ -126,7 +122,6 @@ func copyFile(src, dst string) error {
 	return err
 }
 
-// GetGitCommitSha returns the HEAD commit SHA of a git repo.
 func GetGitCommitSha(repoPath string) string {
 	cmd := exec.Command("git", "-C", repoPath, "rev-parse", "HEAD")
 	out, err := cmd.Output()
@@ -136,7 +131,6 @@ func GetGitCommitSha(repoPath string) string {
 	return strings.TrimSpace(string(out))
 }
 
-// GitPull runs git pull --ff-only on a marketplace directory.
 func GitPull(marketplaceDir string) error {
 	cmd := exec.Command("git", "-C", marketplaceDir, "pull", "--ff-only")
 	cmd.Stdout = os.Stdout

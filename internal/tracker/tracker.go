@@ -9,11 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"time"
 
-	"github.com/tanq16/claude-usage/internal/model"
-	"github.com/tanq16/claude-usage/internal/parser"
+	"github.com/tanq16/claudex/internal/model"
+	"github.com/tanq16/claudex/internal/parser"
 )
 
 type apiResponse struct {
@@ -117,7 +116,6 @@ func keychainServiceName(configDir string) string {
 		return "Claude Code-credentials"
 	}
 
-	// Non-default config dirs use first 8 chars of SHA256 of the path as suffix
 	h := sha256.Sum256([]byte(configDir))
 	suffix := fmt.Sprintf("%x", h[:4])
 	return "Claude Code-credentials-" + suffix
@@ -142,18 +140,8 @@ func fetchUsage(token string) (*apiResponse, error) {
 
 	var result apiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		// Try parsing as error response
 		return nil, err
 	}
 
 	return &result, nil
-}
-
-// ResolveConfigDir expands tilde and resolves the path
-func ResolveConfigDir(path string) string {
-	if strings.HasPrefix(path, "~/") {
-		home, _ := os.UserHomeDir()
-		path = filepath.Join(home, path[2:])
-	}
-	return path
 }

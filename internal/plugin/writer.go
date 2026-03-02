@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 )
 
-// SaveInstalledPlugins writes the InstalledPluginsFile back to disk.
 func SaveInstalledPlugins(configDir string, file InstalledPluginsFile) error {
 	p := filepath.Join(configDir, "plugins", "installed_plugins.json")
 	data, err := json.MarshalIndent(file, "", "  ")
@@ -16,8 +15,6 @@ func SaveInstalledPlugins(configDir string, file InstalledPluginsFile) error {
 	return os.WriteFile(p, data, 0644)
 }
 
-// SaveSettingsLocal creates .claude/ if needed and merges enabledPlugins into
-// the existing settings.local.json, preserving other keys.
 func SaveSettingsLocal(projectDir string, plugins map[string]bool) error {
 	dir := filepath.Join(projectDir, ".claude")
 	if err := os.MkdirAll(dir, 0755); err != nil {
@@ -29,12 +26,10 @@ func SaveSettingsLocal(projectDir string, plugins map[string]bool) error {
 		return err
 	}
 
-	// Merge new plugins into existing
 	for k, v := range plugins {
 		existing.EnabledPlugins[k] = v
 	}
 
-	// Rebuild full JSON preserving unknown fields
 	out := make(map[string]any)
 	for k, v := range existing.Rest {
 		var parsed any
@@ -53,8 +48,6 @@ func SaveSettingsLocal(projectDir string, plugins map[string]bool) error {
 	return os.WriteFile(p, data, 0644)
 }
 
-// AddInstallEntry adds or updates an install entry in the InstalledPluginsFile.
-// It deduplicates by projectPath — if an entry with the same projectPath already exists, it's replaced.
 func AddInstallEntry(file *InstalledPluginsFile, key string, install PluginInstall) {
 	existing := file.Plugins[key]
 	var updated []PluginInstall
@@ -73,12 +66,10 @@ func AddInstallEntry(file *InstalledPluginsFile, key string, install PluginInsta
 	file.Plugins[key] = updated
 }
 
-// RemoveInstallEntries removes all entries for a plugin key.
 func RemoveInstallEntries(file *InstalledPluginsFile, key string) {
 	delete(file.Plugins, key)
 }
 
-// RemoveInstallEntryByProject removes the entry matching a specific projectPath.
 func RemoveInstallEntryByProject(file *InstalledPluginsFile, key, projectPath string) {
 	existing := file.Plugins[key]
 	var updated []PluginInstall

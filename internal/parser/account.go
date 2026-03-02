@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/tanq16/claude-usage/internal/model"
+	"github.com/tanq16/claudex/internal/model"
 )
 
 type claudeJSON struct {
@@ -17,11 +17,9 @@ type claudeJSON struct {
 }
 
 func ParseAccount(configDir string) (model.AccountInfo, error) {
-	// Try inside config dir first (e.g. ~/.claude2/.claude.json)
 	jsonPath := filepath.Join(configDir, ".claude.json")
 	data, err := os.ReadFile(jsonPath)
 	if err != nil {
-		// Fall back to sibling path (e.g. ~/.claude -> ~/.claude.json)
 		jsonPath = configDir + ".json"
 		data, err = os.ReadFile(jsonPath)
 		if err != nil {

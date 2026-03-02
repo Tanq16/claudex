@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/tanq16/claude-usage/internal/model"
+	"github.com/tanq16/claudex/internal/model"
 )
 
 func ParseConversations(configDir string) ([]model.Conversation, error) {

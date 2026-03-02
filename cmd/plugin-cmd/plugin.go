@@ -10,13 +10,12 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claude-usage/internal/plugin"
-	u "github.com/tanq16/claude-usage/internal/utils"
+	"github.com/tanq16/claudex/internal/plugin"
+	u "github.com/tanq16/claudex/internal/utils"
 )
 
 var instateFlags struct {
 	configDir string
-	project   string
 	plugins   string
 	all       bool
 	update    bool
@@ -29,7 +28,6 @@ var cleanupFlags struct {
 	all         bool
 }
 
-// PluginCmd is the parent "plugin" command
 var PluginCmd = &cobra.Command{
 	Use:   "plugin",
 	Short: "Manage Claude Code plugins (instate, cleanup)",
@@ -49,36 +47,19 @@ var cleanupCmd = &cobra.Command{
 
 func resolveConfigDir(flag string) string {
 	if flag != "" {
-		home, _ := os.UserHomeDir()
-		if len(flag) > 0 && flag[0] == '~' {
-			return filepath.Join(home, flag[1:])
-		}
-		return flag
+		return u.ExpandPath(flag)
 	}
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".claude")
 }
 
-func resolveProjectDir(flag string) string {
-	if flag != "" {
-		abs, err := filepath.Abs(flag)
-		if err != nil {
-			return flag
-		}
-		return abs
-	}
-	cwd, err := os.Getwd()
+func runInstate(cmd *cobra.Command, args []string) {
+	configDir := resolveConfigDir(instateFlags.configDir)
+	projectDir, err := os.Getwd()
 	if err != nil {
 		u.PrintFatal("Cannot determine current directory", err)
 	}
-	return cwd
-}
 
-func runInstate(cmd *cobra.Command, args []string) {
-	configDir := resolveConfigDir(instateFlags.configDir)
-	projectDir := resolveProjectDir(instateFlags.project)
-
-	// Optionally update marketplaces
 	if instateFlags.update {
 		known, err := plugin.LoadKnownMarketplaces(configDir)
 		if err != nil {
@@ -92,7 +73,6 @@ func runInstate(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	// Build summaries
 	summaries, err := plugin.BuildPluginSummaries(configDir)
 	if err != nil {
 		u.PrintFatal("Failed to build plugin summaries", err)
@@ -102,7 +82,6 @@ func runInstate(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Select plugins
 	var selected []plugin.PluginSummary
 	if instateFlags.all {
 		selected = summaries
@@ -129,13 +108,11 @@ func runInstate(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Load installed plugins file
 	installed, _ := plugin.LoadInstalledPlugins(configDir)
 
 	enabledPlugins := make(map[string]bool)
 
 	for _, s := range selected {
-		// Reconcile version
 		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName)
 		if err != nil {
 			u.PrintWarn(fmt.Sprintf("Reconcile failed for %s: %s", s.Key, err), nil)
@@ -150,7 +127,6 @@ func runInstate(cmd *cobra.Command, args []string) {
 		version := result.Version
 		installPath := filepath.Join(configDir, "plugins", "cache", s.MarketplaceName, s.PluginName, version)
 
-		// Get marketplace location for git SHA
 		known, _ := plugin.LoadKnownMarketplaces(configDir)
 		gitSha := ""
 		if mktInfo, ok := known[s.MarketplaceName]; ok {
@@ -172,12 +148,10 @@ func runInstate(cmd *cobra.Command, args []string) {
 		enabledPlugins[s.Key] = true
 	}
 
-	// Save installed_plugins.json
 	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
 		u.PrintFatal("Failed to save installed_plugins.json", err)
 	}
 
-	// Save settings.local.json in project
 	if len(enabledPlugins) > 0 {
 		if err := plugin.SaveSettingsLocal(projectDir, enabledPlugins); err != nil {
 			u.PrintFatal("Failed to save settings.local.json", err)
@@ -190,7 +164,6 @@ func runInstate(cmd *cobra.Command, args []string) {
 func runCleanup(cmd *cobra.Command, args []string) {
 	configDir := resolveConfigDir(cleanupFlags.configDir)
 
-	// Fast path: orphans-only + all
 	if cleanupFlags.orphansOnly && cleanupFlags.all {
 		n, err := plugin.RemoveAllOrphans(configDir)
 		if err != nil {
@@ -200,7 +173,6 @@ func runCleanup(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	// Build summaries for selection
 	summaries, err := plugin.BuildPluginSummaries(configDir)
 	if err != nil {
 		u.PrintFatal("Failed to build plugin summaries", err)
@@ -262,7 +234,6 @@ func runCleanup(cmd *cobra.Command, args []string) {
 }
 
 func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary {
-	// Print numbered table
 	headers := []string{"#", "Plugin", "Marketplace", "Installed", "Latest", "Orphans"}
 	rows := make([][]string, len(summaries))
 	for i, s := range summaries {
@@ -313,7 +284,6 @@ func orDash(s string) string {
 
 func init() {
 	instateCmd.Flags().StringVarP(&instateFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
-	instateCmd.Flags().StringVarP(&instateFlags.project, "project", "p", "", "Project directory (default cwd)")
 	instateCmd.Flags().StringVarP(&instateFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys (e.g. core@ai-brain,praetorian@ai-brain)")
 	instateCmd.Flags().BoolVarP(&instateFlags.all, "all", "A", false, "Instate all available plugins")
 	instateCmd.Flags().BoolVarP(&instateFlags.update, "update", "u", false, "Git pull marketplace repos before reconciling")

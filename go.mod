@@ -1,4 +1,4 @@
-module github.com/tanq16/claude-usage
+module github.com/tanq16/claudex
 
 go 1.25.0
 

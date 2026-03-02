@@ -3,7 +3,7 @@
 # =============================================================================
 # Variables
 # =============================================================================
-APP_NAME := claude-usage
+APP_NAME := claudex
 DOCKER_USER := tanq16
 
 # Build variables (set by CI or use defaults)
@@ -33,11 +33,11 @@ clean: ## Remove built binaries
 # Build
 # =============================================================================
 build: ## Build binary for current platform
-	@go build -ldflags="-s -w -X 'github.com/tanq16/claude-usage/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME) .
+	@go build -ldflags="-s -w -X 'github.com/tanq16/claudex/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)$(NC)"
 
 build-for: ## Build binary for specified GOOS/GOARCH
-	@CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="-s -w -X 'github.com/tanq16/claude-usage/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME)-$(GOOS)-$(GOARCH) .
+	@CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="-s -w -X 'github.com/tanq16/claudex/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME)-$(GOOS)-$(GOARCH) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)-$(GOOS)-$(GOARCH)$(NC)"
 
 build-all: ## Build all platform binaries

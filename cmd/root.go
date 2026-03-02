@@ -9,22 +9,16 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claude-usage/internal/utils"
+	"github.com/tanq16/claudex/internal/utils"
 
-	pluginCmd "github.com/tanq16/claude-usage/cmd/plugin-cmd"
-	taskCmd "github.com/tanq16/claude-usage/cmd/task-cmd"
+	pluginCmd "github.com/tanq16/claudex/cmd/plugin-cmd"
 )
 
-// ResolveAccountPaths returns the default ~/.claude path plus any extra
-// account directories supplied via the per-command --accounts flag.
 func ResolveAccountPaths(extra []string) []string {
 	home, _ := os.UserHomeDir()
 	paths := []string{filepath.Join(home, ".claude")}
 	for _, p := range extra {
-		if len(p) > 0 && p[0] == '~' {
-			p = filepath.Join(home, p[1:])
-		}
-		paths = append(paths, p)
+		paths = append(paths, utils.ExpandPath(p))
 	}
 	return paths
 }
@@ -34,8 +28,8 @@ var AppVersion = "dev-build"
 var debugFlag bool
 
 var rootCmd = &cobra.Command{
-	Use:     "claude-usage",
-	Short:   "Monitor and plan Claude Code usage across accounts",
+	Use:     "claudex",
+	Short:   "Monitor Claude Code usage across accounts",
 	Version: AppVersion,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
@@ -74,7 +68,5 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(convosCmd)
-	rootCmd.AddCommand(planCmd)
-	rootCmd.AddCommand(taskCmd.TaskCmd)
 	rootCmd.AddCommand(pluginCmd.PluginCmd)
 }

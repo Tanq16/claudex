@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-// LoadInstalledPlugins reads and parses installed_plugins.json from the config dir.
 func LoadInstalledPlugins(configDir string) (InstalledPluginsFile, error) {
 	p := filepath.Join(configDir, "plugins", "installed_plugins.json")
 	data, err := os.ReadFile(p)
@@ -26,8 +25,6 @@ func LoadInstalledPlugins(configDir string) (InstalledPluginsFile, error) {
 	return f, nil
 }
 
-// LoadKnownMarketplaces reads and parses known_marketplaces.json from the config dir.
-// The file is a flat JSON object keyed by marketplace name.
 func LoadKnownMarketplaces(configDir string) (KnownMarketplacesFile, error) {
 	p := filepath.Join(configDir, "plugins", "known_marketplaces.json")
 	data, err := os.ReadFile(p)
@@ -42,7 +39,6 @@ func LoadKnownMarketplaces(configDir string) (KnownMarketplacesFile, error) {
 	return f, nil
 }
 
-// LoadMarketplaceJSON reads and parses .claude-plugin/marketplace.json inside a marketplace dir.
 func LoadMarketplaceJSON(marketplaceDir string) (MarketplaceJSON, error) {
 	p := filepath.Join(marketplaceDir, ".claude-plugin", "marketplace.json")
 	data, err := os.ReadFile(p)
@@ -57,7 +53,6 @@ func LoadMarketplaceJSON(marketplaceDir string) (MarketplaceJSON, error) {
 	return m, nil
 }
 
-// LoadPluginJSON reads and parses .claude-plugin/plugin.json inside a plugin dir.
 func LoadPluginJSON(pluginDir string) (PluginJSON, error) {
 	p := filepath.Join(pluginDir, ".claude-plugin", "plugin.json")
 	data, err := os.ReadFile(p)
@@ -72,8 +67,6 @@ func LoadPluginJSON(pluginDir string) (PluginJSON, error) {
 	return pj, nil
 }
 
-// LoadSettingsLocal reads and parses .claude/settings.local.json from a project dir.
-// Returns an empty struct (not error) if the file doesn't exist yet.
 func LoadSettingsLocal(projectDir string) (SettingsLocalJSON, error) {
 	p := filepath.Join(projectDir, ".claude", "settings.local.json")
 	data, err := os.ReadFile(p)
@@ -84,7 +77,6 @@ func LoadSettingsLocal(projectDir string) (SettingsLocalJSON, error) {
 		return SettingsLocalJSON{}, err
 	}
 
-	// Parse into a generic map first to preserve unknown fields
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return SettingsLocalJSON{}, err
@@ -108,8 +100,6 @@ func LoadSettingsLocal(projectDir string) (SettingsLocalJSON, error) {
 	return result, nil
 }
 
-// ListCachedVersions lists version directories for a plugin in the cache.
-// Cache layout: {configDir}/plugins/cache/{marketplace}/{plugin}/{version}/
 func ListCachedVersions(configDir, marketplace, pluginName string) ([]CachedVersion, error) {
 	cacheDir := filepath.Join(configDir, "plugins", "cache", marketplace, pluginName)
 	entries, err := os.ReadDir(cacheDir)
@@ -135,13 +125,11 @@ func ListCachedVersions(configDir, marketplace, pluginName string) ([]CachedVers
 	}
 
 	sort.Slice(versions, func(i, j int) bool {
-		return versions[i].Version > versions[j].Version // newest first
+		return versions[i].Version > versions[j].Version
 	})
 	return versions, nil
 }
 
-// BuildPluginSummaries combines installed plugins, marketplace data, and cache info
-// into display-friendly summaries.
 func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 	installed, _ := LoadInstalledPlugins(configDir)
 	known, err := LoadKnownMarketplaces(configDir)
@@ -161,7 +149,6 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 		for _, pe := range mktJSON.Plugins {
 			key := PluginKey(pe.Name, mktName)
 
-			// Get latest version from plugin source dir, fall back to marketplace metadata
 			latestVersion := mktJSON.Metadata.Version
 			srcPath := pe.SourcePath()
 			if srcPath != "" {
@@ -174,13 +161,11 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 				}
 			}
 
-			// Installed version
 			installedVersion := ""
 			if installs, ok := installed.Plugins[key]; ok && len(installs) > 0 {
 				installedVersion = installs[0].Version
 			}
 
-			// Cached versions
 			cached, _ := ListCachedVersions(configDir, mktName, pe.Name)
 			orphanCount := 0
 			for _, cv := range cached {

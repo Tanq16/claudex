@@ -8,13 +8,14 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claude-usage/internal/model"
-	"github.com/tanq16/claude-usage/internal/tracker"
-	u "github.com/tanq16/claude-usage/internal/utils"
+	"github.com/tanq16/claudex/internal/model"
+	"github.com/tanq16/claudex/internal/tracker"
+	u "github.com/tanq16/claudex/internal/utils"
 )
 
 var statusFlags struct {
 	accounts   []string
+	separate   bool
 	jsonOutput bool
 }
 
@@ -47,68 +48,169 @@ var statusCmd = &cobra.Command{
 			u.PrintFatal("No accounts found", nil)
 		}
 
-		if statusFlags.jsonOutput {
-			enc := json.NewEncoder(os.Stdout)
-			enc.SetIndent("", "  ")
-			enc.Encode(map[string]any{"accounts": accounts})
-			return
+		if statusFlags.separate {
+			if statusFlags.jsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				enc.Encode(map[string]any{"accounts": accounts})
+				return
+			}
+			renderSeparate(accounts)
+		} else {
+			if statusFlags.jsonOutput {
+				enc := json.NewEncoder(os.Stdout)
+				enc.SetIndent("", "  ")
+				enc.Encode(buildCombinedJSON(accounts))
+				return
+			}
+			renderCombined(accounts)
+		}
+	},
+}
+
+func renderSeparate(accounts []model.AccountUsage) {
+	for _, acct := range accounts {
+		email := acct.Account.Email
+		if email == "" {
+			email = acct.Account.ConfigDir
+		}
+		org := acct.Account.Organization
+		header := titleStyle.Render(email)
+		if org != "" {
+			header += dimStyle.Render(fmt.Sprintf(" (%s)", org))
+		}
+		u.PrintGeneric("\n" + header)
+
+		if acct.TokenExpired {
+			u.PrintWarn("OAuth token expired - launch Claude Code on this account to refresh", nil)
+			continue
 		}
 
-		for _, acct := range accounts {
+		renderWindows(acct.FiveHour, acct.SevenDay, acct.SevenDaySonnet)
+
+		if acct.FiveHour != nil && acct.FiveHour.Utilization >= 80 {
+			u.PrintGeneric("")
+			u.PrintWarn("Approaching 5h limit. Consider switching accounts.", nil)
+		} else if acct.FiveHour != nil && acct.FiveHour.Utilization < 10 {
+			u.PrintGeneric("")
+			u.PrintSuccess("Plenty of capacity available.")
+		}
+	}
+	u.PrintGeneric("")
+}
+
+func renderCombined(accounts []model.AccountUsage) {
+	var active []model.AccountUsage
+	for _, acct := range accounts {
+		if acct.TokenExpired {
 			email := acct.Account.Email
 			if email == "" {
 				email = acct.Account.ConfigDir
 			}
-			org := acct.Account.Organization
-			header := titleStyle.Render(email)
-			if org != "" {
-				header += dimStyle.Render(fmt.Sprintf(" (%s)", org))
-			}
-			u.PrintGeneric("\n" + header)
-
-			if acct.TokenExpired {
-				u.PrintWarn("OAuth token expired - launch Claude Code on this account to refresh", nil)
-				continue
-			}
-
-			// 5-hour window
-			if acct.FiveHour != nil {
-				w := acct.FiveHour
-				resetStr := formatResetTime(w.ResetsAt)
-				u.PrintGeneric(fmt.Sprintf("  5h Session: %s %s",
-					renderBar(w.Utilization),
-					dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
-			}
-
-			// 7-day window
-			if acct.SevenDay != nil {
-				w := acct.SevenDay
-				resetStr := formatResetTime(w.ResetsAt)
-				u.PrintGeneric(fmt.Sprintf("  7d All:     %s %s",
-					renderBar(w.Utilization),
-					dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
-			}
-
-			// Sonnet-specific
-			if acct.SevenDaySonnet != nil {
-				w := acct.SevenDaySonnet
-				resetStr := formatResetTime(w.ResetsAt)
-				u.PrintGeneric(fmt.Sprintf("  7d Sonnet:  %s %s",
-					renderBar(w.Utilization),
-					dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
-			}
-
-			// Recommendation
-			if acct.FiveHour != nil && acct.FiveHour.Utilization >= 80 {
-				u.PrintGeneric("")
-				u.PrintWarn("Approaching 5h limit. Consider switching accounts.", nil)
-			} else if acct.FiveHour != nil && acct.FiveHour.Utilization < 10 {
-				u.PrintGeneric("")
-				u.PrintSuccess("Plenty of capacity available.")
-			}
+			u.PrintWarn(fmt.Sprintf("excluding %s (token expired)", email), nil)
+			continue
 		}
+		active = append(active, acct)
+	}
+
+	if len(active) == 0 {
+		u.PrintFatal("No accounts with valid tokens", nil)
+	}
+
+	fiveHour := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
+	sevenDay := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
+	sevenDaySonnet := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
+
+	header := titleStyle.Render(fmt.Sprintf("Combined (%d accounts)", len(active)))
+	u.PrintGeneric("\n" + header)
+
+	renderWindows(fiveHour, sevenDay, sevenDaySonnet)
+
+	if fiveHour != nil && fiveHour.Utilization >= 80 {
 		u.PrintGeneric("")
-	},
+		u.PrintWarn("Approaching 5h limit. Consider switching accounts.", nil)
+	} else if fiveHour != nil && fiveHour.Utilization < 10 {
+		u.PrintGeneric("")
+		u.PrintSuccess("Plenty of capacity available.")
+	}
+	u.PrintGeneric("")
+}
+
+func renderWindows(fiveHour, sevenDay, sevenDaySonnet *model.UsageWindow) {
+	if fiveHour != nil {
+		resetStr := formatResetTime(fiveHour.ResetsAt)
+		u.PrintGeneric(fmt.Sprintf("  5h Session: %s %s",
+			renderBar(fiveHour.Utilization),
+			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
+	}
+	if sevenDay != nil {
+		resetStr := formatResetTime(sevenDay.ResetsAt)
+		u.PrintGeneric(fmt.Sprintf("  7d All:     %s %s",
+			renderBar(sevenDay.Utilization),
+			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
+	}
+	if sevenDaySonnet != nil {
+		resetStr := formatResetTime(sevenDaySonnet.ResetsAt)
+		u.PrintGeneric(fmt.Sprintf("  7d Sonnet:  %s %s",
+			renderBar(sevenDaySonnet.Utilization),
+			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
+	}
+}
+
+func averageWindow(accounts []model.AccountUsage, getter func(model.AccountUsage) *model.UsageWindow) *model.UsageWindow {
+	var sum float64
+	var count int
+	var earliest time.Time
+
+	for _, acct := range accounts {
+		w := getter(acct)
+		if w == nil {
+			continue
+		}
+		sum += w.Utilization
+		count++
+		if !w.ResetsAt.IsZero() && (earliest.IsZero() || w.ResetsAt.Before(earliest)) {
+			earliest = w.ResetsAt
+		}
+	}
+
+	if count == 0 {
+		return nil
+	}
+
+	return &model.UsageWindow{
+		Utilization: sum / float64(count),
+		ResetsAt:    earliest,
+	}
+}
+
+func buildCombinedJSON(accounts []model.AccountUsage) map[string]any {
+	var active []model.AccountUsage
+	for _, acct := range accounts {
+		if !acct.TokenExpired {
+			active = append(active, acct)
+		}
+	}
+
+	result := map[string]any{"accountCount": len(active)}
+
+	fiveHour := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
+	sevenDay := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
+	sevenDaySonnet := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
+
+	combined := map[string]any{}
+	if fiveHour != nil {
+		combined["fiveHour"] = fiveHour
+	}
+	if sevenDay != nil {
+		combined["sevenDay"] = sevenDay
+	}
+	if sevenDaySonnet != nil {
+		combined["sevenDaySonnet"] = sevenDaySonnet
+	}
+	result["combined"] = combined
+
+	return result
 }
 
 func formatResetTime(t time.Time) string {
@@ -163,5 +265,6 @@ func renderBar(pct float64) string {
 
 func init() {
 	statusCmd.Flags().StringSliceVarP(&statusFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
+	statusCmd.Flags().BoolVarP(&statusFlags.separate, "separate", "s", false, "Show each account separately")
 	statusCmd.Flags().BoolVarP(&statusFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }
