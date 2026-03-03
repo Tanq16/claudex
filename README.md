@@ -48,7 +48,7 @@ make build
 
 ### `status`
 
-Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain. By default, multiple accounts are averaged into a single combined view; use `-s` to see each account individually.
+Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain. By default, multiple accounts are shown side by side with individual bars and reset times per row; use `-s` to see each account as a fully separate block with recommendations.
 
 ```bash
 claudex status
@@ -59,7 +59,7 @@ claudex status -j
 
 **Flags:**
 - `-a, --accounts` - Additional Claude config directories to monitor (default: `~/.claude` only)
-- `-s, --separate` - Show each account separately instead of combined
+- `-s, --separate` - Show each account as a separate block with individual recommendations
 - `-j, --json` - Output as JSON
 
 ### `history`
