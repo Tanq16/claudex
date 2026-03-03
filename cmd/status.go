@@ -117,22 +117,12 @@ func renderCombined(accounts []model.AccountUsage) {
 		u.PrintFatal("No accounts with valid tokens", nil)
 	}
 
-	fiveHour := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
-	sevenDay := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
-	sevenDaySonnet := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
-
-	header := titleStyle.Render(fmt.Sprintf("Combined (%d accounts)", len(active)))
+	header := titleStyle.Render(fmt.Sprintf("Status (%d accounts)", len(active)))
 	u.PrintGeneric("\n" + header)
 
-	renderWindows(fiveHour, sevenDay, sevenDaySonnet)
-
-	if fiveHour != nil && fiveHour.Utilization >= 80 {
-		u.PrintGeneric("")
-		u.PrintWarn("Approaching 5h limit. Consider switching accounts.", nil)
-	} else if fiveHour != nil && fiveHour.Utilization < 10 {
-		u.PrintGeneric("")
-		u.PrintSuccess("Plenty of capacity available.")
-	}
+	renderCombinedRow("5h Session:", active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
+	renderCombinedRow("7d All:    ", active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
+	renderCombinedRow("7d Sonnet: ", active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
 	u.PrintGeneric("")
 }
 
@@ -157,31 +147,30 @@ func renderWindows(fiveHour, sevenDay, sevenDaySonnet *model.UsageWindow) {
 	}
 }
 
-func averageWindow(accounts []model.AccountUsage, getter func(model.AccountUsage) *model.UsageWindow) *model.UsageWindow {
-	var sum float64
-	var count int
-	var earliest time.Time
-
+func renderCombinedRow(label string, accounts []model.AccountUsage, getter func(model.AccountUsage) *model.UsageWindow) {
+	var segments []string
 	for _, acct := range accounts {
 		w := getter(acct)
 		if w == nil {
 			continue
 		}
-		sum += w.Utilization
-		count++
-		if !w.ResetsAt.IsZero() && (earliest.IsZero() || w.ResetsAt.Before(earliest)) {
-			earliest = w.ResetsAt
+		resetStr := formatResetTime(w.ResetsAt)
+		segments = append(segments, fmt.Sprintf("%s %s",
+			renderBar(w.Utilization),
+			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
+	}
+	if len(segments) == 0 {
+		return
+	}
+	sep := dimStyle.Render("  |  ")
+	line := "  " + label + " "
+	for i, seg := range segments {
+		if i > 0 {
+			line += sep
 		}
+		line += seg
 	}
-
-	if count == 0 {
-		return nil
-	}
-
-	return &model.UsageWindow{
-		Utilization: sum / float64(count),
-		ResetsAt:    earliest,
-	}
+	u.PrintGeneric(line)
 }
 
 func buildCombinedJSON(accounts []model.AccountUsage) map[string]any {
@@ -191,26 +180,7 @@ func buildCombinedJSON(accounts []model.AccountUsage) map[string]any {
 			active = append(active, acct)
 		}
 	}
-
-	result := map[string]any{"accountCount": len(active)}
-
-	fiveHour := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
-	sevenDay := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
-	sevenDaySonnet := averageWindow(active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
-
-	combined := map[string]any{}
-	if fiveHour != nil {
-		combined["fiveHour"] = fiveHour
-	}
-	if sevenDay != nil {
-		combined["sevenDay"] = sevenDay
-	}
-	if sevenDaySonnet != nil {
-		combined["sevenDaySonnet"] = sevenDaySonnet
-	}
-	result["combined"] = combined
-
-	return result
+	return map[string]any{"accountCount": len(active), "accounts": active}
 }
 
 func formatResetTime(t time.Time) string {
