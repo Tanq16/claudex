@@ -15,7 +15,6 @@ import (
 
 var statusFlags struct {
 	accounts   []string
-	separate   bool
 	jsonOutput bool
 }
 
@@ -48,27 +47,17 @@ var statusCmd = &cobra.Command{
 			u.PrintFatal("No accounts found", nil)
 		}
 
-		if statusFlags.separate {
-			if statusFlags.jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				enc.Encode(map[string]any{"accounts": accounts})
-				return
-			}
-			renderSeparate(accounts)
-		} else {
-			if statusFlags.jsonOutput {
-				enc := json.NewEncoder(os.Stdout)
-				enc.SetIndent("", "  ")
-				enc.Encode(buildCombinedJSON(accounts))
-				return
-			}
-			renderCombined(accounts)
+		if statusFlags.jsonOutput {
+			enc := json.NewEncoder(os.Stdout)
+			enc.SetIndent("", "  ")
+			enc.Encode(map[string]any{"accounts": accounts})
+			return
 		}
+		renderStatus(accounts)
 	},
 }
 
-func renderSeparate(accounts []model.AccountUsage) {
+func renderStatus(accounts []model.AccountUsage) {
 	for _, acct := range accounts {
 		email := acct.Account.Email
 		if email == "" {
@@ -99,33 +88,6 @@ func renderSeparate(accounts []model.AccountUsage) {
 	u.PrintGeneric("")
 }
 
-func renderCombined(accounts []model.AccountUsage) {
-	var active []model.AccountUsage
-	for _, acct := range accounts {
-		if acct.TokenExpired {
-			email := acct.Account.Email
-			if email == "" {
-				email = acct.Account.ConfigDir
-			}
-			u.PrintWarn(fmt.Sprintf("excluding %s (token expired)", email), nil)
-			continue
-		}
-		active = append(active, acct)
-	}
-
-	if len(active) == 0 {
-		u.PrintFatal("No accounts with valid tokens", nil)
-	}
-
-	header := titleStyle.Render(fmt.Sprintf("Status (%d accounts)", len(active)))
-	u.PrintGeneric("\n" + header)
-
-	renderCombinedRow("5h Session:", active, func(a model.AccountUsage) *model.UsageWindow { return a.FiveHour })
-	renderCombinedRow("7d All:    ", active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDay })
-	renderCombinedRow("7d Sonnet: ", active, func(a model.AccountUsage) *model.UsageWindow { return a.SevenDaySonnet })
-	u.PrintGeneric("")
-}
-
 func renderWindows(fiveHour, sevenDay, sevenDaySonnet *model.UsageWindow) {
 	if fiveHour != nil {
 		resetStr := formatResetTime(fiveHour.ResetsAt)
@@ -147,41 +109,6 @@ func renderWindows(fiveHour, sevenDay, sevenDaySonnet *model.UsageWindow) {
 	}
 }
 
-func renderCombinedRow(label string, accounts []model.AccountUsage, getter func(model.AccountUsage) *model.UsageWindow) {
-	var segments []string
-	for _, acct := range accounts {
-		w := getter(acct)
-		if w == nil {
-			continue
-		}
-		resetStr := formatResetTime(w.ResetsAt)
-		segments = append(segments, fmt.Sprintf("%s %s",
-			renderBar(w.Utilization),
-			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
-	}
-	if len(segments) == 0 {
-		return
-	}
-	sep := dimStyle.Render("  |  ")
-	line := "  " + label + " "
-	for i, seg := range segments {
-		if i > 0 {
-			line += sep
-		}
-		line += seg
-	}
-	u.PrintGeneric(line)
-}
-
-func buildCombinedJSON(accounts []model.AccountUsage) map[string]any {
-	var active []model.AccountUsage
-	for _, acct := range accounts {
-		if !acct.TokenExpired {
-			active = append(active, acct)
-		}
-	}
-	return map[string]any{"accountCount": len(active), "accounts": active}
-}
 
 func formatResetTime(t time.Time) string {
 	if t.IsZero() {
@@ -235,6 +162,5 @@ func renderBar(pct float64) string {
 
 func init() {
 	statusCmd.Flags().StringSliceVarP(&statusFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
-	statusCmd.Flags().BoolVarP(&statusFlags.separate, "separate", "s", false, "Show each account separately")
 	statusCmd.Flags().BoolVarP(&statusFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }
