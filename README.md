@@ -48,18 +48,16 @@ make build
 
 ### `status`
 
-Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain. By default, multiple accounts are shown side by side with individual bars and reset times per row; use `-s` to see each account as a fully separate block with recommendations.
+Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns per account. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain.
 
 ```bash
 claudex status
 claudex status -a ~/.claude2
-claudex status -s
 claudex status -j
 ```
 
 **Flags:**
 - `-a, --accounts` - Additional Claude config directories to monitor (default: `~/.claude` only)
-- `-s, --separate` - Show each account as a separate block with individual recommendations
 - `-j, --json` - Output as JSON
 
 ### `history`
@@ -93,12 +91,13 @@ claudex conversations -j
 
 ### `plugin instate`
 
-Instantiate plugins for a local project with version reconciliation.
+Instantiate plugins for a local project with version reconciliation. Supports both local marketplace plugins (resolved from the marketplace directory) and external GitHub-hosted plugins (shallow-cloned automatically).
 
 ```bash
 claudex plugin instate
 claudex plugin instate -c ~/.claude2
 claudex plugin instate -P core@ai-brain -u
+claudex plugin instate -P sales@praetorian-ai-marketplace
 claudex plugin instate -A
 ```
 
