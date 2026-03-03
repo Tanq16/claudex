@@ -57,6 +57,18 @@ func (e MarketplacePluginEntry) SourcePath() string {
 	return ""
 }
 
+func (e MarketplacePluginEntry) GitHubRepo() (string, bool) {
+	var obj map[string]string
+	if err := json.Unmarshal(e.Source, &obj); err != nil {
+		return "", false
+	}
+	if obj["source"] != "github" {
+		return "", false
+	}
+	repo, ok := obj["repo"]
+	return repo, ok && repo != ""
+}
+
 type PluginJSON struct {
 	Name        string `json:"name"`
 	Version     string `json:"version"`

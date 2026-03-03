@@ -30,6 +30,10 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 		}
 	}
 
+	if repo, ok := mktEntry.GitHubRepo(); ok && absSource == "" {
+		return reconcileFromGitHub(configDir, mktEntry.Name, marketplaceName, repo, latestVersion)
+	}
+
 	if latestVersion == "" {
 		return ReconcileResult{Action: "skipped", Message: "cannot determine latest version"}, nil
 	}
@@ -76,5 +80,61 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 		Action:  "skipped",
 		Version: latestVersion,
 		Message: "external source — manual install required",
+	}, nil
+}
+
+func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackVersion string) (ReconcileResult, error) {
+	tmpDir, err := CloneGitHubRepo(repo)
+	if err != nil {
+		return ReconcileResult{Action: "skipped", Message: fmt.Sprintf("clone failed: %v", err)}, nil
+	}
+	defer os.RemoveAll(tmpDir)
+
+	latestVersion := fallbackVersion
+	if pj, err := LoadPluginJSON(tmpDir); err == nil && pj.Version != "" {
+		latestVersion = pj.Version
+	}
+	if latestVersion == "" {
+		sha := GetGitCommitSha(tmpDir)
+		if sha == "" {
+			return ReconcileResult{Action: "skipped", Message: "cannot determine version from cloned repo"}, nil
+		}
+		latestVersion = sha[:12]
+	}
+
+	cached, err := ListCachedVersions(configDir, marketplaceName, pluginName)
+	if err != nil {
+		return ReconcileResult{Action: "skipped", Message: "cannot list cached versions"}, err
+	}
+
+	for _, cv := range cached {
+		if cv.Version == latestVersion {
+			if !cv.Orphaned {
+				return ReconcileResult{
+					Action:  "up-to-date",
+					Version: latestVersion,
+					Message: fmt.Sprintf("version %s already cached and active", latestVersion),
+				}, nil
+			}
+			orphanFile := filepath.Join(cv.Path, ".orphaned_at")
+			if err := os.Remove(orphanFile); err != nil {
+				return ReconcileResult{Action: "skipped", Message: "failed to remove .orphaned_at"}, err
+			}
+			return ReconcileResult{
+				Action:  "un-orphaned",
+				Version: latestVersion,
+				Message: fmt.Sprintf("version %s un-orphaned", latestVersion),
+			}, nil
+		}
+	}
+
+	destDir := filepath.Join(configDir, "plugins", "cache", marketplaceName, pluginName, latestVersion)
+	if err := copyDir(tmpDir, destDir); err != nil {
+		return ReconcileResult{Action: "skipped", Message: "failed to copy cloned repo to cache"}, err
+	}
+	return ReconcileResult{
+		Action:  "cloned-from-github",
+		Version: latestVersion,
+		Message: fmt.Sprintf("version %s cloned from github.com/%s", latestVersion, repo),
 	}, nil
 }

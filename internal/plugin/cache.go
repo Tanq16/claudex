@@ -137,3 +137,17 @@ func GitPull(marketplaceDir string) error {
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
 }
+
+func CloneGitHubRepo(repo string) (tmpDir string, err error) {
+	tmpDir, err = os.MkdirTemp("", "claudex-plugin-*")
+	if err != nil {
+		return "", err
+	}
+	url := "https://github.com/" + repo + ".git"
+	cmd := exec.Command("git", "clone", "--depth", "1", url, tmpDir)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		os.RemoveAll(tmpDir)
+		return "", fmt.Errorf("git clone %s: %s", repo, strings.TrimSpace(string(out)))
+	}
+	return tmpDir, nil
+}

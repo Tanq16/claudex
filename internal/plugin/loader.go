@@ -160,6 +160,11 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 					latestVersion = pj.Version
 				}
 			}
+			if latestVersion == "" {
+				if _, ok := pe.GitHubRepo(); ok {
+					latestVersion = "external"
+				}
+			}
 
 			installedVersion := ""
 			if installs, ok := installed.Plugins[key]; ok && len(installs) > 0 {
