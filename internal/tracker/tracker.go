@@ -53,7 +53,11 @@ func ComputeAccountUsage(configDir string) (model.AccountUsage, error) {
 	}
 
 	if resp.Error != nil {
-		usage.TokenExpired = true
+		if resp.Error.Type == "authentication_error" || resp.Error.Type == "permission_error" {
+			usage.TokenExpired = true
+		} else {
+			usage.APIError = resp.Error.Message
+		}
 		return usage, nil
 	}
 

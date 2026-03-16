@@ -20,6 +20,7 @@ type AccountUsage struct {
 	SevenDay         *UsageWindow `json:"sevenDay,omitempty"`
 	SevenDaySonnet   *UsageWindow `json:"sevenDaySonnet,omitempty"`
 	TokenExpired     bool         `json:"tokenExpired,omitempty"`
+	APIError         string       `json:"apiError,omitempty"`
 }
 
 type DailyActivity struct {

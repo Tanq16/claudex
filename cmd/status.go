@@ -75,6 +75,11 @@ func renderStatus(accounts []model.AccountUsage) {
 			continue
 		}
 
+		if acct.APIError != "" {
+			u.PrintWarn(fmt.Sprintf("API error: %s", acct.APIError), nil)
+			continue
+		}
+
 		renderWindows(acct.FiveHour, acct.SevenDay, acct.SevenDaySonnet)
 
 		if acct.FiveHour != nil && acct.FiveHour.Utilization >= 80 {
