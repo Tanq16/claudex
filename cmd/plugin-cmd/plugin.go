@@ -1,7 +1,6 @@
 package pluginCmd
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,7 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/plugin"
-	u "github.com/tanq16/claudex/internal/utils"
+	u "github.com/tanq16/claudex/utils"
 )
 
 var instateFlags struct {
@@ -248,12 +247,7 @@ func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary 
 	}
 	u.PrintTable(headers, rows)
 
-	u.PrintPrompt("\nSelect plugins (comma-separated numbers, or 'all'): ")
-	scanner := bufio.NewScanner(os.Stdin)
-	if !scanner.Scan() {
-		return nil
-	}
-	input := strings.TrimSpace(scanner.Text())
+	input := u.PromptInput("\nSelect plugins (comma-separated numbers, or 'all')", "")
 	if input == "" {
 		return nil
 	}

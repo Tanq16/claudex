@@ -1,6 +1,9 @@
 package utils
 
 import (
+	"fmt"
+	"strings"
+
 	"charm.land/lipgloss/v2"
 	"charm.land/lipgloss/v2/table"
 )
@@ -8,18 +11,23 @@ import (
 var (
 	headerStyle = lipgloss.NewStyle().
 		Bold(true).
-		Foreground(lipgloss.Color("15")).
+		Foreground(lipgloss.ANSIColor(15)).
 		Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("7")).
+		Foreground(lipgloss.ANSIColor(7)).
 		Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.Color("8"))
+		Foreground(lipgloss.ANSIColor(8))
 )
 
 func PrintTable(headers []string, rows [][]string) {
+	if GlobalForAIFlag {
+		printMarkdownTable(headers, rows)
+		return
+	}
+
 	t := table.New().
 		Border(lipgloss.NormalBorder()).
 		BorderStyle(borderStyle).
@@ -33,4 +41,16 @@ func PrintTable(headers []string, rows [][]string) {
 		})
 
 	PrintGeneric(t.Render())
+}
+
+func printMarkdownTable(headers []string, rows [][]string) {
+	fmt.Println("| " + strings.Join(headers, " | ") + " |")
+	seps := make([]string, len(headers))
+	for i := range seps {
+		seps[i] = "---"
+	}
+	fmt.Println("| " + strings.Join(seps, " | ") + " |")
+	for _, row := range rows {
+		fmt.Println("| " + strings.Join(row, " | ") + " |")
+	}
 }

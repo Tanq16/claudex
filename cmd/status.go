@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/model"
 	"github.com/tanq16/claudex/internal/tracker"
-	u "github.com/tanq16/claudex/internal/utils"
+	u "github.com/tanq16/claudex/utils"
 )
 
 var statusFlags struct {
@@ -19,13 +19,13 @@ var statusFlags struct {
 }
 
 var (
-	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13"))
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	valueStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
-	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	barBgStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.ANSIColor(13))
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(8))
+	valueStyle  = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(15))
+	greenStyle  = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(10))
+	yellowStyle = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(11))
+	redStyle    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(9))
+	barBgStyle  = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(8))
 )
 
 var statusCmd = &cobra.Command{

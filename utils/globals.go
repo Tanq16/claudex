@@ -6,6 +6,7 @@ import (
 )
 
 var GlobalDebugFlag bool
+var GlobalForAIFlag bool
 
 func ExpandPath(path string) string {
 	if len(path) > 0 && path[0] == '~' {

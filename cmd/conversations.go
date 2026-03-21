@@ -8,7 +8,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/parser"
-	u "github.com/tanq16/claudex/internal/utils"
+	u "github.com/tanq16/claudex/utils"
 )
 
 var convosFlags struct {
