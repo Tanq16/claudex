@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/utils"
 
+	convosCmd "github.com/tanq16/claudex/cmd/convos-cmd"
 	pluginCmd "github.com/tanq16/claudex/cmd/plugin-cmd"
 )
 
@@ -74,6 +75,6 @@ func init() {
 
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)
-	rootCmd.AddCommand(convosCmd)
+	rootCmd.AddCommand(convosCmd.ConvosCmd)
 	rootCmd.AddCommand(pluginCmd.PluginCmd)
 }

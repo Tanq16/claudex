@@ -1,17 +1,18 @@
 #!/bin/bash
 
-# Colors
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-BLUE='\033[0;34m'
-DIM='\033[2m'
+# Catppuccin Mocha palette (256-color)
+ROSEWATER='\033[38;5;217m'
+PINK='\033[38;5;175m'
+SKY='\033[38;5;117m'
+LAVENDER='\033[38;5;147m'
+RED='\033[38;5;203m'
+YELLOW='\033[38;5;221m'
+GREEN='\033[38;5;120m'
+TEXT='\033[38;5;188m'
+SUBTEXT='\033[38;5;145m'
+SURFACE='\033[38;5;240m'
 BOLD='\033[1m'
 NC='\033[0m'
-
-# Emojis
 FIRE="🔥"
 WARN="⚠️"
 
@@ -77,7 +78,7 @@ case "$model_id" in
     ;;
 esac
 
-# Colorize percentage
+# Colorize percentage using Catppuccin green/yellow/red
 colorize_pct() {
     local val="$1"
     local show_emoji="${2:-false}"
@@ -97,7 +98,6 @@ colorize_pct() {
 epoch_to_time() {
     local epoch="$1"
     [[ -z "$epoch" ]] || [[ "$epoch" == "null" ]] || [[ "$epoch" == "0" ]] && return
-    # Round up to next hour
     local rounded=$(( epoch + 3599 ))
     local formatted=$(date -j -f %s "$rounded" "+%-I%p" 2>/dev/null)
     echo "$formatted" | sed 's/AM/am/' | sed 's/PM/pm/'
@@ -129,29 +129,31 @@ if git -C "$original_cwd" rev-parse --git-dir > /dev/null 2>&1; then
     git_branch=$(git -C "$original_cwd" branch --show-current 2>/dev/null)
 fi
 
-# Build status line: account | model | directory | branch | context info
-out="${BOLD}${YELLOW}${ACCT_LABEL}${NC}"
-out+=" | ${CYAN}${BOLD}${model_short}${NC}"
-out+=" | ${cwd}"
+DOT=" ${SURFACE}·${NC} "
+
+# Build status line: account · model · directory · branch · usage
+out="${ROSEWATER}${BOLD}${ACCT_LABEL}${NC}"
+out+="${DOT}${SKY}${BOLD}${model_short}${NC}"
+out+="${DOT}${TEXT}${cwd}${NC}"
 
 if [[ -n "$git_branch" ]]; then
-    out+=" | ${MAGENTA}${git_branch}${NC}"
+    out+="${DOT}${PINK}${git_branch}${NC}"
 fi
 
 if [[ -n "$session_used_pct" ]]; then
     sess_pct=$(printf "%.0f" "$session_used_pct")
-    out+=" | ${BLUE}ctx: ${sess_pct}%${NC}"
+    out+="${DOT}${LAVENDER}${sess_pct}% used${NC}"
 fi
 
 if [[ -n "$five_h" ]]; then
-    out+=" | 5h: $(colorize_pct "$five_h" "true")"
+    out+="${DOT}5h $(colorize_pct "$five_h" "true")"
     if [[ -n "$reset_time" ]]; then
-        out+=" ${DIM}(${reset_time})${NC}"
+        out+=" ${SUBTEXT}resets ${reset_time}${NC}"
     fi
 fi
 
 if [[ -n "$seven_d" ]]; then
-    out+=" | Wk: $(colorize_pct "$seven_d" "false")"
+    out+="${DOT}7d $(colorize_pct "$seven_d" "false")"
 fi
 
 # Output
