@@ -4,7 +4,6 @@
 # Variables
 # =============================================================================
 APP_NAME := claudex
-DOCKER_USER := tanq16
 
 # Build variables (set by CI or use defaults)
 VERSION ?= dev-build

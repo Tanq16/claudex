@@ -3,7 +3,7 @@
   <h1>Claudex</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
-  <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
+  <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a> &bull; <a href="#oauth-token">OAuth</a>
 </div>
 
 ---
@@ -17,6 +17,7 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
 | History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
 | Conversations | `conversations` / `convos` | List recent conversations with session IDs, message counts, and projects |
+| Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
 
@@ -87,6 +88,21 @@ claudex conversations -j
 - `-a, --accounts` - Additional Claude config directories to monitor
 - `-n, --limit` - Number of conversations to show (default: `10`)
 - `-j, --json` - Output as JSON (includes full session UUIDs)
+
+### `oauth-token`
+
+Obtain a Claude OAuth access token via the browser-based PKCE flow. Opens your browser for authentication and prints the access token to stdout.
+
+```bash
+claudex oauth-token
+TOKEN=$(claudex oauth-token)
+claudex oauth-token --expires-in 3600
+claudex oauth-token --port 8080
+```
+
+**Flags:**
+- `-p, --port` - Local port for OAuth callback server (default: `54545`)
+- `-e, --expires-in` - Requested token expiry in seconds (default: `3600`; server may override)
 
 ### `plugin instate`
 

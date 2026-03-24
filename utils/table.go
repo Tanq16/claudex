@@ -43,14 +43,22 @@ func PrintTable(headers []string, rows [][]string) {
 	PrintGeneric(t.Render())
 }
 
+func escapeCells(cells []string) []string {
+	escaped := make([]string, len(cells))
+	for i, c := range cells {
+		escaped[i] = strings.ReplaceAll(c, "|", "\\|")
+	}
+	return escaped
+}
+
 func printMarkdownTable(headers []string, rows [][]string) {
-	fmt.Println("| " + strings.Join(headers, " | ") + " |")
+	fmt.Println("| " + strings.Join(escapeCells(headers), " | ") + " |")
 	seps := make([]string, len(headers))
 	for i := range seps {
 		seps[i] = "---"
 	}
 	fmt.Println("| " + strings.Join(seps, " | ") + " |")
 	for _, row := range rows {
-		fmt.Println("| " + strings.Join(row, " | ") + " |")
+		fmt.Println("| " + strings.Join(escapeCells(row), " | ") + " |")
 	}
 }

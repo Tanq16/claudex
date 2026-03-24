@@ -75,6 +75,7 @@ func init() {
 
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)
+	rootCmd.AddCommand(oauthTokenCmd)
 	rootCmd.AddCommand(convosCmd.ConvosCmd)
 	rootCmd.AddCommand(pluginCmd.PluginCmd)
 }

@@ -114,7 +114,7 @@ func runInstate(cmd *cobra.Command, args []string) {
 	for _, s := range selected {
 		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName)
 		if err != nil {
-			u.PrintWarn(fmt.Sprintf("Reconcile failed for %s: %s", s.Key, err), nil)
+			u.PrintWarn(fmt.Sprintf("Reconcile failed for %s", s.Key), err)
 			continue
 		}
 		u.PrintInfo(fmt.Sprintf("[%s] %s — %s", s.Key, result.Action, result.Message))
@@ -247,7 +247,11 @@ func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary 
 	}
 	u.PrintTable(headers, rows)
 
-	input := u.PromptInput("\nSelect plugins (comma-separated numbers, or 'all')", "")
+	input, err := u.PromptInput("\nSelect plugins (comma-separated numbers, or 'all')", "")
+	if err != nil {
+		u.PrintWarn("Failed to read input", err)
+		return nil
+	}
 	if input == "" {
 		return nil
 	}
