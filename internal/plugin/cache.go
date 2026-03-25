@@ -133,9 +133,10 @@ func GetGitCommitSha(repoPath string) string {
 
 func GitPull(marketplaceDir string) error {
 	cmd := exec.Command("git", "-C", marketplaceDir, "pull", "--ff-only")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%s: %s", err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func CloneGitHubRepo(repo string) (tmpDir string, err error) {

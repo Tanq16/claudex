@@ -208,6 +208,11 @@ func runCleanup(cmd *cobra.Command, args []string) {
 		if err != nil {
 			u.PrintFatal("Failed to remove orphans", err)
 		}
+		installed, _ := plugin.LoadInstalledPlugins(configDir)
+		plugin.PruneStaleInstallEntries(&installed)
+		if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
+			u.PrintFatal("Failed to save installed_plugins.json", err)
+		}
 		u.PrintSuccess(fmt.Sprintf("Removed %d orphaned version(s)", n))
 		return
 	}
@@ -280,10 +285,11 @@ func runCleanup(cmd *cobra.Command, args []string) {
 		u.PrintInfo(fmt.Sprintf("Cleaned %d plugin(s)", len(selected)))
 	}
 
-	if !cleanupFlags.orphansOnly {
-		if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
-			u.PrintFatal("Failed to save installed_plugins.json", err)
-		}
+	if cleanupFlags.orphansOnly {
+		plugin.PruneStaleInstallEntries(&installed)
+	}
+	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
+		u.PrintFatal("Failed to save installed_plugins.json", err)
 	}
 
 	u.PrintSuccess(fmt.Sprintf("Cleanup complete — %d item(s) removed", totalRemoved))

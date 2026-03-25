@@ -47,6 +47,7 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 	for _, cv := range cached {
 		if cv.Version == latestVersion {
 			if !cv.Orphaned {
+				orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
 				return ReconcileResult{
 					Action:  "up-to-date",
 					Version: latestVersion,
@@ -113,6 +114,7 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 	for _, cv := range cached {
 		if cv.Version == latestVersion {
 			if !cv.Orphaned {
+				orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
 				return ReconcileResult{
 					Action:  "up-to-date",
 					Version: latestVersion,

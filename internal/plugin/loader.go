@@ -199,6 +199,55 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 		}
 	}
 
+	// Discover cached plugins not listed in any marketplace (delisted plugins)
+	knownKeys := make(map[string]bool)
+	for _, s := range summaries {
+		knownKeys[s.Key] = true
+	}
+	cacheRoot := filepath.Join(configDir, "plugins", "cache")
+	if mktDirs, err := os.ReadDir(cacheRoot); err == nil {
+		for _, mktDir := range mktDirs {
+			if !mktDir.IsDir() {
+				continue
+			}
+			mktName := mktDir.Name()
+			pluginDirs, err := os.ReadDir(filepath.Join(cacheRoot, mktName))
+			if err != nil {
+				continue
+			}
+			for _, plDir := range pluginDirs {
+				if !plDir.IsDir() {
+					continue
+				}
+				key := PluginKey(plDir.Name(), mktName)
+				if knownKeys[key] {
+					continue
+				}
+				cached, _ := ListCachedVersions(configDir, mktName, plDir.Name())
+				orphanCount := 0
+				for _, cv := range cached {
+					if cv.Orphaned {
+						orphanCount++
+					}
+				}
+				installedVersion := ""
+				if installs, ok := installed.Plugins[key]; ok && len(installs) > 0 {
+					installedVersion = installs[0].Version
+				}
+				summaries = append(summaries, PluginSummary{
+					Key:              key,
+					PluginName:       plDir.Name(),
+					MarketplaceName:  mktName,
+					Description:      "(delisted from marketplace)",
+					InstalledVersion: installedVersion,
+					LatestVersion:    "",
+					CachedVersions:   cached,
+					OrphanCount:      orphanCount,
+				})
+			}
+		}
+	}
+
 	sort.Slice(summaries, func(i, j int) bool {
 		return summaries[i].Key < summaries[j].Key
 	})
