@@ -15,7 +15,7 @@ func SaveInstalledPlugins(configDir string, file InstalledPluginsFile) error {
 	return os.WriteFile(p, data, 0644)
 }
 
-func SaveSettingsLocal(projectDir string, plugins map[string]bool) error {
+func SaveSettingsLocal(projectDir string, plugins map[string]bool, replace bool) error {
 	dir := filepath.Join(projectDir, ".claude")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return err
@@ -26,8 +26,12 @@ func SaveSettingsLocal(projectDir string, plugins map[string]bool) error {
 		return err
 	}
 
-	for k, v := range plugins {
-		existing.EnabledPlugins[k] = v
+	if replace {
+		existing.EnabledPlugins = plugins
+	} else {
+		for k, v := range plugins {
+			existing.EnabledPlugins[k] = v
+		}
 	}
 
 	out := make(map[string]any)

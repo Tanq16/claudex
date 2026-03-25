@@ -63,10 +63,30 @@ func runInstate(cmd *cobra.Command, args []string) {
 		if err != nil {
 			u.PrintFatal("Failed to load known_marketplaces.json", err)
 		}
+
+		toPull := known
+		if instateFlags.plugins != "" {
+			relevantMkts := make(map[string]bool)
+			for _, k := range strings.Split(instateFlags.plugins, ",") {
+				_, mktName := plugin.SplitPluginKey(strings.TrimSpace(k))
+				if mktName != "" {
+					relevantMkts[mktName] = true
+				}
+			}
+			if len(relevantMkts) > 0 {
+				toPull = make(plugin.KnownMarketplacesFile)
+				for name, entry := range known {
+					if relevantMkts[name] {
+						toPull[name] = entry
+					}
+				}
+			}
+		}
+
 		u.PrintRunning("(Running) Pulling marketplace repos")
 		var pullLineCount int
 		var pullErrors []pluginResult
-		for name, entry := range known {
+		for name, entry := range toPull {
 			if err := plugin.GitPull(entry.InstallLocation); err != nil {
 				u.PrintIndentedError(name, err)
 				pullErrors = append(pullErrors, pluginResult{key: name, err: err})
@@ -82,7 +102,7 @@ func runInstate(cmd *cobra.Command, args []string) {
 				u.PrintIndentedError(e.key, e.err)
 			}
 		} else {
-			u.PrintInfo(fmt.Sprintf("Pulled %d marketplace(s)", len(known)))
+			u.PrintInfo(fmt.Sprintf("Pulled %d marketplace(s)", len(toPull)))
 		}
 	}
 
@@ -190,7 +210,7 @@ func runInstate(cmd *cobra.Command, args []string) {
 	}
 
 	if len(enabledPlugins) > 0 {
-		if err := plugin.SaveSettingsLocal(projectDir, enabledPlugins); err != nil {
+		if err := plugin.SaveSettingsLocal(projectDir, enabledPlugins, true); err != nil {
 			u.PrintFatal("Failed to save settings.local.json", err)
 		}
 	}
