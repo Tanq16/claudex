@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -51,25 +50,8 @@ var listCmd = &cobra.Command{
 	Run:   runList,
 }
 
-func resolveConfigDir(flag string) string {
-	if flag != "" {
-		return u.ExpandPath(flag)
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude")
-}
-
-func resolveAccountPaths(extra []string) []string {
-	home, _ := os.UserHomeDir()
-	paths := []string{filepath.Join(home, ".claude")}
-	for _, p := range extra {
-		paths = append(paths, u.ExpandPath(p))
-	}
-	return paths
-}
-
 func runList(cmd *cobra.Command, args []string) {
-	accountPaths := resolveAccountPaths(listFlags.accounts)
+	accountPaths := u.ResolveAccountPaths(listFlags.accounts)
 	for _, p := range accountPaths {
 		acct, _ := parser.ParseAccount(p)
 		convos, err := parser.ParseConversations(p)
@@ -146,7 +128,7 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		u.PrintFatal("--to is required", nil)
 	}
 
-	fromDir := resolveConfigDir(switchFlags.from)
+	fromDir := u.ResolveConfigDir(switchFlags.from)
 	toDir := u.ExpandPath(switchFlags.to)
 
 	sf, err := convo.FindSession(fromDir, switchFlags.id)
@@ -157,7 +139,6 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		u.PrintFatal(fmt.Sprintf("Session %s not found in %s", switchFlags.id, fromDir), nil)
 	}
 
-	// Determine project path from the found session's project dir
 	projectPath := sf.ProjectPath
 	dstProjectDir := convo.ProjectDir(toDir, projectPath)
 
@@ -165,7 +146,6 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		u.PrintFatal("Failed to move session files", err)
 	}
 
-	// Migrate history entries
 	srcEntries, err := convo.ReadRawHistory(fromDir)
 	if err != nil {
 		u.PrintWarn("Could not read source history", err)
@@ -197,7 +177,7 @@ func runReproject(cmd *cobra.Command, args []string) {
 		u.PrintFatal("--id is required", nil)
 	}
 
-	configDir := resolveConfigDir(reprojectFlags.configDir)
+	configDir := u.ResolveConfigDir(reprojectFlags.configDir)
 
 	targetProject := reprojectFlags.project
 	if targetProject == "" {
@@ -247,7 +227,7 @@ func runFind(cmd *cobra.Command, args []string) {
 		u.PrintFatal("Either --id or --keyword is required", nil)
 	}
 
-	accountPaths := resolveAccountPaths(findFlags.accounts)
+	accountPaths := u.ResolveAccountPaths(findFlags.accounts)
 
 	if findFlags.id != "" {
 		runFindByID(accountPaths)

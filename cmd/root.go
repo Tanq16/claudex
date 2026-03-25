@@ -3,7 +3,6 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -14,15 +13,6 @@ import (
 	convosCmd "github.com/tanq16/claudex/cmd/convos-cmd"
 	pluginCmd "github.com/tanq16/claudex/cmd/plugin-cmd"
 )
-
-func ResolveAccountPaths(extra []string) []string {
-	home, _ := os.UserHomeDir()
-	paths := []string{filepath.Join(home, ".claude")}
-	for _, p := range extra {
-		paths = append(paths, utils.ExpandPath(p))
-	}
-	return paths
-}
 
 var AppVersion = "dev-build"
 

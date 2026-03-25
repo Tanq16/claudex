@@ -32,7 +32,7 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current usage for all accounts",
 	Run: func(cmd *cobra.Command, args []string) {
-		accountPaths := ResolveAccountPaths(statusFlags.accounts)
+		accountPaths := u.ResolveAccountPaths(statusFlags.accounts)
 		var accounts []model.AccountUsage
 		for _, p := range accountPaths {
 			usage, err := tracker.ComputeAccountUsage(p)

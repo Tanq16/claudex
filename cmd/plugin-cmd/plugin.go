@@ -13,6 +13,13 @@ import (
 	u "github.com/tanq16/claudex/utils"
 )
 
+type pluginResult struct {
+	key     string
+	action  string
+	message string
+	err     error
+}
+
 var instateFlags struct {
 	configDir string
 	plugins   string
@@ -44,16 +51,8 @@ var cleanupCmd = &cobra.Command{
 	Run:   runCleanup,
 }
 
-func resolveConfigDir(flag string) string {
-	if flag != "" {
-		return u.ExpandPath(flag)
-	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude")
-}
-
 func runInstate(cmd *cobra.Command, args []string) {
-	configDir := resolveConfigDir(instateFlags.configDir)
+	configDir := u.ResolveConfigDir(instateFlags.configDir)
 	projectDir, err := os.Getwd()
 	if err != nil {
 		u.PrintFatal("Cannot determine current directory", err)
@@ -64,11 +63,26 @@ func runInstate(cmd *cobra.Command, args []string) {
 		if err != nil {
 			u.PrintFatal("Failed to load known_marketplaces.json", err)
 		}
+		u.PrintRunning("(Running) Pulling marketplace repos")
+		var pullLineCount int
+		var pullErrors []pluginResult
 		for name, entry := range known {
-			u.PrintInfo(fmt.Sprintf("Pulling marketplace %s ...", name))
 			if err := plugin.GitPull(entry.InstallLocation); err != nil {
-				u.PrintWarn(fmt.Sprintf("git pull failed for %s", name), err)
+				u.PrintIndentedError(name, err)
+				pullErrors = append(pullErrors, pluginResult{key: name, err: err})
+			} else {
+				u.PrintIndentedSuccess(name)
 			}
+			pullLineCount++
+		}
+		u.ClearLines(pullLineCount + 1)
+		if len(pullErrors) > 0 {
+			u.PrintError("Pulling marketplaces: partially completed with errors", nil)
+			for _, e := range pullErrors {
+				u.PrintIndentedError(e.key, e.err)
+			}
+		} else {
+			u.PrintInfo(fmt.Sprintf("Pulled %d marketplace(s)", len(known)))
 		}
 	}
 
@@ -108,16 +122,30 @@ func runInstate(cmd *cobra.Command, args []string) {
 	}
 
 	installed, _ := plugin.LoadInstalledPlugins(configDir)
-
 	enabledPlugins := make(map[string]bool)
+
+	u.PrintRunning("(Running) Reconciling plugins")
+	var lineCount int
+	var reconcileErrors []pluginResult
 
 	for _, s := range selected {
 		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName)
 		if err != nil {
-			u.PrintWarn(fmt.Sprintf("Reconcile failed for %s", s.Key), err)
+			u.PrintIndentedError(fmt.Sprintf("[%s] reconcile failed", s.Key), err)
+			reconcileErrors = append(reconcileErrors, pluginResult{key: s.Key, err: err})
+			lineCount++
 			continue
 		}
-		u.PrintInfo(fmt.Sprintf("[%s] %s — %s", s.Key, result.Action, result.Message))
+
+		switch result.Action {
+		case "skipped":
+			u.PrintIndentedWarn(fmt.Sprintf("[%s] %s", s.Key, result.Message), nil)
+		case "up-to-date":
+			u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s", s.Key, result.Message))
+		default:
+			u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s — %s", s.Key, result.Action, result.Message))
+		}
+		lineCount++
 
 		if result.Action == "skipped" {
 			continue
@@ -147,6 +175,16 @@ func runInstate(cmd *cobra.Command, args []string) {
 		enabledPlugins[s.Key] = true
 	}
 
+	u.ClearLines(lineCount + 1)
+	if len(reconcileErrors) > 0 {
+		u.PrintError("Reconciliation partially completed with errors", nil)
+		for _, e := range reconcileErrors {
+			u.PrintIndentedError(e.key, e.err)
+		}
+	} else {
+		u.PrintInfo(fmt.Sprintf("Reconciled %d plugin(s): %d enabled", len(selected), len(enabledPlugins)))
+	}
+
 	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
 		u.PrintFatal("Failed to save installed_plugins.json", err)
 	}
@@ -161,10 +199,12 @@ func runInstate(cmd *cobra.Command, args []string) {
 }
 
 func runCleanup(cmd *cobra.Command, args []string) {
-	configDir := resolveConfigDir(cleanupFlags.configDir)
+	configDir := u.ResolveConfigDir(cleanupFlags.configDir)
 
 	if cleanupFlags.orphansOnly && cleanupFlags.all {
+		u.PrintRunning("Removing all orphans")
 		n, err := plugin.RemoveAllOrphans(configDir)
+		u.ClearLines(1)
 		if err != nil {
 			u.PrintFatal("Failed to remove orphans", err)
 		}
@@ -203,24 +243,41 @@ func runCleanup(cmd *cobra.Command, args []string) {
 	installed, _ := plugin.LoadInstalledPlugins(configDir)
 	totalRemoved := 0
 
+	u.PrintRunning("(Running) Cleaning up plugins")
+	var lineCount int
+	var cleanupErrors []pluginResult
+
 	for _, s := range selected {
 		if cleanupFlags.orphansOnly {
 			n, err := plugin.RemoveOrphanedVersions(configDir, s.MarketplaceName, s.PluginName)
 			if err != nil {
-				u.PrintWarn(fmt.Sprintf("Failed to clean orphans for %s", s.Key), err)
-				continue
+				u.PrintIndentedError(fmt.Sprintf("[%s] orphan cleanup failed", s.Key), err)
+				cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
+			} else {
+				totalRemoved += n
+				u.PrintIndentedSuccess(fmt.Sprintf("[%s] removed %d orphan(s)", s.Key, n))
 			}
-			totalRemoved += n
-			u.PrintInfo(fmt.Sprintf("[%s] removed %d orphaned version(s)", s.Key, n))
 		} else {
 			if err := plugin.RemoveCacheDirectory(configDir, s.MarketplaceName, s.PluginName); err != nil {
-				u.PrintWarn(fmt.Sprintf("Failed to remove cache for %s", s.Key), err)
-				continue
+				u.PrintIndentedError(fmt.Sprintf("[%s] cache removal failed", s.Key), err)
+				cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
+			} else {
+				plugin.RemoveInstallEntries(&installed, s.Key)
+				totalRemoved++
+				u.PrintIndentedSuccess(fmt.Sprintf("[%s] cache and install entries removed", s.Key))
 			}
-			plugin.RemoveInstallEntries(&installed, s.Key)
-			totalRemoved++
-			u.PrintInfo(fmt.Sprintf("[%s] cache and install entries removed", s.Key))
 		}
+		lineCount++
+	}
+
+	u.ClearLines(lineCount + 1)
+	if len(cleanupErrors) > 0 {
+		u.PrintError("Cleanup partially completed with errors", nil)
+		for _, e := range cleanupErrors {
+			u.PrintIndentedError(e.key, e.err)
+		}
+	} else {
+		u.PrintInfo(fmt.Sprintf("Cleaned %d plugin(s)", len(selected)))
 	}
 
 	if !cleanupFlags.orphansOnly {

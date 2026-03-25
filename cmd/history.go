@@ -21,7 +21,7 @@ var historyCmd = &cobra.Command{
 	Use:   "history",
 	Short: "Show daily usage history from stats-cache",
 	Run: func(cmd *cobra.Command, args []string) {
-		accountPaths := ResolveAccountPaths(historyFlags.accounts)
+		accountPaths := u.ResolveAccountPaths(historyFlags.accounts)
 		for _, p := range accountPaths {
 			acct, _ := parser.ParseAccount(p)
 			stats, err := parser.ParseStatsCache(p)

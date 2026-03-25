@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON MarketplaceJSON, marketplaceName string) (ReconcileResult, error) {
@@ -56,6 +57,7 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 			if err := os.Remove(orphanFile); err != nil {
 				return ReconcileResult{Action: "skipped", Message: "failed to remove .orphaned_at"}, err
 			}
+			orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
 			return ReconcileResult{
 				Action:  "un-orphaned",
 				Version: latestVersion,
@@ -69,6 +71,7 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 		if err := copyDir(absSource, destDir); err != nil {
 			return ReconcileResult{Action: "skipped", Message: "failed to copy from marketplace"}, err
 		}
+		orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
 		return ReconcileResult{
 			Action:  "copied-from-marketplace",
 			Version: latestVersion,
@@ -120,6 +123,7 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 			if err := os.Remove(orphanFile); err != nil {
 				return ReconcileResult{Action: "skipped", Message: "failed to remove .orphaned_at"}, err
 			}
+			orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
 			return ReconcileResult{
 				Action:  "un-orphaned",
 				Version: latestVersion,
@@ -132,9 +136,25 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 	if err := copyDir(tmpDir, destDir); err != nil {
 		return ReconcileResult{Action: "skipped", Message: "failed to copy cloned repo to cache"}, err
 	}
+	orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
 	return ReconcileResult{
 		Action:  "cloned-from-github",
 		Version: latestVersion,
 		Message: fmt.Sprintf("version %s cloned from github.com/%s", latestVersion, repo),
 	}, nil
+}
+
+func orphanOldVersions(configDir, marketplace, pluginName, currentVersion string) {
+	cached, err := ListCachedVersions(configDir, marketplace, pluginName)
+	if err != nil {
+		return
+	}
+	now := time.Now().UTC().Format(time.RFC3339)
+	for _, cv := range cached {
+		if cv.Version == currentVersion || cv.Orphaned {
+			continue
+		}
+		orphanFile := filepath.Join(cv.Path, ".orphaned_at")
+		_ = os.WriteFile(orphanFile, []byte(now), 0644)
+	}
 }

@@ -16,7 +16,12 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 |----------|----------|-------------|
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
 | History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
-| Conversations | `conversations` / `convos` | List recent conversations with session IDs, message counts, and projects |
+| Conversations | `convos list` | List recent conversations with session IDs, message counts, and projects |
+| | `convos switch` | Move a conversation from one account to another |
+| | `convos reproject` | Change which project a conversation is associated with |
+| | `convos find` | Find conversations by ID or keyword search |
+| Plugins | `plugin instate` | Instantiate plugins for a local project with version reconciliation |
+| | `plugin cleanup` | Clean up orphaned or stale plugin cache entries |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -44,7 +49,8 @@ make build
 
 ### Global Flags
 
-- `--debug` - Enable debug logging (zerolog)
+- `--debug` - Enable debug logging (zerolog with timestamps and full error details)
+- `--for-ai` - AI-friendly output (plain text prefixes like `[OK]`, `[INFO]`, `[ERROR]`, `[WARN]`; markdown tables; piped stdin for prompts)
 
 ### `status`
 
@@ -74,20 +80,65 @@ claudex history -d 14
 - `-d, --days` - Number of days to show (default: `7`)
 - `-j, --json` - Output as JSON
 
-### `conversations` / `convos`
+### `convos list`
 
 List recent conversations across all monitored accounts. Shows session ID, message count, project, first message, and last activity time.
 
 ```bash
-claudex convos
-claudex convos -n 5
-claudex conversations -j
+claudex convos list
+claudex convos list -n 5
+claudex convos list -j
 ```
 
 **Flags:**
 - `-a, --accounts` - Additional Claude config directories to monitor
 - `-n, --limit` - Number of conversations to show (default: `10`)
 - `-j, --json` - Output as JSON (includes full session UUIDs)
+
+### `convos switch`
+
+Move a conversation from one account to another. Transfers session files and migrates history entries between config directories.
+
+```bash
+claudex convos switch --id <session-uuid> --to ~/.claude2
+claudex convos switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
+```
+
+**Flags:**
+- `--id` - Session UUID to switch (required)
+- `--from` - Source config directory (default: `~/.claude`)
+- `--to` - Target config directory (required)
+
+### `convos reproject`
+
+Change which project a conversation is associated with. Moves session files to the target project's directory and updates history entries.
+
+```bash
+claudex convos reproject --id <session-uuid>
+claudex convos reproject --id <session-uuid> --project /path/to/project
+claudex convos reproject --id <session-uuid> -c ~/.claude2
+```
+
+**Flags:**
+- `--id` - Session UUID to reproject (required)
+- `-c, --config-dir` - Config directory (default: `~/.claude`)
+- `--project` - Target project path (default: current directory)
+
+### `convos find`
+
+Find conversations by session ID or keyword search across all monitored accounts.
+
+```bash
+claudex convos find --id <session-uuid>
+claudex convos find -k "search term"
+claudex convos find -k "regex pattern" -a ~/.claude2 -j
+```
+
+**Flags:**
+- `--id` - Session UUID to find
+- `-k, --keyword` - Regex keyword to search
+- `-a, --accounts` - Additional Claude config directories to search
+- `-j, --json` - Output as JSON
 
 ### `oauth-token`
 
