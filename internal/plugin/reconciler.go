@@ -4,10 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"time"
 )
 
-func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON MarketplaceJSON, marketplaceName string) (ReconcileResult, error) {
+func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON MarketplaceJSON, marketplaceName string, update bool) (ReconcileResult, error) {
 	known, err := LoadKnownMarketplaces(configDir)
 	if err != nil {
 		return ReconcileResult{Action: "skipped", Message: "cannot read known_marketplaces.json"}, err
@@ -32,7 +31,7 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 	}
 
 	if repo, ok := mktEntry.GitHubRepo(); ok && absSource == "" {
-		return reconcileFromGitHub(configDir, mktEntry.Name, marketplaceName, repo, latestVersion)
+		return reconcileFromGitHub(configDir, mktEntry.Name, marketplaceName, repo, latestVersion, update)
 	}
 
 	if latestVersion == "" {
@@ -46,23 +45,13 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 
 	for _, cv := range cached {
 		if cv.Version == latestVersion {
-			if !cv.Orphaned {
-				orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
-				return ReconcileResult{
-					Action:  "up-to-date",
-					Version: latestVersion,
-					Message: fmt.Sprintf("version %s already cached and active", latestVersion),
-				}, nil
+			if update {
+				removeOldCachedVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
 			}
-			orphanFile := filepath.Join(cv.Path, ".orphaned_at")
-			if err := os.Remove(orphanFile); err != nil {
-				return ReconcileResult{Action: "skipped", Message: "failed to remove .orphaned_at"}, err
-			}
-			orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
 			return ReconcileResult{
-				Action:  "un-orphaned",
+				Action:  "up-to-date",
 				Version: latestVersion,
-				Message: fmt.Sprintf("version %s un-orphaned", latestVersion),
+				Message: fmt.Sprintf("version %s already cached", latestVersion),
 			}, nil
 		}
 	}
@@ -72,7 +61,9 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 		if err := copyDir(absSource, destDir); err != nil {
 			return ReconcileResult{Action: "skipped", Message: "failed to copy from marketplace"}, err
 		}
-		orphanOldVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
+		if update {
+			removeOldCachedVersions(configDir, marketplaceName, mktEntry.Name, latestVersion)
+		}
 		return ReconcileResult{
 			Action:  "copied-from-marketplace",
 			Version: latestVersion,
@@ -87,7 +78,7 @@ func ReconcilePlugin(configDir string, mktEntry MarketplacePluginEntry, mktJSON 
 	}, nil
 }
 
-func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackVersion string) (ReconcileResult, error) {
+func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackVersion string, update bool) (ReconcileResult, error) {
 	tmpDir, err := CloneGitHubRepo(repo)
 	if err != nil {
 		return ReconcileResult{Action: "skipped", Message: fmt.Sprintf("clone failed: %v", err)}, nil
@@ -113,23 +104,13 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 
 	for _, cv := range cached {
 		if cv.Version == latestVersion {
-			if !cv.Orphaned {
-				orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
-				return ReconcileResult{
-					Action:  "up-to-date",
-					Version: latestVersion,
-					Message: fmt.Sprintf("version %s already cached and active", latestVersion),
-				}, nil
+			if update {
+				removeOldCachedVersions(configDir, marketplaceName, pluginName, latestVersion)
 			}
-			orphanFile := filepath.Join(cv.Path, ".orphaned_at")
-			if err := os.Remove(orphanFile); err != nil {
-				return ReconcileResult{Action: "skipped", Message: "failed to remove .orphaned_at"}, err
-			}
-			orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
 			return ReconcileResult{
-				Action:  "un-orphaned",
+				Action:  "up-to-date",
 				Version: latestVersion,
-				Message: fmt.Sprintf("version %s un-orphaned", latestVersion),
+				Message: fmt.Sprintf("version %s already cached", latestVersion),
 			}, nil
 		}
 	}
@@ -138,7 +119,9 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 	if err := copyDir(tmpDir, destDir); err != nil {
 		return ReconcileResult{Action: "skipped", Message: "failed to copy cloned repo to cache"}, err
 	}
-	orphanOldVersions(configDir, marketplaceName, pluginName, latestVersion)
+	if update {
+		removeOldCachedVersions(configDir, marketplaceName, pluginName, latestVersion)
+	}
 	return ReconcileResult{
 		Action:  "cloned-from-github",
 		Version: latestVersion,
@@ -146,17 +129,15 @@ func reconcileFromGitHub(configDir, pluginName, marketplaceName, repo, fallbackV
 	}, nil
 }
 
-func orphanOldVersions(configDir, marketplace, pluginName, currentVersion string) {
+func removeOldCachedVersions(configDir, marketplace, pluginName, currentVersion string) {
 	cached, err := ListCachedVersions(configDir, marketplace, pluginName)
 	if err != nil {
 		return
 	}
-	now := time.Now().UTC().Format(time.RFC3339)
 	for _, cv := range cached {
-		if cv.Version == currentVersion || cv.Orphaned {
+		if cv.Version == currentVersion {
 			continue
 		}
-		orphanFile := filepath.Join(cv.Path, ".orphaned_at")
-		_ = os.WriteFile(orphanFile, []byte(now), 0644)
+		_ = os.RemoveAll(cv.Path)
 	}
 }

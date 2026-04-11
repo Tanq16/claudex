@@ -28,10 +28,9 @@ var instateFlags struct {
 }
 
 var cleanupFlags struct {
-	configDir   string
-	plugins     string
-	orphansOnly bool
-	all         bool
+	configDir string
+	plugins   string
+	all       bool
 }
 
 var PluginCmd = &cobra.Command{
@@ -149,7 +148,7 @@ func runInstate(cmd *cobra.Command, args []string) {
 	var reconcileErrors []pluginResult
 
 	for _, s := range selected {
-		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName)
+		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName, instateFlags.update)
 		if err != nil {
 			u.PrintIndentedError(fmt.Sprintf("[%s] reconcile failed", s.Key), err)
 			reconcileErrors = append(reconcileErrors, pluginResult{key: s.Key, err: err})
@@ -221,22 +220,6 @@ func runInstate(cmd *cobra.Command, args []string) {
 func runCleanup(cmd *cobra.Command, args []string) {
 	configDir := u.ResolveConfigDir(cleanupFlags.configDir)
 
-	if cleanupFlags.orphansOnly && cleanupFlags.all {
-		u.PrintRunning("Removing all orphans")
-		n, err := plugin.RemoveAllOrphans(configDir)
-		u.ClearLines(1)
-		if err != nil {
-			u.PrintFatal("Failed to remove orphans", err)
-		}
-		installed, _ := plugin.LoadInstalledPlugins(configDir)
-		plugin.PruneStaleInstallEntries(&installed)
-		if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
-			u.PrintFatal("Failed to save installed_plugins.json", err)
-		}
-		u.PrintSuccess(fmt.Sprintf("Removed %d orphaned version(s)", n))
-		return
-	}
-
 	summaries, err := plugin.BuildPluginSummaries(configDir)
 	if err != nil {
 		u.PrintFatal("Failed to build plugin summaries", err)
@@ -266,31 +249,20 @@ func runCleanup(cmd *cobra.Command, args []string) {
 	}
 
 	installed, _ := plugin.LoadInstalledPlugins(configDir)
-	totalRemoved := 0
 
 	u.PrintRunning("(Running) Cleaning up plugins")
 	var lineCount int
 	var cleanupErrors []pluginResult
+	totalRemoved := 0
 
 	for _, s := range selected {
-		if cleanupFlags.orphansOnly {
-			n, err := plugin.RemoveOrphanedVersions(configDir, s.MarketplaceName, s.PluginName)
-			if err != nil {
-				u.PrintIndentedError(fmt.Sprintf("[%s] orphan cleanup failed", s.Key), err)
-				cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
-			} else {
-				totalRemoved += n
-				u.PrintIndentedSuccess(fmt.Sprintf("[%s] removed %d orphan(s)", s.Key, n))
-			}
+		if err := plugin.RemoveCacheDirectory(configDir, s.MarketplaceName, s.PluginName); err != nil {
+			u.PrintIndentedError(fmt.Sprintf("[%s] cache removal failed", s.Key), err)
+			cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
 		} else {
-			if err := plugin.RemoveCacheDirectory(configDir, s.MarketplaceName, s.PluginName); err != nil {
-				u.PrintIndentedError(fmt.Sprintf("[%s] cache removal failed", s.Key), err)
-				cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
-			} else {
-				plugin.RemoveInstallEntries(&installed, s.Key)
-				totalRemoved++
-				u.PrintIndentedSuccess(fmt.Sprintf("[%s] cache and install entries removed", s.Key))
-			}
+			plugin.RemoveInstallEntries(&installed, s.Key)
+			totalRemoved++
+			u.PrintIndentedSuccess(fmt.Sprintf("[%s] removed", s.Key))
 		}
 		lineCount++
 	}
@@ -305,18 +277,15 @@ func runCleanup(cmd *cobra.Command, args []string) {
 		u.PrintInfo(fmt.Sprintf("Cleaned %d plugin(s)", len(selected)))
 	}
 
-	if cleanupFlags.orphansOnly {
-		plugin.PruneStaleInstallEntries(&installed)
-	}
 	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
 		u.PrintFatal("Failed to save installed_plugins.json", err)
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Cleanup complete — %d item(s) removed", totalRemoved))
+	u.PrintSuccess(fmt.Sprintf("Cleanup complete — %d plugin(s) removed", totalRemoved))
 }
 
 func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary {
-	headers := []string{"#", "Plugin", "Marketplace", "Installed", "Latest", "Orphans"}
+	headers := []string{"#", "Plugin", "Marketplace", "Installed", "Latest"}
 	rows := make([][]string, len(summaries))
 	for i, s := range summaries {
 		rows[i] = []string{
@@ -325,7 +294,6 @@ func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary 
 			s.MarketplaceName,
 			orDash(s.InstalledVersion),
 			orDash(s.LatestVersion),
-			strconv.Itoa(s.OrphanCount),
 		}
 	}
 	u.PrintTable(headers, rows)
@@ -371,7 +339,6 @@ func init() {
 
 	cleanupCmd.Flags().StringVarP(&cleanupFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
 	cleanupCmd.Flags().StringVarP(&cleanupFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys")
-	cleanupCmd.Flags().BoolVarP(&cleanupFlags.orphansOnly, "orphans-only", "o", false, "Only remove orphaned version dirs")
 	cleanupCmd.Flags().BoolVarP(&cleanupFlags.all, "all", "A", false, "Target all plugins")
 
 	PluginCmd.AddCommand(instateCmd, cleanupCmd)

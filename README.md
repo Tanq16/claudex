@@ -21,7 +21,7 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 | | `convos reproject` | Change which project a conversation is associated with |
 | | `convos find` | Find conversations by ID or keyword search |
 | Plugins | `plugin instate` | Instantiate plugins for a local project with version reconciliation |
-| | `plugin cleanup` | Clean up orphaned or stale plugin cache entries |
+| | `plugin cleanup` | Remove plugin cache and install entries |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -157,7 +157,7 @@ claudex oauth-token --port 8080
 
 ### `plugin instate`
 
-Instantiate plugins for a local project with version reconciliation. Supports both local marketplace plugins (resolved from the marketplace directory) and external GitHub-hosted plugins (shallow-cloned automatically).
+Instantiate plugins for a local project with version reconciliation. Supports both local marketplace plugins (resolved from the marketplace directory) and external GitHub-hosted plugins (shallow-cloned automatically). With `--update`, pulls latest marketplace versions and removes old cached versions.
 
 ```bash
 claudex plugin instate
@@ -175,18 +175,17 @@ claudex plugin instate -A
 
 ### `plugin cleanup`
 
-Clean up orphaned or stale plugin cache entries.
+Remove plugin cache directories and install entries for selected plugins.
 
 ```bash
 claudex plugin cleanup
-claudex plugin cleanup -o -A
+claudex plugin cleanup -A
 claudex plugin cleanup -c ~/.claude2 -P core@ai-brain
 ```
 
 **Flags:**
 - `-c, --config-dir` - Claude config directory (default `~/.claude`)
 - `-P, --plugins` - Comma-separated plugin keys
-- `-o, --orphans-only` - Only remove orphaned version dirs
 - `-A, --all` - Target all plugins
 
 ## Tips and Notes

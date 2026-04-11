@@ -81,9 +81,8 @@ type SettingsLocalJSON struct {
 }
 
 type CachedVersion struct {
-	Version  string
-	Path     string
-	Orphaned bool
+	Version string
+	Path    string
 }
 
 type PluginSummary struct {
@@ -93,9 +92,8 @@ type PluginSummary struct {
 	Description      string
 	InstalledVersion string
 	LatestVersion    string
-	CachedVersions   []CachedVersion
-	OrphanCount      int
-	MktEntry         MarketplacePluginEntry
+	CachedVersions []CachedVersion
+	MktEntry       MarketplacePluginEntry
 	MktJSON          MarketplaceJSON
 }
 

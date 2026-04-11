@@ -14,57 +14,6 @@ func RemoveCacheDirectory(configDir, marketplace, pluginName string) error {
 	return os.RemoveAll(dir)
 }
 
-func RemoveOrphanedVersions(configDir, marketplace, pluginName string) (int, error) {
-	versions, err := ListCachedVersions(configDir, marketplace, pluginName)
-	if err != nil {
-		return 0, err
-	}
-
-	removed := 0
-	for _, v := range versions {
-		if v.Orphaned {
-			if err := os.RemoveAll(v.Path); err != nil {
-				return removed, fmt.Errorf("removing %s: %w", v.Path, err)
-			}
-			removed++
-		}
-	}
-	return removed, nil
-}
-
-func RemoveAllOrphans(configDir string) (int, error) {
-	cacheRoot := filepath.Join(configDir, "plugins", "cache")
-	marketplaces, err := os.ReadDir(cacheRoot)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return 0, nil
-		}
-		return 0, err
-	}
-
-	total := 0
-	for _, mkt := range marketplaces {
-		if !mkt.IsDir() {
-			continue
-		}
-		plugins, err := os.ReadDir(filepath.Join(cacheRoot, mkt.Name()))
-		if err != nil {
-			continue
-		}
-		for _, pl := range plugins {
-			if !pl.IsDir() {
-				continue
-			}
-			n, err := RemoveOrphanedVersions(configDir, mkt.Name(), pl.Name())
-			if err != nil {
-				return total, err
-			}
-			total += n
-		}
-	}
-	return total, nil
-}
-
 func copyDir(src, dst string) error {
 	srcInfo, err := os.Stat(src)
 	if err != nil {

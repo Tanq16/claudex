@@ -116,11 +116,9 @@ func ListCachedVersions(configDir, marketplace, pluginName string) ([]CachedVers
 			continue
 		}
 		vDir := filepath.Join(cacheDir, e.Name())
-		_, orphanErr := os.Stat(filepath.Join(vDir, ".orphaned_at"))
 		versions = append(versions, CachedVersion{
-			Version:  e.Name(),
-			Path:     vDir,
-			Orphaned: orphanErr == nil,
+			Version: e.Name(),
+			Path:    vDir,
 		})
 	}
 
@@ -172,12 +170,6 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 			}
 
 			cached, _ := ListCachedVersions(configDir, mktName, pe.Name)
-			orphanCount := 0
-			for _, cv := range cached {
-				if cv.Orphaned {
-					orphanCount++
-				}
-			}
 
 			desc := pe.Description
 			if desc == "" {
@@ -192,7 +184,6 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 				InstalledVersion: installedVersion,
 				LatestVersion:    latestVersion,
 				CachedVersions:   cached,
-				OrphanCount:      orphanCount,
 				MktEntry:         pe,
 				MktJSON:          mktJSON,
 			})
@@ -224,12 +215,6 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 					continue
 				}
 				cached, _ := ListCachedVersions(configDir, mktName, plDir.Name())
-				orphanCount := 0
-				for _, cv := range cached {
-					if cv.Orphaned {
-						orphanCount++
-					}
-				}
 				installedVersion := ""
 				if installs, ok := installed.Plugins[key]; ok && len(installs) > 0 {
 					installedVersion = installs[0].Version
@@ -242,7 +227,6 @@ func BuildPluginSummaries(configDir string) ([]PluginSummary, error) {
 					InstalledVersion: installedVersion,
 					LatestVersion:    "",
 					CachedVersions:   cached,
-					OrphanCount:      orphanCount,
 				})
 			}
 		}

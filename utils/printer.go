@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/rs/zerolog/log"
@@ -82,7 +83,7 @@ func PrintRunning(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Str("package", "utils").Msg(msg)
 	} else if GlobalForAIFlag {
-		fmt.Println("[INFO] " + msg)
+		fmt.Println("[RUNNING] " + msg)
 	} else {
 		fmt.Println(infoStyle.Render("↻ " + msg))
 	}
@@ -124,6 +125,39 @@ func PrintIndentedWarn(msg string, err error) {
 	} else {
 		fmt.Println(warnStyle.Render("  ! " + msg))
 	}
+}
+
+func PrintIndentedRunning(msg string) {
+	if GlobalDebugFlag {
+		log.Info().Str("package", "utils").Msg(msg)
+	} else if GlobalForAIFlag {
+		fmt.Println("[RUNNING] " + msg)
+	} else {
+		fmt.Println(infoStyle.Render("  ↻ " + msg))
+	}
+}
+
+func PrintProgress(label string, percent int) {
+	if percent > 100 {
+		percent = 100
+	}
+
+	if GlobalDebugFlag {
+		log.Info().Str("package", "utils").Int("percent", percent).Msg(label)
+		return
+	}
+
+	if GlobalForAIFlag {
+		fmt.Printf("[PROGRESS] %s: %d%%\n", label, percent)
+		return
+	}
+
+	const barWidth = 10
+	filled := barWidth * percent / 100
+	empty := barWidth - filled
+
+	bar := strings.Repeat("⣿", filled) + strings.Repeat("⣀", empty)
+	fmt.Println(infoStyle.Render(fmt.Sprintf("  ↻ %s: %s %d%%", label, bar, percent)))
 }
 
 func ClearLines(n int) {

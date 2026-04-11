@@ -74,26 +74,6 @@ func RemoveInstallEntries(file *InstalledPluginsFile, key string) {
 	delete(file.Plugins, key)
 }
 
-func PruneStaleInstallEntries(file *InstalledPluginsFile) int {
-	pruned := 0
-	for key, installs := range file.Plugins {
-		var valid []PluginInstall
-		for _, e := range installs {
-			if _, err := os.Stat(e.InstallPath); err == nil {
-				valid = append(valid, e)
-			} else {
-				pruned++
-			}
-		}
-		if len(valid) == 0 {
-			delete(file.Plugins, key)
-		} else {
-			file.Plugins[key] = valid
-		}
-	}
-	return pruned
-}
-
 func RemoveInstallEntryByProject(file *InstalledPluginsFile, key, projectPath string) {
 	existing := file.Plugins[key]
 	var updated []PluginInstall
