@@ -13,7 +13,7 @@ import (
 )
 
 var listFlags struct {
-	accounts   []string
+	account    string
 	limit      int
 	jsonOutput bool
 }
@@ -33,7 +33,7 @@ var reprojectFlags struct {
 var findFlags struct {
 	id         string
 	keyword    string
-	accounts   []string
+	account    string
 	jsonOutput bool
 }
 
@@ -51,7 +51,7 @@ var listCmd = &cobra.Command{
 }
 
 func runList(cmd *cobra.Command, args []string) {
-	accountPaths := u.ResolveAccountPaths(listFlags.accounts)
+	accountPaths := u.ResolveAccountPaths(listFlags.account)
 	for _, p := range accountPaths {
 		acct, _ := parser.ParseAccount(p)
 		convos, err := parser.ParseConversations(p)
@@ -227,7 +227,7 @@ func runFind(cmd *cobra.Command, args []string) {
 		u.PrintFatal("Either --id or --keyword is required", nil)
 	}
 
-	accountPaths := u.ResolveAccountPaths(findFlags.accounts)
+	accountPaths := u.ResolveAccountPaths(findFlags.account)
 
 	if findFlags.id != "" {
 		runFindByID(accountPaths)
@@ -318,7 +318,7 @@ func runFindByKeyword(accountPaths []string) {
 // --- init ---
 
 func init() {
-	listCmd.Flags().StringSliceVarP(&listFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories")
+	listCmd.Flags().StringVarP(&listFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	listCmd.Flags().IntVarP(&listFlags.limit, "limit", "n", 10, "Number of conversations to show")
 	listCmd.Flags().BoolVarP(&listFlags.jsonOutput, "json", "j", false, "Output as JSON")
 
@@ -335,7 +335,7 @@ func init() {
 
 	findCmd.Flags().StringVar(&findFlags.id, "id", "", "Session UUID to find")
 	findCmd.Flags().StringVarP(&findFlags.keyword, "keyword", "k", "", "Regex keyword to search")
-	findCmd.Flags().StringSliceVarP(&findFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories")
+	findCmd.Flags().StringVarP(&findFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	findCmd.Flags().BoolVarP(&findFlags.jsonOutput, "json", "j", false, "Output as JSON")
 
 	ConvosCmd.AddCommand(listCmd, switchCmd, reprojectCmd, findCmd)

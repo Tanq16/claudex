@@ -20,14 +20,9 @@ WARN="⚠️"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR_NAME="$(basename "$SCRIPT_DIR")"
 if [[ "$CONFIG_DIR_NAME" == ".claude" ]]; then
-    ACCT_LABEL="first"
-elif [[ "$CONFIG_DIR_NAME" == ".claude2" ]]; then
-    ACCT_LABEL="second"
-elif [[ "$CONFIG_DIR_NAME" == ".claude3" ]]; then
-    ACCT_LABEL="third"
+    ACCT_LABEL="default"
 else
-    ACCT_NUM="${CONFIG_DIR_NAME##.claude}"
-    ACCT_LABEL="acct${ACCT_NUM}"
+    ACCT_LABEL="${CONFIG_DIR_NAME##.claude}"
 fi
 
 # Read JSON input from stdin (Claude Code pipes session data here)

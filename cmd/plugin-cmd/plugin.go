@@ -21,16 +21,16 @@ type pluginResult struct {
 }
 
 var instateFlags struct {
-	configDir string
-	plugins   string
-	all       bool
-	update    bool
+	account string
+	plugins string
+	all     bool
+	update  bool
 }
 
 var cleanupFlags struct {
-	configDir string
-	plugins   string
-	all       bool
+	account string
+	plugins string
+	all     bool
 }
 
 var PluginCmd = &cobra.Command{
@@ -51,237 +51,269 @@ var cleanupCmd = &cobra.Command{
 }
 
 func runInstate(cmd *cobra.Command, args []string) {
-	configDir := u.ResolveConfigDir(instateFlags.configDir)
+	accountPaths := u.ResolveAccountPaths(instateFlags.account)
 	projectDir, err := os.Getwd()
 	if err != nil {
 		u.PrintFatal("Cannot determine current directory", err)
 	}
 
-	if instateFlags.update {
-		known, err := plugin.LoadKnownMarketplaces(configDir)
-		if err != nil {
-			u.PrintFatal("Failed to load known_marketplaces.json", err)
+	allEnabledPlugins := make(map[string]bool)
+	multiAccount := len(accountPaths) > 1
+
+	for _, configDir := range accountPaths {
+		if multiAccount {
+			u.PrintInfo(fmt.Sprintf("Account: %s", configDir))
 		}
 
-		toPull := known
-		if instateFlags.plugins != "" {
-			relevantMkts := make(map[string]bool)
-			for _, k := range strings.Split(instateFlags.plugins, ",") {
-				_, mktName := plugin.SplitPluginKey(strings.TrimSpace(k))
-				if mktName != "" {
-					relevantMkts[mktName] = true
-				}
+		if instateFlags.update {
+			known, err := plugin.LoadKnownMarketplaces(configDir)
+			if err != nil {
+				u.PrintWarn(fmt.Sprintf("skipping %s: failed to load known_marketplaces.json", configDir), err)
+				continue
 			}
-			if len(relevantMkts) > 0 {
-				toPull = make(plugin.KnownMarketplacesFile)
-				for name, entry := range known {
-					if relevantMkts[name] {
-						toPull[name] = entry
+
+			toPull := known
+			if instateFlags.plugins != "" {
+				relevantMkts := make(map[string]bool)
+				for _, k := range strings.Split(instateFlags.plugins, ",") {
+					_, mktName := plugin.SplitPluginKey(strings.TrimSpace(k))
+					if mktName != "" {
+						relevantMkts[mktName] = true
+					}
+				}
+				if len(relevantMkts) > 0 {
+					toPull = make(plugin.KnownMarketplacesFile)
+					for name, entry := range known {
+						if relevantMkts[name] {
+							toPull[name] = entry
+						}
 					}
 				}
 			}
+
+			u.PrintRunning("(Running) Pulling marketplace repos")
+			var pullLineCount int
+			var pullErrors []pluginResult
+			for name, entry := range toPull {
+				if err := plugin.GitPull(entry.InstallLocation); err != nil {
+					u.PrintIndentedError(name, err)
+					pullErrors = append(pullErrors, pluginResult{key: name, err: err})
+				} else {
+					u.PrintIndentedSuccess(name)
+				}
+				pullLineCount++
+			}
+			u.ClearLines(pullLineCount + 1)
+			if len(pullErrors) > 0 {
+				u.PrintError("Pulling marketplaces: partially completed with errors", nil)
+				for _, e := range pullErrors {
+					u.PrintIndentedError(e.key, e.err)
+				}
+			} else {
+				u.PrintInfo(fmt.Sprintf("Pulled %d marketplace(s)", len(toPull)))
+			}
 		}
 
-		u.PrintRunning("(Running) Pulling marketplace repos")
-		var pullLineCount int
-		var pullErrors []pluginResult
-		for name, entry := range toPull {
-			if err := plugin.GitPull(entry.InstallLocation); err != nil {
-				u.PrintIndentedError(name, err)
-				pullErrors = append(pullErrors, pluginResult{key: name, err: err})
-			} else {
-				u.PrintIndentedSuccess(name)
-			}
-			pullLineCount++
+		summaries, err := plugin.BuildPluginSummaries(configDir)
+		if err != nil {
+			u.PrintWarn(fmt.Sprintf("skipping %s", configDir), err)
+			continue
 		}
-		u.ClearLines(pullLineCount + 1)
-		if len(pullErrors) > 0 {
-			u.PrintError("Pulling marketplaces: partially completed with errors", nil)
-			for _, e := range pullErrors {
+		if len(summaries) == 0 {
+			if !multiAccount {
+				u.PrintInfo("No plugins found in any marketplace.")
+			}
+			continue
+		}
+
+		var selected []plugin.PluginSummary
+		if instateFlags.all {
+			selected = summaries
+		} else if instateFlags.plugins != "" {
+			keys := strings.Split(instateFlags.plugins, ",")
+			keySet := make(map[string]bool)
+			for _, k := range keys {
+				keySet[strings.TrimSpace(k)] = true
+			}
+			for _, s := range summaries {
+				if keySet[s.Key] {
+					selected = append(selected, s)
+				}
+			}
+			if len(selected) == 0 {
+				if !multiAccount {
+					u.PrintFatal("None of the specified plugins were found in marketplaces", nil)
+				}
+				continue
+			}
+		} else {
+			selected = interactiveSelect(summaries)
+		}
+
+		if len(selected) == 0 {
+			if !multiAccount {
+				u.PrintInfo("No plugins selected.")
+			}
+			continue
+		}
+
+		installed, _ := plugin.LoadInstalledPlugins(configDir)
+		enabledPlugins := make(map[string]bool)
+
+		u.PrintRunning("(Running) Reconciling plugins")
+		var lineCount int
+		var reconcileErrors []pluginResult
+
+		for _, s := range selected {
+			result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName, instateFlags.update)
+			if err != nil {
+				u.PrintIndentedError(fmt.Sprintf("[%s] reconcile failed", s.Key), err)
+				reconcileErrors = append(reconcileErrors, pluginResult{key: s.Key, err: err})
+				lineCount++
+				continue
+			}
+
+			switch result.Action {
+			case "skipped":
+				u.PrintIndentedWarn(fmt.Sprintf("[%s] %s", s.Key, result.Message), nil)
+			case "up-to-date":
+				u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s", s.Key, result.Message))
+			default:
+				u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s — %s", s.Key, result.Action, result.Message))
+			}
+			lineCount++
+
+			if result.Action == "skipped" {
+				continue
+			}
+
+			version := result.Version
+			installPath := filepath.Join(configDir, "plugins", "cache", s.MarketplaceName, s.PluginName, version)
+
+			known, _ := plugin.LoadKnownMarketplaces(configDir)
+			gitSha := ""
+			if mktInfo, ok := known[s.MarketplaceName]; ok {
+				gitSha = plugin.GetGitCommitSha(mktInfo.InstallLocation)
+			}
+
+			now := time.Now().UTC().Format(time.RFC3339)
+			entry := plugin.PluginInstall{
+				Scope:        "local",
+				ProjectPath:  projectDir,
+				InstallPath:  installPath,
+				Version:      version,
+				InstalledAt:  now,
+				LastUpdated:  now,
+				GitCommitSha: gitSha,
+			}
+
+			plugin.AddInstallEntry(&installed, s.Key, entry)
+			enabledPlugins[s.Key] = true
+		}
+
+		u.ClearLines(lineCount + 1)
+		if len(reconcileErrors) > 0 {
+			u.PrintError("Reconciliation partially completed with errors", nil)
+			for _, e := range reconcileErrors {
 				u.PrintIndentedError(e.key, e.err)
 			}
 		} else {
-			u.PrintInfo(fmt.Sprintf("Pulled %d marketplace(s)", len(toPull)))
+			u.PrintInfo(fmt.Sprintf("Reconciled %d plugin(s): %d enabled", len(selected), len(enabledPlugins)))
+		}
+
+		if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
+			u.PrintFatal("Failed to save installed_plugins.json", err)
+		}
+
+		for k := range enabledPlugins {
+			allEnabledPlugins[k] = true
 		}
 	}
 
-	summaries, err := plugin.BuildPluginSummaries(configDir)
-	if err != nil {
-		u.PrintFatal("Failed to build plugin summaries", err)
-	}
-	if len(summaries) == 0 {
-		u.PrintInfo("No plugins found in any marketplace.")
-		return
-	}
-
-	var selected []plugin.PluginSummary
-	if instateFlags.all {
-		selected = summaries
-	} else if instateFlags.plugins != "" {
-		keys := strings.Split(instateFlags.plugins, ",")
-		keySet := make(map[string]bool)
-		for _, k := range keys {
-			keySet[strings.TrimSpace(k)] = true
-		}
-		for _, s := range summaries {
-			if keySet[s.Key] {
-				selected = append(selected, s)
-			}
-		}
-		if len(selected) == 0 {
-			u.PrintFatal("None of the specified plugins were found in marketplaces", nil)
-		}
-	} else {
-		selected = interactiveSelect(summaries)
-	}
-
-	if len(selected) == 0 {
-		u.PrintInfo("No plugins selected.")
-		return
-	}
-
-	installed, _ := plugin.LoadInstalledPlugins(configDir)
-	enabledPlugins := make(map[string]bool)
-
-	u.PrintRunning("(Running) Reconciling plugins")
-	var lineCount int
-	var reconcileErrors []pluginResult
-
-	for _, s := range selected {
-		result, err := plugin.ReconcilePlugin(configDir, s.MktEntry, s.MktJSON, s.MarketplaceName, instateFlags.update)
-		if err != nil {
-			u.PrintIndentedError(fmt.Sprintf("[%s] reconcile failed", s.Key), err)
-			reconcileErrors = append(reconcileErrors, pluginResult{key: s.Key, err: err})
-			lineCount++
-			continue
-		}
-
-		switch result.Action {
-		case "skipped":
-			u.PrintIndentedWarn(fmt.Sprintf("[%s] %s", s.Key, result.Message), nil)
-		case "up-to-date":
-			u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s", s.Key, result.Message))
-		default:
-			u.PrintIndentedSuccess(fmt.Sprintf("[%s] %s — %s", s.Key, result.Action, result.Message))
-		}
-		lineCount++
-
-		if result.Action == "skipped" {
-			continue
-		}
-
-		version := result.Version
-		installPath := filepath.Join(configDir, "plugins", "cache", s.MarketplaceName, s.PluginName, version)
-
-		known, _ := plugin.LoadKnownMarketplaces(configDir)
-		gitSha := ""
-		if mktInfo, ok := known[s.MarketplaceName]; ok {
-			gitSha = plugin.GetGitCommitSha(mktInfo.InstallLocation)
-		}
-
-		now := time.Now().UTC().Format(time.RFC3339)
-		entry := plugin.PluginInstall{
-			Scope:        "local",
-			ProjectPath:  projectDir,
-			InstallPath:  installPath,
-			Version:      version,
-			InstalledAt:  now,
-			LastUpdated:  now,
-			GitCommitSha: gitSha,
-		}
-
-		plugin.AddInstallEntry(&installed, s.Key, entry)
-		enabledPlugins[s.Key] = true
-	}
-
-	u.ClearLines(lineCount + 1)
-	if len(reconcileErrors) > 0 {
-		u.PrintError("Reconciliation partially completed with errors", nil)
-		for _, e := range reconcileErrors {
-			u.PrintIndentedError(e.key, e.err)
-		}
-	} else {
-		u.PrintInfo(fmt.Sprintf("Reconciled %d plugin(s): %d enabled", len(selected), len(enabledPlugins)))
-	}
-
-	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
-		u.PrintFatal("Failed to save installed_plugins.json", err)
-	}
-
-	if len(enabledPlugins) > 0 {
-		if err := plugin.SaveSettingsLocal(projectDir, enabledPlugins, true); err != nil {
+	if len(allEnabledPlugins) > 0 {
+		if err := plugin.SaveSettingsLocal(projectDir, allEnabledPlugins, true); err != nil {
 			u.PrintFatal("Failed to save settings.local.json", err)
 		}
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Instated %d plugin(s) for project %s", len(enabledPlugins), projectDir))
+	u.PrintSuccess(fmt.Sprintf("Instated %d plugin(s) for project %s", len(allEnabledPlugins), projectDir))
 }
 
 func runCleanup(cmd *cobra.Command, args []string) {
-	configDir := u.ResolveConfigDir(cleanupFlags.configDir)
+	accountPaths := u.ResolveAccountPaths(cleanupFlags.account)
+	multiAccount := len(accountPaths) > 1
 
-	summaries, err := plugin.BuildPluginSummaries(configDir)
-	if err != nil {
-		u.PrintFatal("Failed to build plugin summaries", err)
-	}
-
-	var selected []plugin.PluginSummary
-	if cleanupFlags.all {
-		selected = summaries
-	} else if cleanupFlags.plugins != "" {
-		keys := strings.Split(cleanupFlags.plugins, ",")
-		keySet := make(map[string]bool)
-		for _, k := range keys {
-			keySet[strings.TrimSpace(k)] = true
+	for _, configDir := range accountPaths {
+		if multiAccount {
+			u.PrintInfo(fmt.Sprintf("Account: %s", configDir))
 		}
-		for _, s := range summaries {
-			if keySet[s.Key] {
-				selected = append(selected, s)
+
+		summaries, err := plugin.BuildPluginSummaries(configDir)
+		if err != nil {
+			u.PrintWarn(fmt.Sprintf("skipping %s", configDir), err)
+			continue
+		}
+
+		var selected []plugin.PluginSummary
+		if cleanupFlags.all {
+			selected = summaries
+		} else if cleanupFlags.plugins != "" {
+			keys := strings.Split(cleanupFlags.plugins, ",")
+			keySet := make(map[string]bool)
+			for _, k := range keys {
+				keySet[strings.TrimSpace(k)] = true
 			}
-		}
-	} else {
-		selected = interactiveSelect(summaries)
-	}
-
-	if len(selected) == 0 {
-		u.PrintInfo("No plugins selected.")
-		return
-	}
-
-	installed, _ := plugin.LoadInstalledPlugins(configDir)
-
-	u.PrintRunning("(Running) Cleaning up plugins")
-	var lineCount int
-	var cleanupErrors []pluginResult
-	totalRemoved := 0
-
-	for _, s := range selected {
-		if err := plugin.RemoveCacheDirectory(configDir, s.MarketplaceName, s.PluginName); err != nil {
-			u.PrintIndentedError(fmt.Sprintf("[%s] cache removal failed", s.Key), err)
-			cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
+			for _, s := range summaries {
+				if keySet[s.Key] {
+					selected = append(selected, s)
+				}
+			}
 		} else {
-			plugin.RemoveInstallEntries(&installed, s.Key)
-			totalRemoved++
-			u.PrintIndentedSuccess(fmt.Sprintf("[%s] removed", s.Key))
+			selected = interactiveSelect(summaries)
 		}
-		lineCount++
-	}
 
-	u.ClearLines(lineCount + 1)
-	if len(cleanupErrors) > 0 {
-		u.PrintError("Cleanup partially completed with errors", nil)
-		for _, e := range cleanupErrors {
-			u.PrintIndentedError(e.key, e.err)
+		if len(selected) == 0 {
+			if !multiAccount {
+				u.PrintInfo("No plugins selected.")
+			}
+			continue
 		}
-	} else {
-		u.PrintInfo(fmt.Sprintf("Cleaned %d plugin(s)", len(selected)))
-	}
 
-	if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
-		u.PrintFatal("Failed to save installed_plugins.json", err)
-	}
+		installed, _ := plugin.LoadInstalledPlugins(configDir)
 
-	u.PrintSuccess(fmt.Sprintf("Cleanup complete — %d plugin(s) removed", totalRemoved))
+		u.PrintRunning("(Running) Cleaning up plugins")
+		var lineCount int
+		var cleanupErrors []pluginResult
+		totalRemoved := 0
+
+		for _, s := range selected {
+			if err := plugin.RemoveCacheDirectory(configDir, s.MarketplaceName, s.PluginName); err != nil {
+				u.PrintIndentedError(fmt.Sprintf("[%s] cache removal failed", s.Key), err)
+				cleanupErrors = append(cleanupErrors, pluginResult{key: s.Key, err: err})
+			} else {
+				plugin.RemoveInstallEntries(&installed, s.Key)
+				totalRemoved++
+				u.PrintIndentedSuccess(fmt.Sprintf("[%s] removed", s.Key))
+			}
+			lineCount++
+		}
+
+		u.ClearLines(lineCount + 1)
+		if len(cleanupErrors) > 0 {
+			u.PrintError("Cleanup partially completed with errors", nil)
+			for _, e := range cleanupErrors {
+				u.PrintIndentedError(e.key, e.err)
+			}
+		} else {
+			u.PrintInfo(fmt.Sprintf("Cleaned %d plugin(s)", len(selected)))
+		}
+
+		if err := plugin.SaveInstalledPlugins(configDir, installed); err != nil {
+			u.PrintFatal("Failed to save installed_plugins.json", err)
+		}
+
+		u.PrintSuccess(fmt.Sprintf("Cleanup complete — %d plugin(s) removed", totalRemoved))
+	}
 }
 
 func interactiveSelect(summaries []plugin.PluginSummary) []plugin.PluginSummary {
@@ -332,14 +364,14 @@ func orDash(s string) string {
 }
 
 func init() {
-	instateCmd.Flags().StringVarP(&instateFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
+	instateCmd.Flags().StringVarP(&instateFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	instateCmd.Flags().StringVarP(&instateFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys (e.g. core@ai-brain,praetorian@ai-brain)")
-	instateCmd.Flags().BoolVarP(&instateFlags.all, "all", "A", false, "Instate all available plugins")
+	instateCmd.Flags().BoolVarP(&instateFlags.all, "all", "a", false, "Instate all available plugins")
 	instateCmd.Flags().BoolVarP(&instateFlags.update, "update", "u", false, "Git pull marketplace repos before reconciling")
 
-	cleanupCmd.Flags().StringVarP(&cleanupFlags.configDir, "config-dir", "c", "", "Claude config directory (default ~/.claude)")
+	cleanupCmd.Flags().StringVarP(&cleanupFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	cleanupCmd.Flags().StringVarP(&cleanupFlags.plugins, "plugins", "P", "", "Comma-separated plugin keys")
-	cleanupCmd.Flags().BoolVarP(&cleanupFlags.all, "all", "A", false, "Target all plugins")
+	cleanupCmd.Flags().BoolVarP(&cleanupFlags.all, "all", "a", false, "Target all plugins")
 
 	PluginCmd.AddCommand(instateCmd, cleanupCmd)
 }
