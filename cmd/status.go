@@ -14,7 +14,7 @@ import (
 )
 
 var statusFlags struct {
-	accounts   []string
+	account    string
 	jsonOutput bool
 }
 
@@ -32,7 +32,7 @@ var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show current usage for all accounts",
 	Run: func(cmd *cobra.Command, args []string) {
-		accountPaths := u.ResolveAccountPaths(statusFlags.accounts)
+		accountPaths := u.ResolveAccountPaths(statusFlags.account)
 		var accounts []model.AccountUsage
 		for _, p := range accountPaths {
 			usage, err := tracker.ComputeAccountUsage(p)
@@ -166,6 +166,6 @@ func renderBar(pct float64) string {
 }
 
 func init() {
-	statusCmd.Flags().StringSliceVarP(&statusFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
+	statusCmd.Flags().StringVarP(&statusFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	statusCmd.Flags().BoolVarP(&statusFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }

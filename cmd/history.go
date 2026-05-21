@@ -12,7 +12,7 @@ import (
 )
 
 var historyFlags struct {
-	accounts   []string
+	account    string
 	days       int
 	jsonOutput bool
 }
@@ -21,7 +21,7 @@ var historyCmd = &cobra.Command{
 	Use:   "history",
 	Short: "Show daily usage history from stats-cache",
 	Run: func(cmd *cobra.Command, args []string) {
-		accountPaths := u.ResolveAccountPaths(historyFlags.accounts)
+		accountPaths := u.ResolveAccountPaths(historyFlags.account)
 		for _, p := range accountPaths {
 			acct, _ := parser.ParseAccount(p)
 			stats, err := parser.ParseStatsCache(p)
@@ -93,7 +93,7 @@ func tailTokens(a []model.DailyModelTokens, n int) []model.DailyModelTokens {
 }
 
 func init() {
-	historyCmd.Flags().StringSliceVarP(&historyFlags.accounts, "accounts", "a", []string{}, "Additional Claude config directories to monitor")
+	historyCmd.Flags().StringVarP(&historyFlags.account, "account", "A", "", "Use only this specific account directory (default: all discovered accounts)")
 	historyCmd.Flags().IntVarP(&historyFlags.days, "days", "d", 7, "Number of days to show")
 	historyCmd.Flags().BoolVarP(&historyFlags.jsonOutput, "json", "j", false, "Output as JSON")
 }
