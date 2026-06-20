@@ -62,7 +62,7 @@ func runList(cmd *cobra.Command, args []string) {
 
 		rows := make([][]string, len(convos))
 		for i, c := range convos {
-			snippet := truncateList(c.FirstMessage, 40)
+			snippet := u.Truncate(c.FirstMessage, 40)
 			lastActive := time.UnixMilli(c.LastActivity).Local().Format("Jan 02 3:04pm")
 			rows[i] = []string{
 				c.SessionID,
@@ -75,14 +75,6 @@ func runList(cmd *cobra.Command, args []string) {
 		u.PrintTable([]string{"Session", "Msgs", "Project", "First Message", "Last Active"}, rows)
 	}
 	u.PrintGeneric("")
-}
-
-func truncateList(s string, maxLen int) string {
-	runes := []rune(s)
-	if len(runes) <= maxLen {
-		return s
-	}
-	return string(runes[:maxLen-3]) + "..."
 }
 
 func init() {

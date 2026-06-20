@@ -63,12 +63,12 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	if resumeMode {
 		labels := make([]string, len(sessions))
 		for i, s := range sessions {
-			project := padRight(truncateStr(s.project, 14), 14)
-			msg := padRight(truncateStr(s.firstMessage, 36), 36)
+			project := padRight(u.Truncate(s.project, 14), 14)
+			msg := padRight(u.Truncate(s.firstMessage, 36), 36)
 			t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
 			labels[i] = fmt.Sprintf("%s  %s  %s", project, msg, t)
 			if multiAccount {
-				labels[i] += "  " + abbreviatePath(s.configDir)
+				labels[i] += "  " + u.AbbreviatePath(s.configDir)
 			}
 		}
 
@@ -83,12 +83,12 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		s := sessions[idx]
 		account = s.configDir
 		cliArgs = []string{"claude", "--resume", s.sessionID}
-		summary = append(summary, "resume", s.project, abbreviatePath(s.configDir))
+		summary = append(summary, "resume", s.project, u.AbbreviatePath(s.configDir))
 	} else {
 		if multiAccount {
 			acctLabels := make([]string, len(accounts))
 			for i, a := range accounts {
-				acctLabels[i] = abbreviatePath(a)
+				acctLabels[i] = u.AbbreviatePath(a)
 			}
 			idx, err := u.PromptSelect("Account", acctLabels)
 			if err != nil {
@@ -101,7 +101,7 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		} else {
 			account = accounts[0]
 		}
-		summary = append(summary, abbreviatePath(account))
+		summary = append(summary, u.AbbreviatePath(account))
 
 		mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
 			"MCPs only",
@@ -133,17 +133,19 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	// strip any inherited CLAUDE_CONFIG_DIR so it can't override the chosen account
 	env := os.Environ()
 	home, _ := os.UserHomeDir()
 	defaultDir := filepath.Join(home, ".claude")
-	if account != defaultDir {
-		filtered := make([]string, 0, len(env))
-		for _, e := range env {
-			if !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") {
-				filtered = append(filtered, e)
-			}
+	filtered := make([]string, 0, len(env))
+	for _, e := range env {
+		if !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") {
+			filtered = append(filtered, e)
 		}
-		env = append(filtered, "CLAUDE_CONFIG_DIR="+account)
+	}
+	env = filtered
+	if account != defaultDir {
+		env = append(env, "CLAUDE_CONFIG_DIR="+account)
 	}
 
 	u.PrintInfo("Launching: " + strings.Join(summary, " · "))
@@ -177,22 +179,6 @@ func discoverSessions(accounts []string) []sessionEntry {
 		all = all[:10]
 	}
 	return all
-}
-
-func abbreviatePath(path string) string {
-	home, _ := os.UserHomeDir()
-	if strings.HasPrefix(path, home) {
-		return "~" + path[len(home):]
-	}
-	return path
-}
-
-func truncateStr(s string, max int) string {
-	runes := []rune(s)
-	if len(runes) <= max {
-		return s
-	}
-	return string(runes[:max-1]) + "…"
 }
 
 func padRight(s string, width int) string {

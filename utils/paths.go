@@ -64,3 +64,11 @@ func ResolveAccountPaths(account string) []string {
 	}
 	return DiscoverAccountPaths()
 }
+
+func AbbreviatePath(path string) string {
+	home, _ := os.UserHomeDir()
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
+}

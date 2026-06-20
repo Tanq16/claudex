@@ -8,7 +8,7 @@
 
 ---
 
-Monitor Claude Code usage across multiple accounts. Fetches real-time utilization from Anthropic's OAuth API to show exact 5-hour session, 7-day overall, and 7-day Sonnet-specific limits and reset times.
+A multi-account companion for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, and install the statusline. Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
 
 ## Capabilities
 
@@ -16,9 +16,10 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 |----------|----------|-------------|
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
 | History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
-| Conversations | `convos list` | List recent conversations with session IDs, message counts, and projects |
-| | `convos switch` | Move a conversation from one account to another |
+| Conversations | `list` | List recent conversations with session IDs, message counts, and projects |
+| | `switch` | Move a conversation from one account to another |
 | Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
+| Statusline | `statusline` | Install the claudex statusline into an account's Claude Code config |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -55,12 +56,12 @@ Show live usage for all monitored accounts. Displays 5-hour session, 7-day overa
 
 ```bash
 claudex status
-claudex status -a ~/.claude2
+claudex status -A ~/.claude2
 claudex status -j
 ```
 
 **Flags:**
-- `-a, --accounts` - Additional Claude config directories to monitor (default: `~/.claude` only)
+- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
 - `-j, --json` - Output as JSON
 
 ### `history`
@@ -73,32 +74,32 @@ claudex history -d 14
 ```
 
 **Flags:**
-- `-a, --accounts` - Additional Claude config directories to monitor
+- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
 - `-d, --days` - Number of days to show (default: `7`)
 - `-j, --json` - Output as JSON
 
-### `convos list`
+### `list`
 
-List recent conversations across all monitored accounts. Shows session ID, message count, project, first message, and last activity time.
+List recent conversations across all discovered accounts. Shows session ID, message count, project, first message, and last activity time.
 
 ```bash
-claudex convos list
-claudex convos list -n 5
-claudex convos list -j
+claudex list
+claudex list -n 5
+claudex list -j
 ```
 
 **Flags:**
-- `-a, --accounts` - Additional Claude config directories to monitor
+- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
 - `-n, --limit` - Number of conversations to show (default: `10`)
 - `-j, --json` - Output as JSON (includes full session UUIDs)
 
-### `convos switch`
+### `switch`
 
 Move a conversation from one account to another. Transfers session files and migrates history entries between config directories.
 
 ```bash
-claudex convos switch --id <session-uuid> --to ~/.claude2
-claudex convos switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
+claudex switch --id <session-uuid> --to ~/.claude2
+claudex switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
 ```
 
 **Flags:**
@@ -108,22 +109,38 @@ claudex convos switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
 
 ### `launch`
 
-Interactively configure and launch a Claude Code session. Presents a TUI to select session mode, account, MCP config bundles, and connector settings, then execs directly into `claude` with the assembled flags and environment.
+Interactively configure and launch a Claude Code session. Presents a TUI to select session mode, account, and MCP/connector behavior, then execs directly into `claude` with the assembled flags and environment.
 
 ```bash
 claudex launch
 ```
 
-The TUI starts with a mode selection:
-- **New session** — walks through account, MCP configs, and connectors selection
-- **Resume** — pick from the 10 most recent sessions across all accounts to resume
+The TUI starts with a mode selection (shown only when resumable sessions exist):
+- **New session** — walks through account and MCP/connector selection
+- **Resume** — pick from the 10 most recent sessions across all accounts
 
 For new sessions, the remaining steps are:
 - **Account** — select which `~/.claude*` directory to use (skipped if only one exists)
-- **MCP Configs** — multi-select from `~/mcp-configs/*.json` bundles (skipped if none found)
-- **Connectors** — toggle claude.ai connectors (Gmail, Slack, etc.) on or off
+- **MCP + Connectors** — choose one of:
+  - **MCPs only** — load your configured MCP servers, no claude.ai connectors
+  - **MCPs + Connectors** — load MCP servers and enable claude.ai connectors (Gmail, Slack, etc.) via the `ENABLE_CLAUDEAI_MCP_SERVERS` setting
+  - **None** — pass `--strict-mcp-config` to block all MCP servers and connectors
 
-When MCP configs are selected without connectors, `--strict-mcp-config` is used to isolate the session. When connectors are also enabled, strict mode is omitted so connectors can load alongside the selected MCP servers. Resume sessions automatically target the correct account via `CLAUDE_CONFIG_DIR`.
+Resume sessions skip the prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`.
+
+### `statusline`
+
+Install the embedded claudex statusline into an account's Claude Code config. Writes `statusline.sh` into the account directory and merges the `statusLine` block into its `settings.json` without touching any other settings. The label defaults to a word derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`); use `--label` to override it.
+
+```bash
+claudex statusline
+claudex statusline -A ~/.claude2
+claudex statusline -A ~/.claude2 --label prod
+```
+
+**Flags:**
+- `-A, --account` - Account config directory to install into (default: `~/.claude`)
+- `-l, --label` - Override the account label shown in the statusline (default: derived from directory name)
 
 ### `oauth-token`
 
@@ -142,7 +159,7 @@ claudex oauth-token --port 8080
 
 ## Tips and Notes
 
-- Default monitoring is `~/.claude` only; use `-a/--accounts` on each monitoring command to add more (e.g., `-a ~/.claude2,~/.claude3`)
+- Accounts are auto-discovered (`~/.claude`, `~/.claude2`, …); use `-A/--account` on a command to target a single account
 - Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
 - OAuth tokens are read from macOS Keychain; they refresh automatically when Claude Code is running
 - If a token is expired, launch Claude Code on that account to refresh it

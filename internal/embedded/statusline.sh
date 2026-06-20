@@ -15,12 +15,19 @@ NC='\033[0m'
 FIRE="🔥"
 WARN="⚠️"
 
+# $1 is the optional label override from "claudex statusline --label"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR_NAME="$(basename "$SCRIPT_DIR")"
-if [[ "$CONFIG_DIR_NAME" == ".claude" ]]; then
-    ACCT_LABEL="default"
+if [[ -n "$1" ]]; then
+    ACCT_LABEL="$1"
+elif [[ "$CONFIG_DIR_NAME" == ".claude" ]]; then
+    ACCT_LABEL="first"
+elif [[ "$CONFIG_DIR_NAME" == ".claude2" ]]; then
+    ACCT_LABEL="second"
+elif [[ "$CONFIG_DIR_NAME" == ".claude3" ]]; then
+    ACCT_LABEL="third"
 else
-    ACCT_LABEL="${CONFIG_DIR_NAME##.claude}"
+    ACCT_LABEL="acct${CONFIG_DIR_NAME##.claude}"
 fi
 
 input=$(cat)
@@ -36,10 +43,12 @@ if [[ ${#cwd} -gt 40 ]]; then
     cwd="...${cwd: -37}"
 fi
 
+# strip any "[...]" suffix so the [1m] tag is never doubled
 model_short=""
 case "$model_id" in
   *"claude-opus-4-8"*|*"claude-opus-4-7"*|*"claude-opus-4-6"*)
     suffix="${model_id##*claude-opus-}"
+    suffix="${suffix%%\[*}"
     if [ "$max_tokens" = "1000000" ]; then
       model_short="opus-${suffix}[1m]"
     else
@@ -55,6 +64,7 @@ case "$model_id" in
     ;;
   *"claude-sonnet-4-6"*|*"claude-sonnet-4-5"*)
     suffix="${model_id##*claude-sonnet-}"
+    suffix="${suffix%%\[*}"
     if [ "$max_tokens" = "1000000" ]; then
       model_short="sonnet-${suffix}[1m]"
     else
