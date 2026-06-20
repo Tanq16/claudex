@@ -1,0 +1,204 @@
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
+	"syscall"
+	"time"
+
+	"github.com/spf13/cobra"
+	"github.com/tanq16/claudex/internal/parser"
+	u "github.com/tanq16/claudex/utils"
+)
+
+type sessionEntry struct {
+	sessionID    string
+	project      string
+	firstMessage string
+	lastActivity int64
+	configDir    string
+}
+
+var launchCmd = &cobra.Command{
+	Use:   "launch",
+	Short: "Launch a Claude Code session with interactive config selection",
+	Run:   runLaunch,
+}
+
+func runLaunch(cmd *cobra.Command, args []string) {
+	if u.GlobalForAIFlag {
+		u.PrintFatal("launch requires an interactive terminal", nil)
+	}
+
+	claudePath, err := exec.LookPath("claude")
+	if err != nil {
+		u.PrintFatal("claude not found in PATH", err)
+	}
+
+	accounts := u.DiscoverAccountPaths()
+	sessions := discoverSessions(accounts)
+	multiAccount := len(accounts) > 1
+
+	var resumeMode bool
+	if len(sessions) > 0 {
+		idx, err := u.PromptSelect("Launch", []string{"New session", "Resume"})
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if idx < 0 {
+			return
+		}
+		resumeMode = idx == 1
+	}
+
+	var account string
+	var cliArgs []string
+	var summary []string
+
+	if resumeMode {
+		labels := make([]string, len(sessions))
+		for i, s := range sessions {
+			project := padRight(truncateStr(s.project, 14), 14)
+			msg := padRight(truncateStr(s.firstMessage, 36), 36)
+			t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
+			labels[i] = fmt.Sprintf("%s  %s  %s", project, msg, t)
+			if multiAccount {
+				labels[i] += "  " + abbreviatePath(s.configDir)
+			}
+		}
+
+		idx, err := u.PromptSelect("Resume Session", labels)
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if idx < 0 {
+			return
+		}
+
+		s := sessions[idx]
+		account = s.configDir
+		cliArgs = []string{"claude", "--resume", s.sessionID}
+		summary = append(summary, "resume", s.project, abbreviatePath(s.configDir))
+	} else {
+		if multiAccount {
+			acctLabels := make([]string, len(accounts))
+			for i, a := range accounts {
+				acctLabels[i] = abbreviatePath(a)
+			}
+			idx, err := u.PromptSelect("Account", acctLabels)
+			if err != nil {
+				u.PrintFatal("TUI error", err)
+			}
+			if idx < 0 {
+				return
+			}
+			account = accounts[idx]
+		} else {
+			account = accounts[0]
+		}
+		summary = append(summary, abbreviatePath(account))
+
+		mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
+			"MCPs only",
+			"MCPs + Connectors",
+			"None",
+		})
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if mcpIdx < 0 {
+			return
+		}
+
+		cliArgs = []string{"claude"}
+		switch mcpIdx {
+		case 0:
+			summary = append(summary, "mcp: on")
+		case 1:
+			settingsJSON, _ := json.Marshal(map[string]any{
+				"env": map[string]string{
+					"ENABLE_CLAUDEAI_MCP_SERVERS": "true",
+				},
+			})
+			cliArgs = append(cliArgs, "--settings", string(settingsJSON))
+			summary = append(summary, "mcp: on", "connectors: on")
+		case 2:
+			cliArgs = append(cliArgs, "--strict-mcp-config")
+			summary = append(summary, "mcp: off")
+		}
+	}
+
+	env := os.Environ()
+	home, _ := os.UserHomeDir()
+	defaultDir := filepath.Join(home, ".claude")
+	if account != defaultDir {
+		filtered := make([]string, 0, len(env))
+		for _, e := range env {
+			if !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") {
+				filtered = append(filtered, e)
+			}
+		}
+		env = append(filtered, "CLAUDE_CONFIG_DIR="+account)
+	}
+
+	u.PrintInfo("Launching: " + strings.Join(summary, " · "))
+
+	if err := syscall.Exec(claudePath, cliArgs, env); err != nil {
+		u.PrintFatal("Failed to exec claude", err)
+	}
+}
+
+func discoverSessions(accounts []string) []sessionEntry {
+	var all []sessionEntry
+	for _, configDir := range accounts {
+		convos, err := parser.ParseConversations(configDir)
+		if err != nil {
+			continue
+		}
+		for _, c := range convos {
+			all = append(all, sessionEntry{
+				sessionID:    c.SessionID,
+				project:      c.Project,
+				firstMessage: c.FirstMessage,
+				lastActivity: c.LastActivity,
+				configDir:    configDir,
+			})
+		}
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].lastActivity > all[j].lastActivity
+	})
+	if len(all) > 10 {
+		all = all[:10]
+	}
+	return all
+}
+
+func abbreviatePath(path string) string {
+	home, _ := os.UserHomeDir()
+	if strings.HasPrefix(path, home) {
+		return "~" + path[len(home):]
+	}
+	return path
+}
+
+func truncateStr(s string, max int) string {
+	runes := []rune(s)
+	if len(runes) <= max {
+		return s
+	}
+	return string(runes[:max-1]) + "…"
+}
+
+func padRight(s string, width int) string {
+	runes := []rune(s)
+	if len(runes) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(runes))
+}

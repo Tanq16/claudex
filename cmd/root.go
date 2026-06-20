@@ -9,9 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/utils"
-
-	convosCmd "github.com/tanq16/claudex/cmd/convos-cmd"
-	pluginCmd "github.com/tanq16/claudex/cmd/plugin-cmd"
 )
 
 var AppVersion = "dev-build"
@@ -66,6 +63,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(oauthTokenCmd)
-	rootCmd.AddCommand(convosCmd.ConvosCmd)
-	rootCmd.AddCommand(pluginCmd.PluginCmd)
+	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(switchCmd)
+	rootCmd.AddCommand(launchCmd)
 }

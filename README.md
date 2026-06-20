@@ -18,10 +18,7 @@ Monitor Claude Code usage across multiple accounts. Fetches real-time utilizatio
 | History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
 | Conversations | `convos list` | List recent conversations with session IDs, message counts, and projects |
 | | `convos switch` | Move a conversation from one account to another |
-| | `convos reproject` | Change which project a conversation is associated with |
-| | `convos find` | Find conversations by ID or keyword search |
-| Plugins | `plugin instate` | Instantiate plugins for a local project with version reconciliation |
-| | `plugin cleanup` | Remove plugin cache and install entries |
+| Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -109,36 +106,24 @@ claudex convos switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
 - `--from` - Source config directory (default: `~/.claude`)
 - `--to` - Target config directory (required)
 
-### `convos reproject`
+### `launch`
 
-Change which project a conversation is associated with. Moves session files to the target project's directory and updates history entries.
-
-```bash
-claudex convos reproject --id <session-uuid>
-claudex convos reproject --id <session-uuid> --project /path/to/project
-claudex convos reproject --id <session-uuid> -c ~/.claude2
-```
-
-**Flags:**
-- `--id` - Session UUID to reproject (required)
-- `-c, --config-dir` - Config directory (default: `~/.claude`)
-- `--project` - Target project path (default: current directory)
-
-### `convos find`
-
-Find conversations by session ID or keyword search across all monitored accounts.
+Interactively configure and launch a Claude Code session. Presents a TUI to select session mode, account, MCP config bundles, and connector settings, then execs directly into `claude` with the assembled flags and environment.
 
 ```bash
-claudex convos find --id <session-uuid>
-claudex convos find -k "search term"
-claudex convos find -k "regex pattern" -a ~/.claude2 -j
+claudex launch
 ```
 
-**Flags:**
-- `--id` - Session UUID to find
-- `-k, --keyword` - Regex keyword to search
-- `-a, --accounts` - Additional Claude config directories to search
-- `-j, --json` - Output as JSON
+The TUI starts with a mode selection:
+- **New session** — walks through account, MCP configs, and connectors selection
+- **Resume** — pick from the 10 most recent sessions across all accounts to resume
+
+For new sessions, the remaining steps are:
+- **Account** — select which `~/.claude*` directory to use (skipped if only one exists)
+- **MCP Configs** — multi-select from `~/mcp-configs/*.json` bundles (skipped if none found)
+- **Connectors** — toggle claude.ai connectors (Gmail, Slack, etc.) on or off
+
+When MCP configs are selected without connectors, `--strict-mcp-config` is used to isolate the session. When connectors are also enabled, strict mode is omitted so connectors can load alongside the selected MCP servers. Resume sessions automatically target the correct account via `CLAUDE_CONFIG_DIR`.
 
 ### `oauth-token`
 
@@ -154,39 +139,6 @@ claudex oauth-token --port 8080
 **Flags:**
 - `-p, --port` - Local port for OAuth callback server (default: `54545`)
 - `-e, --expires-in` - Requested token expiry in seconds (default: `3600`; server may override)
-
-### `plugin instate`
-
-Instantiate plugins for a local project with version reconciliation. Supports both local marketplace plugins (resolved from the marketplace directory) and external GitHub-hosted plugins (shallow-cloned automatically). With `--update`, pulls latest marketplace versions and removes old cached versions.
-
-```bash
-claudex plugin instate
-claudex plugin instate -c ~/.claude2
-claudex plugin instate -P core@ai-brain -u
-claudex plugin instate -P sales@praetorian-ai-marketplace
-claudex plugin instate -A
-```
-
-**Flags:**
-- `-c, --config-dir` - Claude config directory (default `~/.claude`)
-- `-P, --plugins` - Comma-separated plugin keys
-- `-A, --all` - Instate all available plugins
-- `-u, --update` - Git pull marketplace repos before reconciling
-
-### `plugin cleanup`
-
-Remove plugin cache directories and install entries for selected plugins.
-
-```bash
-claudex plugin cleanup
-claudex plugin cleanup -A
-claudex plugin cleanup -c ~/.claude2 -P core@ai-brain
-```
-
-**Flags:**
-- `-c, --config-dir` - Claude config directory (default `~/.claude`)
-- `-P, --plugins` - Comma-separated plugin keys
-- `-A, --all` - Target all plugins
 
 ## Tips and Notes
 

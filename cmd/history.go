@@ -79,14 +79,14 @@ var historyCmd = &cobra.Command{
 }
 
 func tailActivity(a []model.DailyActivity, n int) []model.DailyActivity {
-	if len(a) <= n {
+	if n <= 0 || len(a) <= n {
 		return a
 	}
 	return a[len(a)-n:]
 }
 
 func tailTokens(a []model.DailyModelTokens, n int) []model.DailyModelTokens {
-	if len(a) <= n {
+	if n <= 0 || len(a) <= n {
 		return a
 	}
 	return a[len(a)-n:]

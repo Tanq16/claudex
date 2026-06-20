@@ -3,13 +3,13 @@ package convo
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/tanq16/claudex/internal/model"
 )
@@ -27,15 +27,6 @@ type SessionFiles struct {
 	ProjectPath  string
 	SessionJSONL string
 	SubAgentDir  string
-}
-
-// SearchResult holds a keyword search match aggregated by session.
-type SearchResult struct {
-	SessionID  string `json:"sessionId"`
-	Project    string `json:"project"`
-	ConfigDir  string `json:"configDir"`
-	MatchCount int    `json:"matchCount"`
-	Sample     string `json:"sample"`
 }
 
 // EncodeProjectPath converts an absolute path to the directory name used by Claude.
@@ -190,22 +181,6 @@ func FindSession(configDir, sessionID string) (*SessionFiles, error) {
 	return nil, nil
 }
 
-// FindSessionAllAccounts searches across multiple config dirs.
-func FindSessionAllAccounts(configDirs []string) func(sessionID string) (*SessionFiles, error) {
-	return func(sessionID string) (*SessionFiles, error) {
-		for _, dir := range configDirs {
-			sf, err := FindSession(dir, sessionID)
-			if err != nil {
-				return nil, err
-			}
-			if sf != nil {
-				return sf, nil
-			}
-		}
-		return nil, nil
-	}
-}
-
 // --- Move operations ---
 
 // MoveSession moves session files from srcProjectDir to dstProjectDir.
@@ -247,7 +222,7 @@ func moveFileOrDir(src, dst string) error {
 	}
 
 	// Fall back to copy for cross-filesystem moves
-	if linkErr, ok := err.(*os.LinkError); ok && linkErr.Err.Error() == "cross-device link" {
+	if linkErr, ok := err.(*os.LinkError); ok && errors.Is(linkErr.Err, syscall.EXDEV) {
 		return copyAndRemove(src, dst)
 	}
 	return err
@@ -322,99 +297,3 @@ func copyDirAndRemove(src, dst string) error {
 	return os.Remove(src)
 }
 
-// --- Search ---
-
-// SearchHistory searches history.jsonl display fields by regex across accounts.
-func SearchHistory(configDirs []string, pattern string) ([]SearchResult, error) {
-	re, err := regexp.Compile("(?i)" + pattern)
-	if err != nil {
-		return nil, fmt.Errorf("invalid regex: %w", err)
-	}
-
-	type sessionKey struct {
-		sessionID string
-		configDir string
-	}
-
-	type agg struct {
-		project    string
-		matchCount int
-		sample     string
-	}
-
-	results := make(map[sessionKey]*agg)
-
-	for _, dir := range configDirs {
-		entries, err := ReadRawHistory(dir)
-		if err != nil {
-			continue
-		}
-
-		for _, e := range entries {
-			if e.Parsed.Display == "" {
-				continue
-			}
-			if !re.MatchString(e.Parsed.Display) {
-				continue
-			}
-
-			key := sessionKey{sessionID: e.Parsed.SessionID, configDir: dir}
-			a, ok := results[key]
-			if !ok {
-				a = &agg{
-					project: filepath.Base(e.Parsed.Project),
-					sample:  e.Parsed.Display,
-				}
-				results[key] = a
-			}
-			a.matchCount++
-		}
-	}
-
-	out := make([]SearchResult, 0, len(results))
-	for key, a := range results {
-		out = append(out, SearchResult{
-			SessionID:  key.sessionID,
-			Project:    a.project,
-			ConfigDir:  key.configDir,
-			MatchCount: a.matchCount,
-			Sample:     a.sample,
-		})
-	}
-
-	sort.Slice(out, func(i, j int) bool {
-		return out[i].MatchCount > out[j].MatchCount
-	})
-
-	return out, nil
-}
-
-// UpdateProjectInHistory updates the project field for a session's history entries.
-func UpdateProjectInHistory(configDir, sessionID, newProject string) error {
-	entries, err := ReadRawHistory(configDir)
-	if err != nil {
-		return err
-	}
-
-	var modified []RawHistoryEntry
-	for _, e := range entries {
-		if e.Parsed.SessionID == sessionID {
-			var m map[string]any
-			if err := json.Unmarshal(e.Raw, &m); err != nil {
-				modified = append(modified, e)
-				continue
-			}
-			m["project"] = newProject
-			raw, err := json.Marshal(m)
-			if err != nil {
-				modified = append(modified, e)
-				continue
-			}
-			e.Raw = raw
-			e.Parsed.Project = newProject
-		}
-		modified = append(modified, e)
-	}
-
-	return WriteRawHistory(configDir, modified)
-}

@@ -142,6 +142,10 @@ func fetchUsage(token string) (*apiResponse, error) {
 	}
 	defer resp.Body.Close()
 
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("API returned HTTP %d", resp.StatusCode)
+	}
+
 	var result apiResponse
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err

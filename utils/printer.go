@@ -18,7 +18,7 @@ var (
 
 func PrintInfo(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[INFO] " + msg)
 	} else {
@@ -28,7 +28,7 @@ func PrintInfo(msg string) {
 
 func PrintSuccess(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[OK] " + msg)
 	} else {
@@ -39,9 +39,9 @@ func PrintSuccess(msg string) {
 func PrintError(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", "utils").Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", "utils").Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
@@ -53,9 +53,9 @@ func PrintError(msg string, err error) {
 func PrintFatal(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", "utils").Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", "utils").Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
@@ -68,9 +68,9 @@ func PrintFatal(msg string, err error) {
 func PrintWarn(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Warn().Str("package", "utils").Err(err).Msg(msg)
+			log.Warn().Err(err).Msg(msg)
 		} else {
-			log.Warn().Str("package", "utils").Msg(msg)
+			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[WARN] " + msg)
@@ -81,7 +81,7 @@ func PrintWarn(msg string, err error) {
 
 func PrintRunning(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[RUNNING] " + msg)
 	} else {
@@ -91,7 +91,7 @@ func PrintRunning(msg string) {
 
 func PrintIndentedSuccess(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[OK] " + msg)
 	} else {
@@ -102,9 +102,9 @@ func PrintIndentedSuccess(msg string) {
 func PrintIndentedError(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Error().Str("package", "utils").Err(err).Msg(msg)
+			log.Error().Err(err).Msg(msg)
 		} else {
-			log.Error().Str("package", "utils").Msg(msg)
+			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[ERROR] " + msg)
@@ -116,9 +116,9 @@ func PrintIndentedError(msg string, err error) {
 func PrintIndentedWarn(msg string, err error) {
 	if GlobalDebugFlag {
 		if err != nil {
-			log.Warn().Str("package", "utils").Err(err).Msg(msg)
+			log.Warn().Err(err).Msg(msg)
 		} else {
-			log.Warn().Str("package", "utils").Msg(msg)
+			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
 		fmt.Println("[WARN] " + msg)
@@ -129,7 +129,7 @@ func PrintIndentedWarn(msg string, err error) {
 
 func PrintIndentedRunning(msg string) {
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Msg(msg)
+		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
 		fmt.Println("[RUNNING] " + msg)
 	} else {
@@ -143,7 +143,7 @@ func PrintProgress(label string, percent int) {
 	}
 
 	if GlobalDebugFlag {
-		log.Info().Str("package", "utils").Int("percent", percent).Msg(label)
+		log.Info().Int("percent", percent).Msg(label)
 		return
 	}
 
@@ -175,8 +175,4 @@ func ClearPreviousLine() {
 
 func PrintGeneric(msg string) {
 	fmt.Println(msg)
-}
-
-func PrintPrompt(msg string) {
-	fmt.Print(msg)
 }

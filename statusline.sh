@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Catppuccin Mocha palette (256-color)
 ROSEWATER='\033[38;5;217m'
 PINK='\033[38;5;175m'
 SKY='\033[38;5;117m'
@@ -16,7 +15,6 @@ NC='\033[0m'
 FIRE="🔥"
 WARN="⚠️"
 
-# Determine account label from this script's parent directory name
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CONFIG_DIR_NAME="$(basename "$SCRIPT_DIR")"
 if [[ "$CONFIG_DIR_NAME" == ".claude" ]]; then
@@ -25,31 +23,42 @@ else
     ACCT_LABEL="${CONFIG_DIR_NAME##.claude}"
 fi
 
-# Read JSON input from stdin (Claude Code pipes session data here)
 input=$(cat)
 
-# Extract values from Claude Code's JSON
 cwd=$(echo "$input" | jq -r '.workspace.current_dir')
 model_id=$(echo "$input" | jq -r '.model.id')
 max_tokens=$(echo "$input" | jq -r '.context_window.context_window_size // empty')
 session_used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 
-# Replace home path with ~
 cwd="${cwd/#$HOME/~}"
 
-# Shorten directory if too long
 if [[ ${#cwd} -gt 40 ]]; then
     cwd="...${cwd: -37}"
 fi
 
-# Convert model ID to shorthand
 model_short=""
 case "$model_id" in
+  *"claude-opus-4-8"*|*"claude-opus-4-7"*|*"claude-opus-4-6"*)
+    suffix="${model_id##*claude-opus-}"
+    if [ "$max_tokens" = "1000000" ]; then
+      model_short="opus-${suffix}[1m]"
+    else
+      model_short="opus-${suffix}"
+    fi
+    ;;
   *"claude-opus-4"*)
     if [ "$max_tokens" = "1000000" ]; then
       model_short="opus[1m]"
     else
       model_short="opus"
+    fi
+    ;;
+  *"claude-sonnet-4-6"*|*"claude-sonnet-4-5"*)
+    suffix="${model_id##*claude-sonnet-}"
+    if [ "$max_tokens" = "1000000" ]; then
+      model_short="sonnet-${suffix}[1m]"
+    else
+      model_short="sonnet-${suffix}"
     fi
     ;;
   *"claude-sonnet-4"*)
@@ -58,6 +67,12 @@ case "$model_id" in
     else
       model_short="sonnet"
     fi
+    ;;
+  *"claude-haiku-4"*)
+    model_short="haiku"
+    ;;
+  *"claude-fable-5"*)
+    model_short="fable"
     ;;
   *"claude-3-7-sonnet"*|*"claude-3-5-sonnet"*)
     model_short="sonnet"
@@ -73,15 +88,14 @@ case "$model_id" in
     ;;
 esac
 
-# Colorize percentage using Catppuccin green/yellow/red
 colorize_pct() {
     local val="$1"
     local show_emoji="${2:-false}"
 
-    if (( $(echo "$val >= 90" | bc -l) )); then
+    if (( val >= 90 )); then
         [[ "$show_emoji" == "true" ]] && echo -ne "${FIRE} "
         echo -ne "${RED}${val}%${NC}"
-    elif (( $(echo "$val >= 70" | bc -l) )); then
+    elif (( val >= 70 )); then
         [[ "$show_emoji" == "true" ]] && echo -ne "${WARN} "
         echo -ne "${YELLOW}${val}%${NC}"
     else
@@ -89,16 +103,16 @@ colorize_pct() {
     fi
 }
 
-# Convert epoch timestamp to local time (e.g., "2pm")
 epoch_to_time() {
     local epoch="$1"
     [[ -z "$epoch" ]] || [[ "$epoch" == "null" ]] || [[ "$epoch" == "0" ]] && return
-    local rounded=$(( epoch + 3599 ))
-    local formatted=$(date -j -f %s "$rounded" "+%-I%p" 2>/dev/null)
-    echo "$formatted" | sed 's/AM/am/' | sed 's/PM/pm/'
+    if [[ "$(uname)" == "Darwin" ]]; then
+        date -j -f %s "$epoch" "+%-I:%M%p" 2>/dev/null | tr '[:upper:]' '[:lower:]'
+    else
+        date -d "@$epoch" "+%-I:%M%p" 2>/dev/null | tr '[:upper:]' '[:lower:]'
+    fi
 }
 
-# Read rate_limits directly from the stdin JSON — this is the current account's usage
 five_h=""
 seven_d=""
 reset_time=""
@@ -117,7 +131,6 @@ if [[ -n "$five_h_reset" ]]; then
     reset_time=$(epoch_to_time "$five_h_reset")
 fi
 
-# Get git branch
 original_cwd=$(echo "$input" | jq -r '.workspace.current_dir')
 git_branch=""
 if git -C "$original_cwd" rev-parse --git-dir > /dev/null 2>&1; then
@@ -126,7 +139,6 @@ fi
 
 DOT=" ${SURFACE}·${NC} "
 
-# Build status line: account · model · directory · branch · usage
 out="${ROSEWATER}${BOLD}${ACCT_LABEL}${NC}"
 out+="${DOT}${SKY}${BOLD}${model_short}${NC}"
 out+="${DOT}${TEXT}${cwd}${NC}"
@@ -151,5 +163,4 @@ if [[ -n "$seven_d" ]]; then
     out+="${DOT}7d $(colorize_pct "$seven_d" "false")"
 fi
 
-# Output
 echo -e "$out"
