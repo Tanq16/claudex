@@ -67,4 +67,5 @@ func init() {
 	rootCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(statuslineCmd)
+	rootCmd.AddCommand(applySkillsCmd)
 }

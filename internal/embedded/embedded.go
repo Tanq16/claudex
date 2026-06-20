@@ -1,6 +1,9 @@
 package embedded
 
-import _ "embed"
+import "embed"
 
 //go:embed statusline.sh
 var StatuslineScript []byte
+
+//go:embed all:skills
+var SkillsFS embed.FS

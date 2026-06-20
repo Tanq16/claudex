@@ -1,0 +1,437 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI-docs</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/go.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/dockerfile.min.js"></script>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<style>
+  :root {
+    --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+    --text:#cdd6f4; --subtext1:#bac2de; --subtext0:#a6adc8;
+    --surface0:#313244; --surface1:#45475a; --surface2:#585b70;
+    --overlay0:#6c7086; --overlay1:#7f849c; --overlay2:#9399b2;
+    --mauve:#cba6f7; --pink:#f5c2e7; --red:#f38ba8;
+    --peach:#fab387; --yellow:#f9e2af; --green:#a6e3a1;
+    --teal:#94e2d5; --sky:#89dceb; --blue:#89b4fa; --lavender:#b4befe;
+
+    --hair: color-mix(in srgb, var(--surface0) 45%, transparent);
+  }
+  html, body { background: var(--base); color: var(--text); height: 100%; }
+  body { font-family: "Inter", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono, code, pre, kbd, samp { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-feature-settings: "calt" 0, "liga" 0; font-variant-ligatures: none; letter-spacing: 0; }
+
+  /* minimal scrollbar */
+  * { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--surface1) 60%, transparent) transparent; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--surface1) 55%, transparent); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--surface2); }
+  ::-webkit-scrollbar-corner { background: transparent; }
+
+  /* sidebar */
+  aside.sidebar { background: var(--mantle); }
+  .nav-folder { margin-top: 0.1rem; }
+  .nav-folder + .nav-folder { margin-top: 0.4rem; }
+  .nav-section { display: flex; align-items: center; gap: 0.35rem; width: 100%; text-align: left; background: transparent; border: 0; cursor: pointer; color: var(--overlay1); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.55rem 0.85rem 0.35rem 0.7rem; font-weight: 500; font-family: inherit; }
+  .nav-section:hover { color: var(--subtext0); }
+  .nav-section .chev { width: 0.5rem; height: 0.5rem; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 120ms ease; flex-shrink: 0; opacity: 0.7; }
+  .nav-folder.open > .nav-section .chev { transform: rotate(45deg); }
+  .nav-children { display: none; padding-bottom: 0.25rem; }
+  .nav-folder.open > .nav-children { display: block; }
+  .nav-item { display: flex; align-items: center; gap: 0.55rem; width: 100%; text-align: left; padding: 0.35rem 0.85rem; border-radius: 6px; font-size: 0.82rem; color: var(--subtext0); transition: background 80ms ease, color 80ms ease; cursor: pointer; }
+  .nav-item:hover { background: color-mix(in srgb, var(--surface0) 60%, transparent); color: var(--text); }
+  .nav-item.active { background: var(--surface0); color: var(--lavender); }
+  .nav-item .dot { width: 3px; height: 3px; border-radius: 50%; background: currentColor; opacity: 0.55; flex-shrink: 0; }
+
+  /* top bar */
+  .top-bar { background: color-mix(in srgb, var(--base) 80%, transparent); backdrop-filter: blur(10px); }
+
+  /* prose */
+  .prose { color: var(--text); max-width: 120ch; font-size: 0.95rem; line-height: 1.7; }
+  .prose > * + * { margin-top: 0.85rem; }
+  .prose h1 { font-size: 1.95rem; font-weight: 600; color: var(--lavender); letter-spacing: -0.02em; margin: 0 0 0.5rem; line-height: 1.2; }
+  .prose h2 { font-size: 1.35rem; font-weight: 600; color: var(--mauve); margin: 2.5rem 0 0.6rem; letter-spacing: -0.01em; line-height: 1.3; scroll-margin-top: 4rem; }
+  .prose h3 { font-size: 1.06rem; font-weight: 600; color: var(--pink); margin: 1.75rem 0 0.4rem; scroll-margin-top: 4rem; }
+  .prose h4 { font-size: 0.95rem; font-weight: 600; color: var(--peach); margin: 1.25rem 0 0.3rem; }
+  .prose h5, .prose h6 { font-size: 0.78rem; font-weight: 600; color: var(--yellow); margin: 1rem 0 0.3rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .prose p { margin: 0.6rem 0; color: var(--text); }
+  .prose strong { color: var(--peach); font-weight: 600; }
+  .prose em { color: var(--yellow); font-style: italic; }
+  .prose a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; text-decoration-color: color-mix(in srgb, var(--blue) 30%, transparent); }
+  .prose a:hover { text-decoration-color: var(--blue); }
+  .prose ul, .prose ol { margin: 0.5rem 0; padding-left: 1.4rem; }
+  .prose ul { list-style: none; }
+  .prose ul > li { position: relative; padding-left: 0.2rem; margin: 0.25rem 0; }
+  .prose ul > li::before { content: ""; position: absolute; left: -0.85rem; top: 0.75rem; width: 3px; height: 3px; border-radius: 50%; background: var(--overlay0); }
+  .prose ol { list-style: decimal; }
+  .prose ol > li::marker { color: var(--overlay0); font-variant-numeric: tabular-nums; }
+  .prose ol > li { margin: 0.25rem 0; }
+  .prose li > ul, .prose li > ol { margin: 0.3rem 0; }
+  .prose code { background: var(--mantle); color: var(--green); padding: 0.08rem 0.4rem; border-radius: 4px; font-size: 0.84em; }
+  .prose pre { background: var(--mantle); border-radius: 8px; padding: 0.85rem 1.05rem; overflow-x: auto; margin: 1rem 0; }
+  .prose pre code { background: transparent; color: var(--text); padding: 0; font-size: 0.8rem; line-height: 1; letter-spacing: 0; font-feature-settings: "calt" 0, "liga" 0; font-variant-ligatures: none; display: block; }
+  .prose blockquote { background: var(--mantle); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; color: var(--subtext1); }
+  .prose blockquote p { margin: 0.25rem 0; }
+  .prose hr { border: none; height: 1px; background: var(--hair); margin: 2.25rem 0; }
+  .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.88rem; background: var(--mantle); border-radius: 8px; overflow: hidden; }
+  .prose th { text-align: left; padding: 0.55rem 0.85rem; background: color-mix(in srgb, var(--surface0) 60%, var(--mantle)); color: var(--lavender); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
+  .prose td { padding: 0.55rem 0.85rem; vertical-align: top; }
+  .prose tbody tr + tr td { border-top: 1px solid var(--hair); }
+  .prose img { max-width: 100%; border-radius: 8px; }
+
+  /* highlight.js — catppuccin mocha tokens */
+  .hljs { background: transparent; color: var(--text); }
+  .hljs-keyword, .hljs-meta, .hljs-built_in { color: var(--mauve); }
+  .hljs-string, .hljs-attr, .hljs-attribute { color: var(--green); }
+  .hljs-number, .hljs-literal { color: var(--peach); }
+  .hljs-comment, .hljs-quote { color: var(--overlay1); font-style: italic; }
+  .hljs-title, .hljs-function, .hljs-section, .hljs-name { color: var(--blue); }
+  .hljs-variable, .hljs-template-variable { color: var(--red); }
+  .hljs-type, .hljs-class { color: var(--yellow); }
+  .hljs-tag { color: var(--lavender); }
+  .hljs-symbol, .hljs-bullet, .hljs-link { color: var(--teal); }
+  .hljs-emphasis { font-style: italic; }
+  .hljs-strong { font-weight: 600; }
+
+  /* ───── components ───── */
+  /* eyebrow + lede header */
+  .doc-header { margin-bottom: 0.5rem; }
+  .doc-header .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--overlay1); margin-bottom: 0.5rem; }
+  .doc-header h1 { margin: 0; }
+  .doc-header .lede { font-size: 1.05rem; color: var(--subtext1); margin-top: 0.6rem; line-height: 1.6; max-width: 90ch; }
+
+  /* tldr */
+  .tldr { background: var(--mantle); border-radius: 10px; padding: 0.9rem 1.15rem; margin: 1.5rem 0; }
+  .tldr .label { font-family: "JetBrains Mono", monospace; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.12em; color: var(--lavender); margin-bottom: 0.45rem; font-weight: 600; }
+  .tldr ul, .tldr ol { margin: 0; padding-left: 1.2rem; }
+  .tldr li { margin: 0.2rem 0; font-size: 0.9rem; color: var(--subtext1); }
+  .tldr li::before { top: 0.65rem; }
+
+  /* facts grid */
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.6rem; margin: 1.5rem 0; }
+  .fact { background: var(--mantle); border-radius: 8px; padding: 0.85rem 1rem; }
+  .fact .n { font-family: "JetBrains Mono", monospace; font-size: 1.45rem; font-weight: 600; color: var(--peach); letter-spacing: -0.02em; line-height: 1.1; }
+  .fact .l { font-size: 0.76rem; color: var(--subtext0); margin-top: 0.25rem; line-height: 1.4; }
+
+  /* code with caption */
+  figure.code { margin: 1.1rem 0; }
+  figure.code figcaption { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--overlay1); padding: 0 0.4rem 0.35rem; display: flex; align-items: center; gap: 0.4rem; }
+  figure.code figcaption .lang { color: var(--mauve); font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.1em; }
+  figure.code pre { margin: 0; }
+
+  /* expandable details */
+  details.expand { background: var(--mantle); border-radius: 8px; padding: 0.45rem 0.95rem; margin: 1rem 0; }
+  details.expand > summary { font-weight: 600; font-size: 0.86rem; color: var(--lavender); cursor: pointer; list-style: none; padding: 0.3rem 0; display: flex; align-items: center; gap: 0.5rem; user-select: none; }
+  details.expand > summary::-webkit-details-marker { display: none; }
+  details.expand > summary::marker { display: none; }
+  details.expand > summary::before { content: ""; width: 0.55rem; height: 0.55rem; border-right: 1.5px solid var(--overlay1); border-bottom: 1.5px solid var(--overlay1); transform: rotate(-45deg); transition: transform 120ms ease; display: inline-block; }
+  details.expand[open] > summary::before { transform: rotate(45deg); }
+  details.expand[open] > summary { margin-bottom: 0.4rem; color: var(--mauve); }
+  details.expand > *:not(summary) { font-size: 0.9rem; color: var(--subtext1); }
+  details.expand > *:not(summary):first-of-type { margin-top: 0.2rem; }
+  details.expand > *:last-child { margin-bottom: 0.3rem; }
+
+  /* note (no left border bar) */
+  .note { background: var(--mantle); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: var(--subtext1); display: flex; gap: 0.55rem; align-items: flex-start; }
+  .note .note-icon { color: var(--overlay1); flex-shrink: 0; margin-top: 0.15rem; }
+  .note p { margin: 0.15rem 0; }
+  .note-mauve .note-icon { color: var(--mauve); }
+  .note-yellow .note-icon { color: var(--yellow); }
+  .note-red .note-icon { color: var(--red); }
+  .note-green .note-icon { color: var(--green); }
+
+  /* steps — one continuous surface */
+  ol.steps { list-style: none; padding: 0.35rem 0.5rem; margin: 1.25rem 0; counter-reset: step; display: flex; flex-direction: column; background: var(--mantle); border-radius: 10px; }
+  ol.steps > li { position: relative; padding: 0.6rem 0.85rem 0.6rem 2.65rem; counter-increment: step; font-size: 0.9rem; line-height: 1.6; }
+  ol.steps > li + li { border-top: 1px solid color-mix(in srgb, var(--surface0) 35%, transparent); }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 0.6rem; top: 0.7rem; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--surface0); color: var(--lavender); display: flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-size: 0.74rem; font-weight: 600; }
+  ol.steps > li::after { display: none; }
+  ol.steps > li strong { color: var(--text); }
+
+  /* multi-column */
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
+  @media (max-width: 900px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
+  .col { background: var(--mantle); border-radius: 8px; padding: 0.85rem 1rem; }
+  .col h4 { margin-top: 0; }
+
+  /* chips */
+  .chip { display: inline-flex; align-items: center; padding: 0.08rem 0.45rem; border-radius: 4px; font-size: 0.7rem; font-weight: 500; font-family: "JetBrains Mono", monospace; background: var(--mantle); color: var(--text); letter-spacing: 0.02em; }
+  .chip-green { color: var(--green); }
+  .chip-red { color: var(--red); }
+  .chip-yellow { color: var(--yellow); }
+  .chip-peach { color: var(--peach); }
+  .chip-blue { color: var(--blue); }
+  .chip-mauve { color: var(--mauve); }
+  .chip-overlay { color: var(--overlay1); }
+
+  /* inline path */
+  code.path { background: transparent; color: var(--blue); font-size: 0.85em; padding: 0; }
+  code.kbd { background: var(--surface0); color: var(--text); font-size: 0.8em; padding: 0.06rem 0.4rem; }
+
+  /* diagram (hand-authored SVG, boxes & arrows) — framed, centered, bounded */
+  figure.diagram { background: var(--mantle); border-radius: 10px; padding: 1.1rem 1.2rem; margin: 1.5rem 0; overflow-x: auto; }
+  figure.diagram svg { display: block; width: 100%; height: auto; max-width: 860px; margin: 0 auto; }
+  figure.diagram figcaption { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--overlay1); text-align: center; margin-top: 0.65rem; }
+
+  /* small popover menu */
+  .menu { background: var(--mantle); border-radius: 8px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6); padding: 0.25rem; }
+  .menu-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.7rem; font-size: 0.8rem; color: var(--text); cursor: pointer; width: 100%; text-align: left; border-radius: 5px; }
+  .menu-item:hover { background: var(--surface0); color: var(--lavender); }
+
+  /* right rail toc */
+  .toc { position: sticky; top: 4.5rem; align-self: start; font-size: 0.78rem; padding: 0.5rem 0 0; max-height: calc(100vh - 6rem); overflow-y: auto; }
+  .toc-title { font-family: "JetBrains Mono", monospace; font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.14em; color: var(--overlay0); margin-bottom: 0.55rem; padding-left: 0.7rem; }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li { margin: 0; }
+  .toc a { display: block; padding: 0.2rem 0.7rem; color: var(--subtext0); text-decoration: none; border-radius: 4px; line-height: 1.5; }
+  .toc a:hover { color: var(--text); background: color-mix(in srgb, var(--surface0) 50%, transparent); }
+  .toc a.active { color: var(--lavender); background: var(--surface0); }
+  .toc .toc-h3 a { padding-left: 1.6rem; font-size: 0.74rem; color: var(--overlay1); }
+  .toc .toc-h3 a:hover, .toc .toc-h3 a.active { color: var(--subtext1); }
+  @media (max-width: 1320px) { .toc { display: none; } }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+<aside class="sidebar no-print w-80 shrink-0 flex flex-col">
+  <div class="px-4 py-4">
+    <div class="text-sm font-semibold" style="color: var(--lavender); letter-spacing: -0.005em;">AI-docs</div>
+    <div class="mono text-[10.5px] mt-1" style="color: var(--overlay0);">agent working docs</div>
+  </div>
+  <nav id="tree" class="flex-1 overflow-y-auto py-1 pr-1.5 pl-1.5"></nav>
+</aside>
+
+<main class="flex-1 overflow-y-auto relative">
+  <div class="top-bar no-print sticky top-0 z-20 flex items-center justify-between px-7 py-3">
+    <div id="breadcrumb" class="mono text-[11px]" style="color: var(--overlay0);"></div>
+    <div class="relative">
+      <button id="export-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium" style="background: var(--surface0); color: var(--text);">
+        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+        <span>PDF</span>
+      </button>
+    </div>
+  </div>
+  <div class="content-wrap">
+    <article id="content" class="prose"></article>
+    <aside id="toc" class="toc no-print"></aside>
+  </div>
+</main>
+
+<style>
+  .content-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 2.5rem; max-width: 1380px; margin: 0 auto; padding: 2rem 2.25rem 6rem; }
+  @media (max-width: 1320px) { .content-wrap { grid-template-columns: minmax(0, 1fr); padding: 2rem 2.5rem 6rem; max-width: calc(120ch + 4.5rem); } }
+</style>
+
+<script>
+  const treeEl = document.getElementById('tree');
+  const contentEl = document.getElementById('content');
+  const breadcrumb = document.getElementById('breadcrumb');
+  const exportBtn = document.getElementById('export-btn');
+  const tocEl = document.getElementById('toc');
+
+  let currentDoc = null;
+  let tocObserver = null;
+
+  marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
+
+  function rebuildIcons() { try { lucide.createIcons(); } catch {} }
+
+  function slugify(s) {
+    return String(s).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 80);
+  }
+
+  const COLLAPSE_KEY = 'docs-collapsed-v1';
+  const getCollapsed = () => { try { return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]')); } catch { return new Set(); } };
+  const saveCollapsed = (s) => { try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...s])); } catch {} };
+  const collapsed = getCollapsed();
+
+  const INDENT_STEP = 0.75;
+  const BASE_PAD = 0.7;
+
+  function renderTree(items, parent, depth = 0) {
+    for (const item of items) {
+      const indent = `${BASE_PAD + depth * INDENT_STEP}rem`;
+      if (item.kind === 'dir') {
+        const wrap = document.createElement('div');
+        wrap.className = 'nav-folder';
+        wrap.dataset.folder = item.path;
+        if (!collapsed.has(item.path)) wrap.classList.add('open');
+
+        const sec = document.createElement('button');
+        sec.type = 'button';
+        sec.className = 'nav-section';
+        sec.style.paddingLeft = indent;
+        const chev = document.createElement('span');
+        chev.className = 'chev';
+        const name = document.createElement('span');
+        name.textContent = item.name;
+        sec.appendChild(chev);
+        sec.appendChild(name);
+        sec.addEventListener('click', () => {
+          const nowOpen = wrap.classList.toggle('open');
+          if (nowOpen) collapsed.delete(item.path); else collapsed.add(item.path);
+          saveCollapsed(collapsed);
+        });
+
+        const inner = document.createElement('div');
+        inner.className = 'nav-children';
+
+        wrap.appendChild(sec);
+        wrap.appendChild(inner);
+        parent.appendChild(wrap);
+
+        renderTree(item.children, inner, depth + 1);
+      } else {
+        const b = document.createElement('button');
+        b.className = 'nav-item';
+        b.dataset.path = item.path;
+        b.dataset.type = item.type;
+        b.style.paddingLeft = indent;
+        const dot = document.createElement('span');
+        dot.className = 'dot';
+        const text = document.createElement('span');
+        text.textContent = item.name;
+        text.style.overflow = 'hidden';
+        text.style.textOverflow = 'ellipsis';
+        text.style.whiteSpace = 'nowrap';
+        b.appendChild(dot);
+        b.appendChild(text);
+        b.addEventListener('click', () => loadDoc(item.path, item.type));
+        parent.appendChild(b);
+      }
+    }
+  }
+
+  function revealInTree(path) {
+    const item = treeEl.querySelector(`[data-path="${CSS.escape(path)}"]`);
+    if (!item) return null;
+    let p = item.parentElement;
+    while (p && p !== treeEl) {
+      if (p.classList.contains('nav-folder')) {
+        if (!p.classList.contains('open')) {
+          p.classList.add('open');
+          collapsed.delete(p.dataset.folder);
+        }
+      }
+      p = p.parentElement;
+    }
+    saveCollapsed(collapsed);
+    return item;
+  }
+
+  async function loadDocs() {
+    const res = await fetch('/api/docs');
+    const items = await res.json();
+    treeEl.innerHTML = '';
+    renderTree(items, treeEl);
+    rebuildIcons();
+
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const target = hash ? revealInTree(hash) : null;
+    (target || treeEl.querySelector('.nav-item'))?.click();
+  }
+
+  function highlightCode() {
+    contentEl.querySelectorAll('pre code').forEach(el => {
+      try { hljs.highlightElement(el); } catch {}
+    });
+  }
+
+  function buildToc() {
+    if (tocObserver) { tocObserver.disconnect(); tocObserver = null; }
+    const headings = [...contentEl.querySelectorAll('h2, h3')];
+    if (headings.length < 3) { tocEl.innerHTML = ''; return; }
+
+    const seen = new Set();
+    for (const h of headings) {
+      let id = h.id || slugify(h.textContent);
+      let n = 1;
+      while (seen.has(id)) id = `${id}-${++n}`;
+      seen.add(id);
+      h.id = id;
+    }
+
+    let html = '<div class="toc-title">On this page</div><ul>';
+    for (const h of headings) {
+      html += `<li class="toc-${h.tagName.toLowerCase()}"><a href="#${h.id}">${h.textContent}</a></li>`;
+    }
+    html += '</ul>';
+    tocEl.innerHTML = html;
+
+    tocObserver = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          tocEl.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+          tocEl.querySelector(`a[href="#${e.target.id}"]`)?.classList.add('active');
+        }
+      });
+    }, { rootMargin: '-25% 0px -65% 0px' });
+    headings.forEach(h => tocObserver.observe(h));
+  }
+
+  async function loadDoc(path, type) {
+    currentDoc = { path, type };
+    location.hash = encodeURIComponent(path);
+    document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.path === path));
+    breadcrumb.textContent = path;
+    const res = await fetch('/api/doc/' + encodeURI(path));
+    const text = await res.text();
+    if (type === 'markdown') {
+      contentEl.innerHTML = marked.parse(text);
+    } else {
+      contentEl.innerHTML = text;
+    }
+    highlightCode();
+    buildToc();
+    rebuildIcons();
+    document.querySelector('main').scrollTo({ top: 0, behavior: 'instant' });
+  }
+
+  exportBtn.addEventListener('click', () => {
+    if (!currentDoc) return;
+    const url = '/api/pdf?path=' + encodeURIComponent(currentDoc.path);
+    window.open(url, '_blank');
+  });
+
+  window.addEventListener('hashchange', () => {
+    const hash = decodeURIComponent(location.hash.slice(1));
+    const item = revealInTree(hash);
+    if (item && !item.classList.contains('active')) item.click();
+  });
+
+  loadDocs();
+
+  // Live reload: re-read the tree and re-render the current doc when files change on disk,
+  // preserving scroll position. EventSource auto-reconnects if the server restarts.
+  let liveReloadTimer = null;
+  function liveReload() {
+    clearTimeout(liveReloadTimer);
+    liveReloadTimer = setTimeout(async () => {
+      const main = document.querySelector('main');
+      const y = main ? main.scrollTop : 0;
+      await loadDocs();
+      if (main) main.scrollTo({ top: y, behavior: 'instant' });
+    }, 120);
+  }
+  try {
+    const es = new EventSource('/api/events');
+    es.addEventListener('change', liveReload);
+  } catch {}
+</script>
+</body>
+</html>

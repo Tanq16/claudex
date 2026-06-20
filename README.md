@@ -8,7 +8,7 @@
 
 ---
 
-A multi-account companion for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, and install the statusline. Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
+A multi-account companion for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, install the statusline, and apply a bundled skill set to projects. Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
 
 ## Capabilities
 
@@ -20,6 +20,7 @@ A multi-account companion for Claude Code: monitor usage across accounts, browse
 | | `switch` | Move a conversation from one account to another |
 | Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
 | Statusline | `statusline` | Install the claudex statusline into an account's Claude Code config |
+| Skills | `apply-skills` | Install the embedded development skill set into the current project |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -141,6 +142,18 @@ claudex statusline -A ~/.claude2 --label prod
 **Flags:**
 - `-A, --account` - Account config directory to install into (default: `~/.claude`)
 - `-l, --label` - Override the account label shown in the statusline (default: derived from directory name)
+
+### `apply-skills`
+
+Install claudex's embedded skill set into the current project, under `.claude/skills/` (or `.agents/skills/` with `--agentsio`). Matching is by skill name: each embedded skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match an embedded name is left untouched. Run it from the project root.
+
+```bash
+claudex apply-skills
+claudex apply-skills --agentsio
+```
+
+**Flags:**
+- `--agentsio` - Install into `.agents/skills` instead of `.claude/skills` (default: `.claude/skills`)
 
 ### `oauth-token`
 

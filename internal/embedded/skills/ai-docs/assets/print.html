@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/go.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/yaml.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/dockerfile.min.js"></script>
+<style>
+  :root {
+    --base:#1e1e2e; --mantle:#181825; --crust:#11111b;
+    --text:#cdd6f4; --subtext1:#bac2de; --subtext0:#a6adc8;
+    --surface0:#313244; --surface1:#45475a; --surface2:#585b70;
+    --overlay0:#6c7086; --overlay1:#7f849c; --overlay2:#9399b2;
+    --mauve:#cba6f7; --pink:#f5c2e7; --red:#f38ba8;
+    --peach:#fab387; --yellow:#f9e2af; --green:#a6e3a1;
+    --teal:#94e2d5; --sky:#89dceb; --blue:#89b4fa; --lavender:#b4befe;
+    --hair: color-mix(in srgb, var(--surface0) 45%, transparent);
+  }
+
+  @page {
+    size: A4;
+    margin: 16mm 14mm 18mm;
+    background: #1e1e2e;
+  }
+
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  html, body { background: var(--base); color: var(--text); margin: 0; padding: 0; }
+  body { font-family: "Inter", ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif; font-size: 10.5pt; line-height: 1.55; padding: 4mm 0; }
+  code, pre, kbd, samp { font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-feature-settings: "calt" 0, "liga" 0; font-variant-ligatures: none; letter-spacing: 0; }
+
+  .prose { color: var(--text); max-width: 100%; }
+  .prose > * + * { margin-top: 0.6rem; }
+  .prose h1 { font-size: 22pt; font-weight: 600; color: var(--lavender); letter-spacing: -0.02em; margin: 0 0 0.4rem; line-height: 1.2; page-break-after: avoid; }
+  .prose h2 { font-size: 14.5pt; font-weight: 600; color: var(--mauve); margin: 1.4rem 0 0.4rem; letter-spacing: -0.01em; page-break-after: avoid; }
+  .prose h3 { font-size: 11.5pt; font-weight: 600; color: var(--pink); margin: 1rem 0 0.3rem; page-break-after: avoid; }
+  .prose h4 { font-size: 10.5pt; font-weight: 600; color: var(--peach); margin: 0.8rem 0 0.25rem; page-break-after: avoid; }
+  .prose h5, .prose h6 { font-size: 9pt; font-weight: 600; color: var(--yellow); margin: 0.7rem 0 0.25rem; text-transform: uppercase; letter-spacing: 0.08em; }
+  .prose p { margin: 0.45rem 0; }
+  .prose strong { color: var(--peach); font-weight: 600; }
+  .prose em { color: var(--yellow); font-style: italic; }
+  .prose a { color: var(--blue); text-decoration: none; }
+  .prose ul, .prose ol { margin: 0.35rem 0; padding-left: 1.3rem; }
+  .prose ul { list-style: none; }
+  .prose ul > li { position: relative; margin: 0.18rem 0; }
+  .prose ul > li::before { content: ""; position: absolute; left: -0.85rem; top: 0.55rem; width: 3px; height: 3px; border-radius: 50%; background: var(--overlay0); }
+  .prose ol > li::marker { color: var(--overlay0); }
+  .prose ol > li { margin: 0.18rem 0; }
+  .prose code { background: var(--mantle); color: var(--green); padding: 0.05rem 0.32rem; border-radius: 3px; font-size: 0.86em; font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace; }
+  .prose pre { background: var(--mantle); border-radius: 7px; padding: 0.7rem 0.9rem; overflow: visible; margin: 0.7rem 0; page-break-inside: avoid; }
+  .prose pre code { background: transparent; color: var(--text); padding: 0; font-size: 8.5pt; line-height: 1; letter-spacing: 0; white-space: pre-wrap; word-break: break-word; overflow-wrap: anywhere; font-family: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace; font-feature-settings: "calt" 0, "liga" 0; display: block; }
+  .prose blockquote { background: var(--mantle); border-radius: 7px; padding: 0.55rem 0.85rem; margin: 0.7rem 0; color: var(--subtext1); page-break-inside: avoid; }
+  .prose blockquote p { margin: 0.2rem 0; }
+  .prose hr { border: none; height: 1px; background: var(--hair); margin: 1.4rem 0; }
+  .prose table { width: 100%; border-collapse: collapse; margin: 0.7rem 0; font-size: 8.5pt; background: var(--mantle); border-radius: 7px; overflow: hidden; page-break-inside: avoid; }
+  .prose th { text-align: left; padding: 0.4rem 0.65rem; background: color-mix(in srgb, var(--surface0) 60%, var(--mantle)); color: var(--lavender); font-weight: 600; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.05em; }
+  .prose td { padding: 0.4rem 0.65rem; vertical-align: top; }
+  .prose tbody tr + tr td { border-top: 1px solid var(--hair); }
+
+  .hljs { background: transparent; color: var(--text); }
+  .hljs-keyword, .hljs-meta, .hljs-built_in { color: var(--mauve); }
+  .hljs-string, .hljs-attr, .hljs-attribute { color: var(--green); }
+  .hljs-number, .hljs-literal { color: var(--peach); }
+  .hljs-comment, .hljs-quote { color: var(--overlay1); font-style: italic; }
+  .hljs-title, .hljs-function, .hljs-section, .hljs-name { color: var(--blue); }
+  .hljs-variable, .hljs-template-variable { color: var(--red); }
+  .hljs-type, .hljs-class { color: var(--yellow); }
+  .hljs-tag { color: var(--lavender); }
+  .hljs-symbol, .hljs-bullet, .hljs-link { color: var(--teal); }
+
+  /* components */
+  .doc-header { margin-bottom: 0.5rem; }
+  .doc-header .eyebrow { font-family: "JetBrains Mono", monospace; font-size: 8pt; text-transform: uppercase; letter-spacing: 0.14em; color: var(--overlay1); margin-bottom: 0.35rem; }
+  .doc-header h1 { margin: 0; }
+  .doc-header .lede { font-size: 11.5pt; color: var(--subtext1); margin-top: 0.4rem; line-height: 1.5; }
+
+  .tldr { background: var(--mantle); border-radius: 8px; padding: 0.7rem 0.95rem; margin: 0.9rem 0; page-break-inside: avoid; }
+  .tldr .label { font-family: "JetBrains Mono", monospace; font-size: 7.5pt; text-transform: uppercase; letter-spacing: 0.12em; color: var(--lavender); margin-bottom: 0.35rem; font-weight: 600; }
+  .tldr ul, .tldr ol { margin: 0; padding-left: 1.1rem; }
+  .tldr li { margin: 0.18rem 0; font-size: 9.5pt; color: var(--subtext1); }
+
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 0.5rem; margin: 0.9rem 0; page-break-inside: avoid; }
+  .fact { background: var(--mantle); border-radius: 7px; padding: 0.65rem 0.8rem; }
+  .fact .n { font-family: "JetBrains Mono", monospace; font-size: 14pt; font-weight: 600; color: var(--peach); line-height: 1.1; }
+  .fact .l { font-size: 8pt; color: var(--subtext0); margin-top: 0.2rem; line-height: 1.4; }
+
+  figure.code { margin: 0.85rem 0; page-break-inside: avoid; }
+  figure.code figcaption { font-family: "JetBrains Mono", monospace; font-size: 7.5pt; color: var(--overlay1); padding: 0 0.35rem 0.3rem; }
+  figure.code figcaption .lang { color: var(--mauve); font-size: 7pt; text-transform: uppercase; letter-spacing: 0.1em; margin-left: 0.4rem; }
+  figure.code pre { margin: 0; }
+
+  details.expand { background: var(--mantle); border-radius: 7px; padding: 0.4rem 0.85rem; margin: 0.8rem 0; page-break-inside: avoid; }
+  details.expand > summary { font-weight: 600; font-size: 9pt; color: var(--lavender); list-style: none; padding: 0.2rem 0; }
+  details.expand > summary::-webkit-details-marker, details.expand > summary::marker { display: none; }
+  details.expand > *:not(summary) { font-size: 9pt; color: var(--subtext1); }
+  /* in PDF, force open */
+  details { }
+
+  .note { background: var(--mantle); border-radius: 7px; padding: 0.55rem 0.85rem; margin: 0.7rem 0; font-size: 9.5pt; color: var(--subtext1); page-break-inside: avoid; }
+  .note p { margin: 0.15rem 0; }
+
+  ol.steps { list-style: none; padding: 0.3rem 0.45rem; margin: 0.9rem 0; counter-reset: step; display: flex; flex-direction: column; background: var(--mantle); border-radius: 8px; }
+  ol.steps > li { position: relative; padding: 0.5rem 0.75rem 0.5rem 2.3rem; counter-increment: step; font-size: 9.5pt; line-height: 1.55; }
+  ol.steps > li + li { border-top: 1px solid color-mix(in srgb, var(--surface0) 35%, transparent); }
+  ol.steps > li::before { content: counter(step); position: absolute; left: 0.55rem; top: 0.55rem; width: 1.35rem; height: 1.35rem; border-radius: 50%; background: var(--surface0); color: var(--lavender); display: flex; align-items: center; justify-content: center; font-family: "JetBrains Mono", monospace; font-size: 8.5pt; font-weight: 600; }
+  ol.steps > li strong { color: var(--text); }
+
+  .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0.7rem; margin: 0.8rem 0; }
+  .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; margin: 0.8rem 0; }
+  .col { background: var(--mantle); border-radius: 7px; padding: 0.65rem 0.85rem; page-break-inside: avoid; }
+  .col h4 { margin-top: 0; }
+
+  .chip { display: inline-flex; padding: 0.05rem 0.4rem; border-radius: 3px; font-size: 7.8pt; font-weight: 500; font-family: "JetBrains Mono", monospace; background: var(--mantle); color: var(--text); }
+  .chip-green { color: var(--green); }
+  .chip-red { color: var(--red); }
+  .chip-yellow { color: var(--yellow); }
+  .chip-peach { color: var(--peach); }
+  .chip-blue { color: var(--blue); }
+  .chip-mauve { color: var(--mauve); }
+  .chip-overlay { color: var(--overlay1); }
+
+  code.path { background: transparent; color: var(--blue); font-size: 0.88em; padding: 0; }
+  code.kbd { background: var(--surface0); color: var(--text); }
+
+  /* diagram (hand-authored SVG) */
+  figure.diagram { background: var(--mantle); border-radius: 8px; padding: 0.8rem 0.9rem; margin: 0.9rem 0; page-break-inside: avoid; }
+  figure.diagram svg { display: block; width: 100%; height: auto; max-width: 100%; margin: 0 auto; }
+  figure.diagram figcaption { font-family: "JetBrains Mono", monospace; font-size: 7.5pt; color: var(--overlay1); text-align: center; margin-top: 0.4rem; }
+
+  /* force open <details> in print */
+  details.expand > summary::before { content: "▾"; color: var(--overlay1); margin-right: 0.35rem; font-size: 8pt; }
+</style>
+</head>
+<body>
+  <article class="prose">__CONTENT__</article>
+  <script>
+    document.querySelectorAll('details').forEach(d => d.open = true);
+    document.querySelectorAll('pre code').forEach(el => { try { hljs.highlightElement(el); } catch (e) {} });
+  </script>
+</body>
+</html>
