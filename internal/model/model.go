@@ -23,25 +23,6 @@ type AccountUsage struct {
 	APIError         string       `json:"apiError,omitempty"`
 }
 
-type DailyActivity struct {
-	Date          string `json:"date"`
-	MessageCount  int    `json:"messageCount"`
-	SessionCount  int    `json:"sessionCount"`
-	ToolCallCount int    `json:"toolCallCount"`
-}
-
-type DailyModelTokens struct {
-	Date          string         `json:"date"`
-	TokensByModel map[string]int `json:"tokensByModel"`
-}
-
-type StatsCache struct {
-	Version          int                `json:"version"`
-	LastComputedDate string             `json:"lastComputedDate"`
-	DailyActivity    []DailyActivity    `json:"dailyActivity"`
-	DailyModelTokens []DailyModelTokens `json:"dailyModelTokens"`
-}
-
 type HistoryEntry struct {
 	Display   string `json:"display"`
 	Timestamp int64  `json:"timestamp"`

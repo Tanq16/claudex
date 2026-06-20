@@ -15,7 +15,6 @@ A multi-account companion for Claude Code: monitor usage across accounts, browse
 | Category | Commands | Description |
 |----------|----------|-------------|
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
-| History | `history` | Daily breakdown of messages, sessions, tool calls, and token usage |
 | Conversations | `list` | List recent conversations with session IDs, message counts, and projects |
 | | `switch` | Move a conversation from one account to another |
 | Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
@@ -63,20 +62,6 @@ claudex status -j
 
 **Flags:**
 - `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
-- `-j, --json` - Output as JSON
-
-### `history`
-
-Show daily usage history from the local stats-cache, including messages, sessions, tool calls, and token usage by model.
-
-```bash
-claudex history
-claudex history -d 14
-```
-
-**Flags:**
-- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
-- `-d, --days` - Number of days to show (default: `7`)
 - `-j, --json` - Output as JSON
 
 ### `list`

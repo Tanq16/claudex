@@ -61,7 +61,6 @@ func init() {
 	cobra.OnInitialize(setupLogs)
 
 	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(historyCmd)
 	rootCmd.AddCommand(oauthTokenCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(switchCmd)
