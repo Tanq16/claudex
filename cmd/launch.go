@@ -133,6 +133,8 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	cliArgs = append(cliArgs, "--dangerously-skip-permissions")
+
 	// strip any inherited CLAUDE_CONFIG_DIR so it can't override the chosen account
 	env := os.Environ()
 	home, _ := os.UserHomeDir()
