@@ -200,6 +200,7 @@ type selectModel struct {
 	cursor    int
 	selected  int
 	cancelled bool
+	done      bool
 }
 
 func (m selectModel) Init() tea.Cmd { return nil }
@@ -210,6 +211,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.cancelled = true
+			m.done = true
 			return m, tea.Quit
 		case "up", "k":
 			if m.cursor > 0 {
@@ -221,6 +223,7 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case "enter":
 			m.selected = m.cursor
+			m.done = true
 			return m, tea.Quit
 		}
 	}
@@ -228,6 +231,9 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m selectModel) View() tea.View {
+	if m.done {
+		return tea.NewView("")
+	}
 	var b strings.Builder
 	b.WriteString("\n")
 	b.WriteString(selectLabel.Render("  " + m.label))
@@ -277,6 +283,7 @@ type multiSelectModel struct {
 	cursor    int
 	selected  map[int]bool
 	cancelled bool
+	done      bool
 }
 
 func (m multiSelectModel) Init() tea.Cmd { return nil }
@@ -287,6 +294,7 @@ func (m multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c", "esc":
 			m.cancelled = true
+			m.done = true
 			return m, tea.Quit
 		case "up", "k":
 			if m.cursor > 0 {
@@ -299,6 +307,7 @@ func (m multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case " ":
 			m.selected[m.cursor] = !m.selected[m.cursor]
 		case "enter":
+			m.done = true
 			return m, tea.Quit
 		}
 	}
@@ -306,6 +315,9 @@ func (m multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m multiSelectModel) View() tea.View {
+	if m.done {
+		return tea.NewView("")
+	}
 	var b strings.Builder
 	b.WriteString("\n")
 	b.WriteString(selectLabel.Render("  " + m.label))
