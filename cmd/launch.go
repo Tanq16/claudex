@@ -40,8 +40,13 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		u.PrintFatal("claude not found in PATH", err)
 	}
 
+	cwd, err := os.Getwd()
+	if err != nil {
+		u.PrintFatal("failed to resolve current directory", err)
+	}
+
 	accounts := u.DiscoverAccountPaths()
-	sessions := discoverSessions(accounts)
+	sessions := discoverSessions(accounts, cwd)
 	multiAccount := len(accounts) > 1
 
 	var resumeMode bool
@@ -63,10 +68,9 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	if resumeMode {
 		labels := make([]string, len(sessions))
 		for i, s := range sessions {
-			project := padRight(u.Truncate(s.project, 14), 14)
-			msg := padRight(u.Truncate(s.firstMessage, 36), 36)
+			msg := padRight(u.Truncate(strings.Join(strings.Fields(s.firstMessage), " "), 60), 60)
 			t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
-			labels[i] = fmt.Sprintf("%s  %s  %s", project, msg, t)
+			labels[i] = fmt.Sprintf("%s  %s", msg, t)
 			if multiAccount {
 				labels[i] += "  " + u.AbbreviatePath(s.configDir)
 			}
@@ -157,7 +161,8 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	}
 }
 
-func discoverSessions(accounts []string) []sessionEntry {
+func discoverSessions(accounts []string, cwd string) []sessionEntry {
+	target := filepath.Clean(cwd)
 	var all []sessionEntry
 	for _, configDir := range accounts {
 		convos, err := parser.ParseConversations(configDir)
@@ -165,6 +170,9 @@ func discoverSessions(accounts []string) []sessionEntry {
 			continue
 		}
 		for _, c := range convos {
+			if filepath.Clean(c.ProjectPath) != target {
+				continue
+			}
 			all = append(all, sessionEntry{
 				sessionID:    c.SessionID,
 				project:      c.Project,

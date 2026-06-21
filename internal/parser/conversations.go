@@ -20,6 +20,7 @@ func ParseConversations(configDir string) ([]model.Conversation, error) {
 	type sessionAgg struct {
 		messageCount int
 		project      string
+		projectPath  string
 		firstMessage string
 		firstTS      int64
 		lastTS       int64
@@ -45,6 +46,7 @@ func ParseConversations(configDir string) ([]model.Conversation, error) {
 				firstTS:      entry.Timestamp,
 				firstMessage: entry.Display,
 				project:      filepath.Base(entry.Project),
+				projectPath:  entry.Project,
 			}
 			sessions[entry.SessionID] = agg
 		}
@@ -59,6 +61,7 @@ func ParseConversations(configDir string) ([]model.Conversation, error) {
 			agg.lastTS = entry.Timestamp
 			if entry.Project != "" {
 				agg.project = filepath.Base(entry.Project)
+				agg.projectPath = entry.Project
 			}
 		}
 	}
@@ -73,6 +76,7 @@ func ParseConversations(configDir string) ([]model.Conversation, error) {
 			SessionID:    sid,
 			MessageCount: agg.messageCount,
 			Project:      agg.project,
+			ProjectPath:  agg.projectPath,
 			FirstMessage: agg.firstMessage,
 			LastActivity: agg.lastTS,
 		})
