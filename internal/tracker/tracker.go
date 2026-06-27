@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/tanq16/claudex/internal/model"
@@ -16,10 +17,10 @@ import (
 )
 
 type apiResponse struct {
-	FiveHour       *apiWindow  `json:"five_hour"`
-	SevenDay       *apiWindow  `json:"seven_day"`
-	SevenDaySonnet *apiWindow  `json:"seven_day_sonnet"`
-	Error          *apiError   `json:"error"`
+	FiveHour       *apiWindow `json:"five_hour"`
+	SevenDay       *apiWindow `json:"seven_day"`
+	SevenDaySonnet *apiWindow `json:"seven_day_sonnet"`
+	Error          *apiError  `json:"error"`
 }
 
 type apiWindow struct {
@@ -88,27 +89,37 @@ func parseWindow(aw *apiWindow) model.UsageWindow {
 	return w
 }
 
+// claudeCredentials matches the OAuth blob Claude Code stores — the macOS Keychain value and the Linux/Windows .credentials.json file share this shape.
+type claudeCredentials struct {
+	ClaudeAiOauth struct {
+		AccessToken string `json:"accessToken"`
+	} `json:"claudeAiOauth"`
+}
+
+// getOAuthToken reads the account's OAuth token: macOS from the Keychain, Linux/Windows from a .credentials.json file inside the config dir.
 func getOAuthToken(configDir string) (string, error) {
-	serviceName := keychainServiceName(configDir)
+	var raw []byte
+	if runtime.GOOS == "darwin" {
+		out, err := exec.Command("security", "find-generic-password", "-s", keychainServiceName(configDir), "-w").Output()
+		if err != nil {
+			return "", err
+		}
+		raw = bytes.TrimSpace(out)
+	} else {
+		data, err := os.ReadFile(filepath.Join(configDir, ".credentials.json"))
+		if err != nil {
+			return "", err
+		}
+		raw = data
+	}
 
-	out, err := exec.Command("security", "find-generic-password", "-s", serviceName, "-w").Output()
-	if err != nil {
+	var creds claudeCredentials
+	if err := json.Unmarshal(raw, &creds); err != nil {
 		return "", err
 	}
-
-	var creds struct {
-		ClaudeAiOauth struct {
-			AccessToken string `json:"accessToken"`
-		} `json:"claudeAiOauth"`
-	}
-	if err := json.Unmarshal(bytes.TrimSpace(out), &creds); err != nil {
-		return "", err
-	}
-
 	if creds.ClaudeAiOauth.AccessToken == "" {
 		return "", fmt.Errorf("no access token found")
 	}
-
 	return creds.ClaudeAiOauth.AccessToken, nil
 }
 
