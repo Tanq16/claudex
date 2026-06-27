@@ -2,7 +2,7 @@
 
 Canonical embedded-static `net/http` server for CLI + Web projects. This is the single source of
 truth for the `embed.FS` + `fs.Sub` + `http.StripPrefix` + `handleIndex` boilerplate — `go-frontend`
-and `project-bootstrap` reference this file instead of re-defining it.
+references this file instead of re-defining it.
 
 Use standard `net/http` (KISS principle). No third-party routers (gin, chi, echo).
 
@@ -76,7 +76,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-## Skeleton variant (project-bootstrap)
+## Skeleton variant
 
 For a fresh skeleton, drop the concrete API handlers and leave a TODO — keep the `embed.FS`,
 `fs.Sub`, `StripPrefix`, and `handleIndex` exactly as above:

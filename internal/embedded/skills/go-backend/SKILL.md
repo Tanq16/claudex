@@ -136,8 +136,8 @@ func (s *Server) Setup() error {
 
 **`go-backend` owns the canonical embedded-static server** — the full `server.go` (struct, `New`,
 `Run`, `handleIndex`, health handler), the skeleton variant, and the middleware wrapper pattern
-all live in `./references/http-server-template.md`. `go-frontend` and `project-bootstrap` reference
-that file rather than redefining the boilerplate.
+all live in `./references/http-server-template.md`. `go-frontend` references that file rather than
+redefining the boilerplate.
 
 ## Storage Pattern
 
@@ -360,5 +360,5 @@ func ProcessItems(items []string, concurrency int) error {
 
 | File | Purpose |
 |------|---------|
-| `./references/http-server-template.md` | Canonical embedded-static `net/http` server (full `server.go`, skeleton variant, middleware) — referenced by `go-frontend` and `project-bootstrap` |
+| `./references/http-server-template.md` | Canonical embedded-static `net/http` server (full `server.go`, skeleton variant, middleware) — referenced by `go-frontend` |
 | `./references/auth-patterns.md` | Complete OAuth auth templates (`internal/auth/auth.go` and `cmd/login.go`) |

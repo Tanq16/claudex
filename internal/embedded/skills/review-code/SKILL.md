@@ -21,7 +21,7 @@ Reviews are organized into 5 domains, each with its own check tables:
 
 | Domain | Reference File | Categories | Skills |
 |--------|---------------|------------|--------|
-| Go Foundations | `./references/review-domain-go-foundations.md` | 1-4 (Layout, Principles, Logging, Utils) | go-foundations |
+| Go Foundations | `./references/review-domain-go-foundations.md` | 1-4 (Layout, Principles, Modern Go, Logging, Utils) | go-foundations |
 | Go CLI | `./references/review-domain-go-cli.md` | 5-7 (Cobra, Commands, Output Lifecycle, TUI) | go-cli |
 | Go Backend & Frontend | `./references/review-domain-go-backend-frontend.md` | 8-9 (Architecture, Assets) | go-backend, go-frontend |
 | Go Concurrency | `./references/review-domain-go-concurrency.md` | 10-11 (Concurrency, Pipeline) | go-concurrency |

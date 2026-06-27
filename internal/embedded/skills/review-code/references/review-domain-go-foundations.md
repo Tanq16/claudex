@@ -33,6 +33,21 @@ Verify against the project layout defined in `go-foundations`:
 
 ---
 
+## Category 2b: Modern Go (go-foundations)
+
+**Applies to:** Go CLI Only, Go CLI + Web
+
+Verify the project is written to the Go 1.26+ baseline defined in `go-foundations` ("Modern Go" section + `../../go-foundations/references/modern-go.md`). **Only flag the high-signal patterns below.** Do NOT flag classic `for i := 0; i < n; i++` loops, manual slice/map operations that could use `slices`/`maps`, or any other modernization that is purely stylistic — those generate noise and fall outside this check.
+
+| Check | Expected Pattern | How to Verify |
+|-------|-----------------|---------------|
+| go.mod version | `go` directive is `1.26` or newer | Read `go.mod`; flag if the `go` directive is below 1.26 |
+| `any` over `interface{}` | Empty interface written as `any`, never `interface{}` | Grep `.go` files for `interface{}`; flag each occurrence (an empty interface should always be `any`) |
+| `wg.Go` over manual Add/Done | WaitGroup goroutines spawned with `wg.Go(fn)`, not `wg.Add(1)` + `go func() { defer wg.Done(); ... }()` | Grep for `wg.Add(1)` immediately preceding a `go func`; flag the manual pattern |
+| Typed atomics | `atomic.Bool` / `atomic.Int64` / `atomic.Pointer[T]` instead of the `atomic.AddInt32` / `LoadInt32` / `StoreInt32` free functions | Grep for `atomic.AddInt`, `atomic.LoadInt`, `atomic.StoreInt`, `atomic.SwapInt` calls; flag if found |
+
+---
+
 ## Category 3: Logging (go-foundations)
 
 **CLI Only checks:**

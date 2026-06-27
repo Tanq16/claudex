@@ -1,6 +1,6 @@
 ---
 name: go-foundations
-description: Use when writing, refactoring, reviewing, or testing ANY Go code. The canonical reference for Go conventions — project taxonomy (CLI Only / CLI + Web / Headless API Service / Library), project layout, modern Go 1.26+ idioms (wg.Go, t.Context(), range-over-int, slices/maps/cmp, errors.AsType, min/max/clear, new(value)), edge-case-driven unit testing (add/write Go tests, table-driven, edge cases), core principles, dependency selection, logging, and the utils package. Load this for any Go work. To scaffold a new project or restructure an existing one from scratch, use project-bootstrap (it applies these conventions).
+description: Use when writing, refactoring, reviewing, or testing ANY Go code. The canonical reference for Go conventions — project taxonomy (CLI Only / CLI + Web / Headless API Service / Library), project layout, modern Go 1.26+ idioms (wg.Go, t.Context(), range-over-int, slices/maps/cmp, errors.AsType, min/max/clear, new(value)), edge-case-driven unit testing (add/write Go tests, table-driven, edge cases), core principles, dependency selection, logging, and the utils package. Load this for any Go work. The `develop` skill is the per-task entry point that selects and applies these conventions.
 user-invocable: false
 ---
 
@@ -16,8 +16,8 @@ Use this skill when:
 - Implementing logging or the utils package
 - Reviewing a project for convention compliance
 
-This skill is the *reference* for how Go projects should look. Actually creating a skeleton or
-restructuring an existing tree is `project-bootstrap`'s job — it applies these conventions.
+This skill is the *reference* for how Go projects should look. The `develop` skill is the entry
+point that loads this and the other relevant skills for a given task and holds the work to them.
 
 **Related skills:**
 - `project-readme` - README structure and templates
@@ -26,7 +26,7 @@ restructuring an existing tree is `project-bootstrap`'s job — it applies these
 ## Project Taxonomy
 
 This is the **canonical project taxonomy** for all Go work. Other skills (`go-cli`, `go-backend`,
-`go-frontend`, `project-bootstrap`, `review-code`) refer back to these type names rather than
+`go-frontend`, `develop`, `review-code`) refer back to these type names rather than
 redefining them.
 
 | Type | What it is | Defining markers |
@@ -188,6 +188,15 @@ module-root/
 - DON'T abstract: goroutine patterns, semaphores (keep vanilla, explicit)
 - Prefer explicit parallelization over generic abstractions
 
+## Comments and Code Style
+
+Code should read as self-documenting; comments earn their place by adding what the code cannot say.
+
+- **Comment the *why*, not the *what*** — the code already states what it does. Reserve comments for intent, trade-offs, and non-obvious constraints (why this order, why this bound, what a subtle edge case guards against).
+- **No redundant comments** — never restate the code or narrate obvious control flow (`// increment i`, `// loop over items`). A comment that mirrors the line below it is noise.
+- **One line by default** — a single line is usually enough to state the why. Only span multiple lines when there is genuinely more to explain; otherwise nothing.
+- **Keep them current** — a stale comment is worse than none. Update or delete comments when the code they describe changes.
+
 ## Modern Go (target 1.26+)
 
 All Go in these projects targets **Go 1.26 or newer** — set the `go.mod` `go` directive to
@@ -216,9 +225,9 @@ upgrading any dependency:
 - **Keep dependencies current** — track latest stable versions, prefer stable over
   pre-release, and check release notes for breaking changes on major bumps.
 
-The mechanical audit workflow (scanning `go.mod`/HTML/Makefile, looking up latest versions,
-producing an upgrade report) lives in `project-bootstrap` — this section is the *judgment* that
-workflow applies.
+Apply this judgment whenever you add, audit, or upgrade a dependency — scan `go.mod` (and any
+HTML/Makefile CDN pins), check the latest stable versions, and read release notes for breaking
+changes before bumping a major.
 
 ## Logging Patterns
 
