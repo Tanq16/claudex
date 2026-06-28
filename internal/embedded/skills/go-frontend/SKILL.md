@@ -49,10 +49,7 @@ internal/server/
 
 ## Embedding Pattern
 
-The `embed.FS` server that serves these assets is owned by `go-backend`. Use
-`../go-backend/references/http-server-template.md` for the full `server.go` (`//go:embed static`,
-`fs.Sub`, `http.StripPrefix` for `/static/`, and `handleIndex` serving `static/index.html`). This
-skill covers what goes *inside* `static/`; `go-backend` covers how it is served.
+The `embed.FS` server that serves these assets is owned by `go-backend`. Use `../go-backend/references/http-server-template.md` for the full `server.go` (`//go:embed static`, `fs.Sub`, `http.StripPrefix` for `/static/`, and `handleIndex` serving `static/index.html`). This skill covers what goes *inside* `static/`; `go-backend` covers how it is served.
 
 ## HTML Template
 
@@ -67,10 +64,7 @@ See `./references/html-template.md` for the complete HTML template with:
 
 For Markdown rendering styles, see the Markdown Rendering section below.
 
-The minimal page is: `<head>` with icon links, Inter/Font Awesome CSS, an inline `:root` block of
-Catppuccin Mocha CSS variables, and the Tailwind Play-CDN script wiring those variables into
-`tailwind.config.theme.extend.colors`; `<body class="bg-base text-text min-h-screen">`. The full
-boilerplate is in `./references/html-template.md` — copy from there rather than retyping it.
+The minimal page is: `<head>` with icon links, Inter/Font Awesome CSS, an inline `:root` block of Catppuccin Mocha CSS variables, and the Tailwind Play-CDN script wiring those variables into `tailwind.config.theme.extend.colors`; `<body class="bg-base text-text min-h-screen">`. The full boilerplate is in `./references/html-template.md` — copy from there rather than retyping it.
 
 ## Key Rules
 
@@ -87,10 +81,7 @@ boilerplate is in `./references/html-template.md` — copy from there rather tha
 - For new embedded frontends in this style, prefer Tailwind utility classes over hand-written layout CSS
 - Custom colors via CSS variables mapped to Tailwind config
 - Don't rip out an existing project's working CSS or templating approach just to impose Tailwind
-- **Play CDN caveat:** `tailwindcss.js` (the Play CDN, vendored to `js/`) compiles utility classes
-  in-browser at runtime. It's fine for embedded tools and dashboards, but Tailwind explicitly marks
-  it "not for production." If the app needs production-grade CSS (smaller payload, no runtime
-  compile), switch to a build step that emits a static `tailwind.css`.
+- **Play CDN caveat:** `tailwindcss.js` (the Play CDN, vendored to `js/`) compiles utility classes in-browser at runtime. It's fine for embedded tools and dashboards, but Tailwind explicitly marks it "not for production." If the app needs production-grade CSS (smaller payload, no runtime compile), switch to a build step that emits a static `tailwind.css`.
 
 ### Single Page Default
 - Most projects use single `index.html`
@@ -133,8 +124,7 @@ Add PWA support when the app should be installable on mobile/desktop. The pieces
 - `static/sw.js` — a no-op service worker (registration only, no caching)
 - a small registration script before `</body>`
 
-Full `manifest.json`, meta tags, `sw.js`, and the registration snippet are in
-`./references/html-template.md` (PWA Files). Drop all of them if not building a PWA.
+Full `manifest.json`, meta tags, `sw.js`, and the registration snippet are in `./references/html-template.md` (PWA Files). Drop all of them if not building a PWA.
 
 ### When to Add PWA
 
@@ -215,11 +205,7 @@ Assets downloaded via `make assets` target:
 sed -i '' 's|../webfonts/|/static/fontawesome/webfonts/|g' fontawesome/css/all.min.css
 ```
 
-**Pin versions for reproducible builds:** the `@latest` URLs above are convenient but make
-`make assets` non-deterministic — a fresh download can pull a new major version that breaks
-rendering. For anything beyond a throwaway prototype, pin each asset to a specific version (e.g.
-`marked@12.0.0`, `mermaid@11.4.1`, `lucide@0.460.0`) in the Makefile download URLs and bump them
-deliberately.
+**Pin versions for reproducible builds:** the `@latest` URLs above are convenient but make `make assets` non-deterministic — a fresh download can pull a new major version that breaks rendering. For anything beyond a throwaway prototype, pin each asset to a specific version (e.g. `marked@12.0.0`, `mermaid@11.4.1`, `lucide@0.460.0`) in the Makefile download URLs and bump them deliberately.
 
 ## Common Patterns
 

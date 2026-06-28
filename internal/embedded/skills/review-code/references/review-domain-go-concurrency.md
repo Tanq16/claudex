@@ -1,7 +1,6 @@
 # Review Domain: Go Concurrency
 
-**Applies to:** Go CLI Only, Go CLI + Web (only if concurrency/pipeline patterns are detected)
-**Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go CLI + Web (only if concurrency/pipeline patterns are detected) **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-concurrency/SKILL.md`
 
 ---

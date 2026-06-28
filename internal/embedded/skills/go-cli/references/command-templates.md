@@ -1,7 +1,6 @@
 # Command Templates
 
-Full Cobra code templates for CLI Only and CLI + Web projects. The `SKILL.md` describes when to use
-each; copy the concrete code from here. Replace `[GITHUB_USER]`/`REPO_NAME`/`appname` placeholders.
+Full Cobra code templates for CLI Only and CLI + Web projects. The `SKILL.md` describes when to use each; copy the concrete code from here. Replace `[GITHUB_USER]`/`REPO_NAME`/`appname` placeholders.
 
 ## main.go (Entry Point)
 
@@ -313,9 +312,7 @@ func init() {
 
 ## Login Command — CLI Only
 
-For CLI tools with OAuth authentication, the login command uses mutually exclusive flags to select
-the login mode. The auth logic lives in `internal/auth/` (see `go-backend`); the command just maps
-flags to mode and handles output.
+For CLI tools with OAuth authentication, the login command uses mutually exclusive flags to select the login mode. The auth logic lives in `internal/auth/` (see `go-backend`); the command just maps flags to mode and handles output.
 
 ```go
 // cmd/login.go
@@ -372,14 +369,11 @@ func init() {
 - `appname login --device-login` — shows URL + code for headless/SSH
 - `appname login --manual` — paste authorization code (last resort)
 
-If the provider does not support device authorization (RFC 8628), omit `--device-login` and keep
-only default and `--manual`.
+If the provider does not support device authorization (RFC 8628), omit `--device-login` and keep only default and `--manual`.
 
 ## Terminal Colors (Lipgloss) — CLI Only
 
-Use ANSI standard color indices (0-15) instead of hardcoded hex values. These indices are remapped
-by the user's terminal theme, so output adapts to Dracula, Catppuccin, Solarized, or any custom
-scheme automatically. Hardcoded hex colors (e.g. `#89b4fa`) bypass the theme.
+Use ANSI standard color indices (0-15) instead of hardcoded hex values. These indices are remapped by the user's terminal theme, so output adapts to Dracula, Catppuccin, Solarized, or any custom scheme automatically. Hardcoded hex colors (e.g. `#89b4fa`) bypass the theme.
 
 ```go
 // ANSI 0-15 map to the terminal's configured theme colors.

@@ -387,11 +387,7 @@ All login flows use the correct output tiers:
 
 ### Security
 
-- CSRF state token (16-byte random hex) is **validated on the callback flow** — the localhost
-  server compares the redirect's `state` to the generated value and rejects a mismatch. The
-  **manual flow** transfers the code out-of-band by hand, so there is no automated redirect to
-  validate against; it still sends a `state` param (providers may require it) but that param is
-  not a CSRF control there. Device flow does not use a `state` param.
+- CSRF state token (16-byte random hex) is **validated on the callback flow** — the localhost server compares the redirect's `state` to the generated value and rejects a mismatch. The **manual flow** transfers the code out-of-band by hand, so there is no automated redirect to validate against; it still sends a `state` param (providers may require it) but that param is not a CSRF control there. Device flow does not use a `state` param.
 - Token files stored with `0600` permissions (owner read/write only)
 - Config directory created with `0700` permissions
 - `openBrowser` returns error for fast-fail on headless (no 5-minute hang)

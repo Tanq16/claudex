@@ -1,7 +1,6 @@
 # Review Domain: Infrastructure
 
-**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension
-**Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../project-ci-cd/SKILL.md`
 - `../../chrome-extension-basics/SKILL.md` (Chrome Extension projects only)
 - `../../project-readme/SKILL.md`

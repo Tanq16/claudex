@@ -1,7 +1,6 @@
 # Review Domain: Go Foundations
 
-**Applies to:** Go CLI Only, Go CLI + Web
-**Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-foundations/SKILL.md`
 
 ---

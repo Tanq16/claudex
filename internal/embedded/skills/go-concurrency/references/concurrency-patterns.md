@@ -1,7 +1,6 @@
 # Concurrency Patterns
 
-Full code for the vanilla concurrency primitives. These run inside a job's `Run()` method or in
-standalone functions. Pick the pattern from the selection table in `SKILL.md`.
+Full code for the vanilla concurrency primitives. These run inside a job's `Run()` method or in standalone functions. Pick the pattern from the selection table in `SKILL.md`.
 
 > **Logging note:** the fire-and-forget pattern below logs errors. Use the project's logging
 > convention from `go-foundations` — zerolog (`log.Error()...`) for CLI Only, `log.Printf("ERROR ...")`
@@ -11,8 +10,7 @@ standalone functions. Pick the pattern from the selection table in `SKILL.md`.
 
 ## Pattern 1: WaitGroup (Fire and Forget)
 
-Run N operations concurrently, wait for all to complete. Errors are logged, not collected. Use
-`wg.Go` (Go 1.25+) — it spawns the goroutine and handles `Add`/`Done` internally.
+Run N operations concurrently, wait for all to complete. Errors are logged, not collected. Use `wg.Go` (Go 1.25+) — it spawns the goroutine and handles `Add`/`Done` internally.
 
 ```go
 import "github.com/rs/zerolog/log" // CLI Only; CLI + Web uses the std "log" package
@@ -88,8 +86,7 @@ func (j *MyJob) Run(ctx context.Context, progress chan<- Progress) error {
 }
 ```
 
-**Use when:** need bounded concurrency together with error handling. This is the preferred way to
-limit concurrency.
+**Use when:** need bounded concurrency together with error handling. This is the preferred way to limit concurrency.
 
 ---
 
@@ -206,8 +203,7 @@ func (j *MyJob) Run(ctx context.Context, progress chan<- Progress) error {
 }
 ```
 
-**Use when:** processing many items through a fixed number of workers. More complex than errgroup
-— only use if you specifically need the channel-based worker pool.
+**Use when:** processing many items through a fixed number of workers. More complex than errgroup — only use if you specifically need the channel-based worker pool.
 
 ---
 
@@ -237,5 +233,4 @@ for _, item := range items {
 result, err := http.DefaultClient.Do(req.WithContext(ctx))
 ```
 
-When you need to know *why* a context was cancelled, use `context.WithCancelCause(parent)` and
-read `context.Cause(ctx)` — see the modern-Go reference in `go-foundations`.
+When you need to know *why* a context was cancelled, use `context.WithCancelCause(parent)` and read `context.Cause(ctx)` — see the modern-Go reference in `go-foundations`.

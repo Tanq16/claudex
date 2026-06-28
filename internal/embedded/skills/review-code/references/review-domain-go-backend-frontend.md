@@ -1,7 +1,6 @@
 # Review Domain: Go Backend & Frontend
 
-**Applies to:** Go CLI + Web only
-**Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI + Web only **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-backend/SKILL.md`
 - `../../go-frontend/SKILL.md`
 

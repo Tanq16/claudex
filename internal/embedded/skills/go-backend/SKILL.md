@@ -114,9 +114,7 @@ Task packages stay portable—if moved to `pkg/` later, no changes needed. Conte
 
 ## HTTP Server Pattern
 
-Use standard `net/http` (KISS principle) — no third-party routers (gin, chi, echo). A `Server`
-struct holds `host`, `port`, and an `*http.ServeMux`; `Setup()` mounts embedded static files and
-routes; `Run()` calls `http.ListenAndServe`.
+Use standard `net/http` (KISS principle) — no third-party routers (gin, chi, echo). A `Server` struct holds `host`, `port`, and an `*http.ServeMux`; `Setup()` mounts embedded static files and routes; `Run()` calls `http.ListenAndServe`.
 
 ```go
 //go:embed static
@@ -134,10 +132,7 @@ func (s *Server) Setup() error {
 }
 ```
 
-**`go-backend` owns the canonical embedded-static server** — the full `server.go` (struct, `New`,
-`Run`, `handleIndex`, health handler), the skeleton variant, and the middleware wrapper pattern
-all live in `./references/http-server-template.md`. `go-frontend` references that file rather than
-redefining the boilerplate.
+**`go-backend` owns the canonical embedded-static server** — the full `server.go` (struct, `New`, `Run`, `handleIndex`, health handler), the skeleton variant, and the middleware wrapper pattern all live in `./references/http-server-template.md`. `go-frontend` references that file rather than redefining the boilerplate.
 
 ## Storage Pattern
 

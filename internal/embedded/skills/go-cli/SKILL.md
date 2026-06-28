@@ -43,19 +43,14 @@ CLI Only and CLI + Web projects have different root command setups:
 | Logging | `setupLogs()` configures zerolog; `--debug`/`--for-ai` toggle levels and `utils.Global*Flag` | standard `log`, no setup |
 | `init()` | hides help/completion, registers flags, `cobra.OnInitialize(setupLogs)`, adds commands | hides help/completion, adds commands |
 
-Both set `Use`, `Short`, `Version` (from `AppVersion` ldflag), and `HiddenDefaultCmd: true`. Full
-`main.go` and both `cmd/root.go` templates are in `./references/command-templates.md`.
+Both set `Use`, `Short`, `Version` (from `AppVersion` ldflag), and `HiddenDefaultCmd: true`. Full `main.go` and both `cmd/root.go` templates are in `./references/command-templates.md`.
 
 ## Command Patterns
 
-- **Simple command (no subcommands):** define directly in `cmd/` with its own flag struct and
-  `init()`. CLI Only uses `u.Print*`/`u.PrintFatal`; CLI + Web uses `log.Printf`/`log.Fatalf`.
-- **Subcommand group:** create a package under `cmd/` (e.g. `cmd/feature-cmd/`) with an exported
-  parent command (no `Run`) and unexported subcommands (each with `Run`). Wire them in the
-  package's `init()`.
+- **Simple command (no subcommands):** define directly in `cmd/` with its own flag struct and `init()`. CLI Only uses `u.Print*`/`u.PrintFatal`; CLI + Web uses `log.Printf`/`log.Fatalf`.
+- **Subcommand group:** create a package under `cmd/` (e.g. `cmd/feature-cmd/`) with an exported parent command (no `Run`) and unexported subcommands (each with `Run`). Wire them in the package's `init()`.
 
-Full `serve` (CLI Only + CLI + Web) and subcommand-package templates are in
-`./references/command-templates.md`.
+Full `serve` (CLI Only + CLI + Web) and subcommand-package templates are in `./references/command-templates.md`.
 
 ## Flag Patterns
 
@@ -128,18 +123,14 @@ Run: func(cmd *cobra.Command, args []string) {
 
 ## Login Command Pattern (CLI Only)
 
-For CLI tools with OAuth authentication, the login command uses mutually exclusive flags
-(`--device-login`, `--manual`) to select the login mode. The auth logic lives in `internal/auth/`
-(see `go-backend`); the command just maps flags to a mode string, calls `auth.Login(config, mode)`,
-and handles output.
+For CLI tools with OAuth authentication, the login command uses mutually exclusive flags (`--device-login`, `--manual`) to select the login mode. The auth logic lives in `internal/auth/` (see `go-backend`); the command just maps flags to a mode string, calls `auth.Login(config, mode)`, and handles output.
 
 **Modes:**
 - `appname login` — default, opens browser with localhost callback
 - `appname login --device-login` — shows URL + code for headless/SSH
 - `appname login --manual` — paste authorization code (last resort when device flow unsupported)
 
-If the provider does not support device authorization (RFC 8628), omit `--device-login`. Full
-`cmd/login.go` template is in `./references/command-templates.md`.
+If the provider does not support device authorization (RFC 8628), omit `--device-login`. Full `cmd/login.go` template is in `./references/command-templates.md`.
 
 ## Output Lifecycle Patterns (CLI Only)
 
@@ -166,13 +157,9 @@ See `./references/output-lifecycle-patterns.md` for full patterns and examples.
 
 ### Terminal Colors (Lipgloss)
 
-Use ANSI standard color indices (0-15) instead of hardcoded hex values. These indices are remapped
-by the user's terminal theme, so output adapts to Dracula, Catppuccin, Solarized, or any custom
-scheme automatically. Hardcoded hex colors (e.g. `#89b4fa`) bypass the theme and force a specific
-palette regardless of user preference. Prefer bright variants (8-15) for foreground text.
+Use ANSI standard color indices (0-15) instead of hardcoded hex values. These indices are remapped by the user's terminal theme, so output adapts to Dracula, Catppuccin, Solarized, or any custom scheme automatically. Hardcoded hex colors (e.g. `#89b4fa`) bypass the theme and force a specific palette regardless of user preference. Prefer bright variants (8-15) for foreground text.
 
-The full `lipgloss.ANSIColor` palette and common style definitions are in
-`./references/command-templates.md` (Terminal Colors section).
+The full `lipgloss.ANSIColor` palette and common style definitions are in `./references/command-templates.md` (Terminal Colors section).
 
 ## Output Tier Behavior (CLI Only)
 

@@ -24,9 +24,7 @@ Use this skill when:
 | CLI Only (Command-Line Tools) | Header → Capabilities Table → Installation → Usage (by command) → Tips |
 | Chrome Extension | Header → Intro → Features → Screenshots → Install → Permissions → Tips |
 
-Project type names match the canonical taxonomy in `go-foundations` (Project Taxonomy). A Headless
-API Service uses the CLI Only README shape (no screenshots); a Library / Module uses an API/usage
-README focused on `go get` and exported functions.
+Project type names match the canonical taxonomy in `go-foundations` (Project Taxonomy). A Headless API Service uses the CLI Only README shape (no screenshots); a Library / Module uses an API/usage README focused on `go get` and exported functions.
 
 ## Common Header
 
@@ -44,8 +42,7 @@ Default to a centered header pattern with logo and badges (match the project's e
 ---
 ```
 
-Replace the bracketed placeholders (`PROJECT_NAME`, `REPO_NAME`, `[GITHUB_USER]`) with the
-project's actual name, repo, and GitHub org/user — never hardcode a specific account.
+Replace the bracketed placeholders (`PROJECT_NAME`, `REPO_NAME`, `[GITHUB_USER]`) with the project's actual name, repo, and GitHub org/user — never hardcode a specific account.
 
 ### Badge Options
 

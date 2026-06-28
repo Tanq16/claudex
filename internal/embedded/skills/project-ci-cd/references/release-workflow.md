@@ -296,9 +296,7 @@ The workflow has 5 phases:
 4. **publish** - Make release public after all artifacts uploaded
 5. **cleanup-on-failure** - Delete draft release if any job fails
 
-Unit testing is first-class (see `go-foundations`), so the release is gated on `go test ./...`.
-The CLI + Web test job runs `make assets` first because `//go:embed static` needs the `static/`
-tree populated to compile.
+Unit testing is first-class (see `go-foundations`), so the release is gated on `go test ./...`. The CLI + Web test job runs `make assets` first because `//go:embed static` needs the `static/` tree populated to compile.
 
 ### Version Calculation
 

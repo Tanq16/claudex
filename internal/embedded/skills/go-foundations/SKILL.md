@@ -16,8 +16,7 @@ Use this skill when:
 - Implementing logging or the utils package
 - Reviewing a project for convention compliance
 
-This skill is the *reference* for how Go projects should look. The `develop` skill is the entry
-point that loads this and the other relevant skills for a given task and holds the work to them.
+This skill is the *reference* for how Go projects should look. The `develop` skill is the entry point that loads this and the other relevant skills for a given task and holds the work to them.
 
 **Related skills:**
 - `project-readme` - README structure and templates
@@ -25,9 +24,7 @@ point that loads this and the other relevant skills for a given task and holds t
 
 ## Project Taxonomy
 
-This is the **canonical project taxonomy** for all Go work. Other skills (`go-cli`, `go-backend`,
-`go-frontend`, `develop`, `review-code`) refer back to these type names rather than
-redefining them.
+This is the **canonical project taxonomy** for all Go work. Other skills (`go-cli`, `go-backend`, `go-frontend`, `develop`, `review-code`) refer back to these type names rather than redefining them.
 
 | Type | What it is | Defining markers |
 |------|-----------|------------------|
@@ -36,8 +33,7 @@ redefining them.
 | **Headless API Service** | REST/gRPC backend with no frontend | `cobra` (optional) + `internal/server` handlers, no `static/`; standard `log`; Docker; NO `utils/` |
 | **Library / Module** | Importable package, no entry point | NO `main.go`, NO `cobra`, NO `utils/`; exported packages at root or under `pkg/`; consumed via `go get` |
 
-**CLI Only** and **CLI + Web** are the two most common and have full layouts below; **Headless API
-Service** and **Library / Module** are summarized after them.
+**CLI Only** and **CLI + Web** are the two most common and have full layouts below; **Headless API Service** and **Library / Module** are summarized after them.
 
 ## Project Layout
 
@@ -120,9 +116,7 @@ project-root/
 
 ### Headless API Service
 
-A REST/gRPC backend with **no frontend**. Structurally a CLI + Web project minus the frontend:
-standard `log` (no `utils/`, no zerolog/lipgloss), Dockerfile and Docker in CI/CD, `cobra` only if
-the service needs subcommands beyond `serve`.
+A REST/gRPC backend with **no frontend**. Structurally a CLI + Web project minus the frontend: standard `log` (no `utils/`, no zerolog/lipgloss), Dockerfile and Docker in CI/CD, `cobra` only if the service needs subcommands beyond `serve`.
 
 ```
 project-root/
@@ -139,15 +133,12 @@ project-root/
     └── feature2/
 ```
 
-- Use the `go-backend` HTTP server pattern (`../go-backend/references/http-server-template.md`) but
-  **drop the `embed.FS`/`static/`/`handleIndex` parts** — there is no frontend to serve.
-- No `utils/`, no `--for-ai`/`--debug`, no `go-frontend`. Logging is standard `log` with manual
-  prefixes (same rules as CLI + Web).
+- Use the `go-backend` HTTP server pattern (`../go-backend/references/http-server-template.md`) but **drop the `embed.FS`/`static/`/`handleIndex` parts** — there is no frontend to serve.
+- No `utils/`, no `--for-ai`/`--debug`, no `go-frontend`. Logging is standard `log` with manual prefixes (same rules as CLI + Web).
 
 ### Library / Module
 
-An importable package with **no entry point** — consumed by other projects via `go get`. No
-`main.go`, no `cmd/`, no `cobra`, no `utils/`.
+An importable package with **no entry point** — consumed by other projects via `go get`. No `main.go`, no `cmd/`, no `cobra`, no `utils/`.
 
 ```
 module-root/
@@ -160,10 +151,8 @@ module-root/
 ```
 
 - Public API lives at the module root or under `pkg/`; keep `internal/` for non-exported helpers.
-- No logging framework imposed — a library should not configure global logging; return errors and
-  let the caller decide. Avoid `log.Fatal`/`os.Exit` in library code.
-- The unit-testing philosophy below applies fully; everything else (utils, Cobra, frontend, Docker)
-  does not.
+- No logging framework imposed — a library should not configure global logging; return errors and let the caller decide. Avoid `log.Fatal`/`os.Exit` in library code.
+- The unit-testing philosophy below applies fully; everything else (utils, Cobra, frontend, Docker) does not.
 
 ## Core Principles
 
@@ -199,35 +188,21 @@ Code should read as self-documenting; comments earn their place by adding what t
 
 ## Modern Go (target 1.26+)
 
-All Go in these projects targets **Go 1.26 or newer** — set the `go.mod` `go` directive to
-`go 1.26` (or later). Write to that baseline: prefer modern built-ins and standard-library
-helpers (`any`, `min`/`max`/`clear`, `slices`, `maps`, `cmp`, `sync.WaitGroup.Go`,
-`errors.AsType`, range-over-int and iterators, `new(value)`, etc.) over legacy patterns, and
-never use an outdated idiom when a current one exists.
+All Go in these projects targets **Go 1.26 or newer** — set the `go.mod` `go` directive to `go 1.26` (or later). Write to that baseline: prefer modern built-ins and standard-library helpers (`any`, `min`/`max`/`clear`, `slices`, `maps`, `cmp`, `sync.WaitGroup.Go`, `errors.AsType`, range-over-int and iterators, `new(value)`, etc.) over legacy patterns, and never use an outdated idiom when a current one exists.
 
 See `./references/modern-go.md` for the full curated set of idioms with examples.
 
 ## Dependency Selection
 
-Choosing dependencies is a KISS decision. Apply this judgment when adding, auditing, or
-upgrading any dependency:
+Choosing dependencies is a KISS decision. Apply this judgment when adding, auditing, or upgrading any dependency:
 
 - **Prefer the standard library** whenever it can reasonably do the job.
-- **Pre-approved packages** (always fine — see the KISS list above): `gorilla/websocket`,
-  `goccy/go-yaml`, `rs/zerolog` (CLI Only), `spf13/cobra`, `charm.land/bubbletea`+`lipgloss`+
-  `bubbles` v2 (CLI Only TUI).
-- **Other third-party packages** are acceptable when they fill a genuine need the standard
-  library cannot reasonably cover (e.g. `google/uuid`, database drivers, cloud SDKs,
-  `golang.org/x/...`). Evaluate whether the dependency is *justified* — do not gate on a
-  fixed allow-list.
-- **Prefer well-maintained, standard choices** over niche alternatives (e.g. `zerolog` over
-  `logrus`, `cobra` over `urfave/cli`).
-- **Keep dependencies current** — track latest stable versions, prefer stable over
-  pre-release, and check release notes for breaking changes on major bumps.
+- **Pre-approved packages** (always fine — see the KISS list above): `gorilla/websocket`, `goccy/go-yaml`, `rs/zerolog` (CLI Only), `spf13/cobra`, `charm.land/bubbletea`+`lipgloss`+ `bubbles` v2 (CLI Only TUI).
+- **Other third-party packages** are acceptable when they fill a genuine need the standard library cannot reasonably cover (e.g. `google/uuid`, database drivers, cloud SDKs, `golang.org/x/...`). Evaluate whether the dependency is *justified* — do not gate on a fixed allow-list.
+- **Prefer well-maintained, standard choices** over niche alternatives (e.g. `zerolog` over `logrus`, `cobra` over `urfave/cli`).
+- **Keep dependencies current** — track latest stable versions, prefer stable over pre-release, and check release notes for breaking changes on major bumps.
 
-Apply this judgment whenever you add, audit, or upgrade a dependency — scan `go.mod` (and any
-HTML/Makefile CDN pins), check the latest stable versions, and read release notes for breaking
-changes before bumping a major.
+Apply this judgment whenever you add, audit, or upgrade a dependency — scan `go.mod` (and any HTML/Makefile CDN pins), check the latest stable versions, and read release notes for breaking changes before bumping a major.
 
 ## Logging Patterns
 
@@ -339,39 +314,26 @@ See `./references/utils-templates.md` for implementation patterns.
 
 **Tests exist to prove logical correctness and robustness — not to chase coverage.**
 
-The goal of a unit test is to pin down edge cases, special conditions, and the inputs that are
-prone to breaking or panicking. A test that merely re-asserts the happy path so the suite "passes"
-adds noise, not safety. Every test should earn its place by encoding a scenario you actually
-reasoned about.
+The goal of a unit test is to pin down edge cases, special conditions, and the inputs that are prone to breaking or panicking. A test that merely re-asserts the happy path so the suite "passes" adds noise, not safety. Every test should earn its place by encoding a scenario you actually reasoned about.
 
 ### Principles
 
-- **Scenario-driven, not coverage-driven.** Before writing tests, think through how the code can
-  break: boundary values, empty/nil inputs, zero-length and single-element slices, malformed data,
-  concurrent access, integer/size overflow, and anything that could panic. Those scenarios are
-  what become test cases.
-- **Unit tests, not integration tests.** Test the package's own logic in isolation. Do not stand
-  up servers, hit networks, or exercise multiple packages end-to-end — that is out of scope here.
-- **Robustness focus.** A function that can panic should have a test proving it doesn't on the
-  nasty inputs. Prefer table-driven tests to enumerate edge cases compactly.
-- **Don't test the trivial.** Skip pedantic tests of getters, trivial wrappers, or code with no
-  branching or failure modes. If there's no logic to break, there's nothing to test.
-- **Fully implement the code first.** Write complete, working implementations; then add tests for
-  the scenarios that matter. Tests are not a substitute for finishing the code.
+- **Scenario-driven, not coverage-driven.** Before writing tests, think through how the code can break: boundary values, empty/nil inputs, zero-length and single-element slices, malformed data, concurrent access, integer/size overflow, and anything that could panic. Those scenarios are what become test cases.
+- **Unit tests, not integration tests.** Test the package's own logic in isolation. Do not stand up servers, hit networks, or exercise multiple packages end-to-end — that is out of scope here.
+- **Robustness focus.** A function that can panic should have a test proving it doesn't on the nasty inputs. Prefer table-driven tests to enumerate edge cases compactly.
+- **Don't test the trivial.** Skip pedantic tests of getters, trivial wrappers, or code with no branching or failure modes. If there's no logic to break, there's nothing to test.
+- **Fully implement the code first.** Write complete, working implementations; then add tests for the scenarios that matter. Tests are not a substitute for finishing the code.
 
 ### Placement
 
 - Tests live **in the package they test** (same directory, `package foo` or `package foo_test`).
-- **One `_test.go` file per package is enough.** Even when a package has several source files,
-  collect that package's edge-case tests into a single test file rather than mirroring each
-  source file. Split only if one file becomes genuinely unwieldy.
+- **One `_test.go` file per package is enough.** Even when a package has several source files, collect that package's edge-case tests into a single test file rather than mirroring each source file. Split only if one file becomes genuinely unwieldy.
 
 ### Modern test idioms (1.26+)
 
 - **`t.Context()`** for a test's context — not `context.WithCancel(context.Background())`.
 - **`for b.Loop()`** for the main benchmark loop — not `for i := 0; i < b.N; i++`.
-- **`omitzero`** (not `omitempty`) in JSON struct tags for `time.Time`, `time.Duration`, structs,
-  slices, and maps, where zero-value omission matters.
+- **`omitzero`** (not `omitempty`) in JSON struct tags for `time.Time`, `time.Duration`, structs, slices, and maps, where zero-value omission matters.
 
 ```go
 func TestParse(t *testing.T) {
