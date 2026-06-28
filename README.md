@@ -19,7 +19,7 @@ A multi-account companion for Claude Code: monitor usage across accounts, browse
 | | `switch` | Move a conversation from one account to another |
 | Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
 | Statusline | `statusline` | Install the claudex statusline into an account's Claude Code config |
-| Skills | `apply-skills` | Install the embedded development skill set into the current project |
+| Skills | `apply-skills` | Install the embedded development skill set and output style into the current project |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -45,11 +45,6 @@ make build
 
 ## Usage
 
-### Global Flags
-
-- `--debug` - Enable debug logging (zerolog with timestamps and full error details)
-- `--for-ai` - AI-friendly output (plain text prefixes like `[OK]`, `[INFO]`, `[ERROR]`, `[WARN]`; markdown tables; piped stdin for prompts)
-
 ### `status`
 
 Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns per account. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain.
@@ -59,10 +54,6 @@ claudex status
 claudex status -A ~/.claude2
 claudex status -j
 ```
-
-**Flags:**
-- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
-- `-j, --json` - Output as JSON
 
 ### `list`
 
@@ -74,11 +65,6 @@ claudex list -n 5
 claudex list -j
 ```
 
-**Flags:**
-- `-A, --account` - Limit to a single account directory (default: all auto-discovered accounts)
-- `-n, --limit` - Number of conversations to show (default: `10`)
-- `-j, --json` - Output as JSON (includes full session UUIDs)
-
 ### `switch`
 
 Move a conversation from one account to another. Transfers session files and migrates history entries between config directories.
@@ -87,11 +73,6 @@ Move a conversation from one account to another. Transfers session files and mig
 claudex switch --id <session-uuid> --to ~/.claude2
 claudex switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
 ```
-
-**Flags:**
-- `--id` - Session UUID to switch (required)
-- `--from` - Source config directory (default: `~/.claude`)
-- `--to` - Target config directory (required)
 
 ### `launch`
 
@@ -103,7 +84,7 @@ claudex launch
 
 The TUI starts with a mode selection (shown only when resumable sessions exist):
 - **New session** — walks through account and MCP/connector selection
-- **Resume** — pick from the 10 most recent sessions across all accounts
+- **Resume** — pick from the most recent sessions for the current directory (across all accounts)
 
 For new sessions, the remaining steps are:
 - **Account** — select which `~/.claude*` directory to use (skipped if only one exists)
@@ -116,7 +97,7 @@ Resume sessions skip the prompts and automatically target the correct account vi
 
 ### `statusline`
 
-Install the embedded claudex statusline into an account's Claude Code config. Writes `statusline.sh` into the account directory and merges the `statusLine` block into its `settings.json` without touching any other settings. The label defaults to a word derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`); use `--label` to override it.
+Install the embedded claudex statusline into an account's Claude Code config. Writes `statusline.sh` into the account directory and merges the `statusLine` block into its `settings.json` without touching any other settings. The account label shown is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`).
 
 ```bash
 claudex statusline
@@ -124,21 +105,13 @@ claudex statusline -A ~/.claude2
 claudex statusline -A ~/.claude2 --label prod
 ```
 
-**Flags:**
-- `-A, --account` - Account config directory to install into (default: `~/.claude`)
-- `-l, --label` - Override the account label shown in the statusline (default: derived from directory name)
-
 ### `apply-skills`
 
-Install claudex's embedded skill set into the current project, under `.claude/skills/` (or `.agents/skills/` with `--agentsio`). Matching is by skill name: each embedded skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match an embedded name is left untouched. Run it from the project root.
+Install claudex's embedded skill set into the current project, under `.claude/skills/`. Matching is by skill name: each embedded skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match an embedded name is left untouched. It also installs the embedded output style(s) into `.claude/output-styles/` (overwriting only same-named files); enable one ad hoc via `/config`. Run it from the project root.
 
 ```bash
 claudex apply-skills
-claudex apply-skills --agentsio
 ```
-
-**Flags:**
-- `--agentsio` - Install into `.agents/skills` instead of `.claude/skills` (default: `.claude/skills`)
 
 ### `oauth-token`
 
@@ -151,13 +124,9 @@ claudex oauth-token --expires-in 3600
 claudex oauth-token --port 8080
 ```
 
-**Flags:**
-- `-p, --port` - Local port for OAuth callback server (default: `54545`)
-- `-e, --expires-in` - Requested token expiry in seconds (default: `3600`; server may override)
-
 ## Tips and Notes
 
-- Accounts are auto-discovered (`~/.claude`, `~/.claude2`, …); use `-A/--account` on a command to target a single account
+- Accounts are auto-discovered (`~/.claude`, `~/.claude2`, …)
 - Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
 - OAuth tokens are read from macOS Keychain; they refresh automatically when Claude Code is running
 - If a token is expired, launch Claude Code on that account to refresh it
