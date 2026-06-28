@@ -16,8 +16,17 @@ FIRE="🔥"
 WARN="⚠️"
 
 # $1 is the optional label override from "claudex statusline --label"
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CONFIG_DIR_NAME="$(basename "$SCRIPT_DIR")"
+# Resolve the ACTIVE account from CLAUDE_CONFIG_DIR when set (launch sets it per
+# account), falling back to this script's own directory. This matters in $HOME,
+# where the project-scope .claude/ is the first account's config dir, so Claude
+# Code may run the first account's statusline.sh even when another account is
+# active — but CLAUDE_CONFIG_DIR still names the real account.
+if [[ -n "$CLAUDE_CONFIG_DIR" ]]; then
+    CONFIG_DIR_NAME="$(basename "$CLAUDE_CONFIG_DIR")"
+else
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+    CONFIG_DIR_NAME="$(basename "$SCRIPT_DIR")"
+fi
 if [[ -n "$1" ]]; then
     ACCT_LABEL="$1"
 elif [[ "$CONFIG_DIR_NAME" == ".claude" ]]; then
