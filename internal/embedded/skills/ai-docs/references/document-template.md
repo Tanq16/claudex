@@ -1,23 +1,24 @@
 # AI-docs document template
 
-The default spine. It's a starting shape, not a cage — add, reorder, or nest subsections as the
-content needs. The right-hand TOC is built from `<h2>`/`<h3>`, so use headings freely.
+The default spine. It's a starting shape, not a cage — add, reorder, or nest subsections as the content needs. The right-hand TOC is built from `<h2>`/`<h3>`, so use headings freely.
 
 Every file starts with `<!-- curated -->`. Body fragment only (no page tags).
 
 ## The spine
 
 1. **Header** — `doc-header` with `h1` and a one-sentence `lede`. Optional `eyebrow` kicker.
-2. **Details** — the substance. What the thing is / what was found. The bulk of the doc. Break into
-   `<h2>` sections as needed (use tables, cols, facts, steps, code from the vocabulary).
-3. **Process** — what was actually done to produce this (steps taken, files touched, how it was
-   verified). Short. Use `<ol class="steps">` when it's a sequence.
-4. **Raw material** (optional) — a final `<h2>` holding supporting evidence, full logs, long quotes,
-   command output, and anything too detailed for the main flow. Wrap each chunk in
-   `<details class="expand">` so it's collapsed by default.
+2. **Details** — the substance. What the thing is / what was found. The bulk of the doc. Break into `<h2>` sections as needed (use tables, cols, facts, steps, code from the vocabulary).
+3. **Process** — what was actually done to produce this (steps taken, files touched, how it was verified). Short. Use `<ol class="steps">` when it's a sequence.
+4. **Raw material** (optional) — a final `<h2>` holding supporting evidence, full logs, long quotes, command output, and anything too detailed for the main flow. Wrap each chunk in `<details class="expand">` so it's collapsed by default.
 
-Drop sections that don't apply. A pure factual inventory may have no Process; a quick capture may have
-no Raw material.
+Drop sections that don't apply. A pure factual inventory may have no Process; a quick capture may have no Raw material.
+
+**Don't reflexively open with a TL;DR or a stat grid.** The `lede` already states the headline — go straight from it into Details. `aside.tldr` and the `facts` grid are *optional* and *earned*:
+
+- Add a **TL;DR** only when the doc is long enough that a reader genuinely wants the conclusions bulleted up front. A short doc doesn't need a summary of two screens above it.
+- Add a **`facts` grid** only when there are real headline numbers (a benchmark, a count, a before→after). Don't manufacture four metrics to fill it.
+
+For most docs, neither appears — header, lede, then Details.
 
 ## Skeleton
 
@@ -56,14 +57,6 @@ no Raw material.
   <h1>SQS vs. Kafka for the ingest path</h1>
   <p class="lede">SQS covers current volume with no ops burden; Kafka only pays off past ~50k msg/s.</p>
 </header>
-
-<aside class="tldr">
-  <div class="label">TL;DR</div>
-  <ul>
-    <li>Peak measured load is 3.2k msg/s — 15x below the Kafka break-even.</li>
-    <li>SQS FIFO gives ordering per group; we only need per-tenant ordering.</li>
-  </ul>
-</aside>
 
 <h2>Details</h2>
 <div class="cols-2">

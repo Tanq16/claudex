@@ -1,16 +1,12 @@
 # AI-docs component vocabulary
 
-The viewer (`index.html`) and print stylesheet (`print.html`) bind every class below. Use these
-patterns and only these patterns. Don't invent new classes, colors, or callout styles — the chrome
-already handles palette, headings, TOC, and PDF.
+The viewer (`index.html`) and print stylesheet (`print.html`) bind every class below. Use these patterns and only these patterns. Don't invent new classes, colors, or callout styles — the chrome already handles palette, headings, TOC, and PDF.
 
-Every curated file's first line MUST be `<!-- curated -->` so `convert.mjs` never overwrites it.
-Write body fragments only — no `<html>`, `<head>`, `<body>`, `<script>`, `<style>`, or `<link>` tags.
+Every curated file's first line MUST be `<!-- curated -->` so `convert.mjs` never overwrites it. Write body fragments only — no `<html>`, `<head>`, `<body>`, `<script>`, `<style>`, or `<link>` tags.
 
 ## Page header
 
-The title block. `eyebrow` is an optional kicker (category / number). `lede` is one sentence
-stating the headline finding.
+The title block. `eyebrow` is an optional kicker (category / number). `lede` is one sentence stating the headline finding.
 
 ```html
 <header class="doc-header">
@@ -79,13 +75,9 @@ For code listings that need a file:line or source label.
 </figure>
 ```
 
-## Diagram (architecture / flow)
+## Diagram (architecture / flow / sequence / bars)
 
-For any architecture, topology, data-flow, or sequence picture, hand-author an inline `<svg>` wrapped
-in `figure.diagram`. The wrapper frames it (mantle surface), centers it, caps width, and scales it
-responsively. **The full house style — canvas size, per-element `<title>` tooltips, semantic
-color-coding, dashed boundary planes, connectors, and a copyable worked example — lives in
-`./diagrams.md`. Read it before authoring a diagram.** Quick shape:
+For any topology, data-flow, **sequence/swimlane**, or **bar-chart** picture, hand-author an inline `<svg>` wrapped in `figure.diagram`. The wrapper frames it (mantle surface), centers it, caps width, and scales it responsively. **The full house style — the two diagram families (topology + swimlane), the "pick the representation first" guide, canvas size, per-element `<title>` tooltips, semantic color-coding, connectors, the bar-chart pattern, and copyable worked examples — lives in `./diagrams.md`. Read it before authoring any diagram.** Quick shape:
 
 ```html
 <figure class="diagram">
@@ -101,16 +93,11 @@ color-coding, dashed boundary planes, connectors, and a copyable worked example 
 </figure>
 ```
 
-Palette hexes for SVG fills/strokes (match the theme): base `#1e1e2e`, mantle `#181825`,
-crust `#11111b`, surface0 `#313244`, surface1 `#45475a`, text `#cdd6f4`, subtext0 `#a6adc8`,
-overlay1 `#7f849c`/`#9399b2`, lavender `#b4befe`, mauve `#cba6f7`, pink `#f5c2e7`, peach `#fab387`,
-yellow `#f9e2af`, green `#a6e3a1`, blue `#89b4fa`, teal `#74c7ec`/`#89dceb`, sky-green `#94e2d5`,
-red `#f38ba8`. Use `stroke-dasharray="6 4"` for "future/planned" nodes, a solid stroke for shipped ones.
+Palette hexes for SVG fills/strokes (match the theme): base `#1e1e2e`, mantle `#181825`, crust `#11111b`, surface0 `#313244`, surface1 `#45475a`, text `#cdd6f4`, subtext0 `#a6adc8`, overlay1 `#7f849c`/`#9399b2`, lavender `#b4befe`, mauve `#cba6f7`, pink `#f5c2e7`, peach `#fab387`, yellow `#f9e2af`, green `#a6e3a1`, blue `#89b4fa`, teal `#74c7ec`/`#89dceb`, sky-green `#94e2d5`, red `#f38ba8`. Use `stroke-dasharray="6 4"` for "future/planned" nodes, a solid stroke for shipped ones.
 
 ## Expandable detail
 
-For supporting evidence, long quotes, or raw material the reader can skip. This is the primary tool
-for keeping the main flow consumable — tuck depth beneath its conclusion. Force-opened in PDF.
+For supporting evidence, long quotes, or raw material the reader can skip. This is the primary tool for keeping the main flow consumable — tuck depth beneath its conclusion. Force-opened in PDF.
 
 ```html
 <details class="expand">
@@ -153,10 +140,16 @@ Inline status tags.
 
 ## Tables, lists, prose
 
-Plain markdown-style HTML (`<table>`, `<ul>`, `<ol>`, `<p>`, `<blockquote>`) is already styled.
-Use tables for comparisons, lists when there are more than two items, prose for everything else.
-A right-hand table of contents is generated automatically from `<h2>` and `<h3>` once a doc has 3+
-of them — so lean on headings to make long docs navigable.
+Plain markdown-style HTML (`<table>`, `<ul>`, `<ol>`, `<p>`, `<blockquote>`) is already styled. Use tables for comparisons, lists when there are more than two items, prose for everything else. A right-hand table of contents is generated automatically from `<h2>` and `<h3>` once a doc has 3+ of them — so lean on headings to make long docs navigable.
+
+## Copy buttons (automatic — author nothing)
+
+The viewer injects a hover copy control onto every code block and every diagram, so you never hand-author copy UI:
+
+- **Code blocks** (`<pre>`) get a `copy` button that copies the source text.
+- **Diagrams / any content `<svg>`** get `svg` (copies the SVG source) and `png` (copies a rendered PNG, with the diagram's dark canvas background baked in) buttons.
+
+Just write normal `<pre>` / `<svg>`; the controls appear on load and never show up in the printed PDF.
 
 ## UI rules (do not violate)
 

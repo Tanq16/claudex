@@ -9,14 +9,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/marked@14.1.3/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/highlight.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/go.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/typescript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/javascript.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/yaml.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/json.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/bash.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/lib/languages/dockerfile.min.js"></script>
+<!-- highlight.js: cdnjs ships the UMD "common" bundle (defines global hljs + ~37 languages: go, python,
+     bash, json, yaml, sql, rust, ts, js, …). The npm /lib/ path is CommonJS and 404s in the browser. -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/dockerfile.min.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <style>
   :root {
@@ -184,9 +180,18 @@
   code.kbd { background: var(--surface0); color: var(--text); font-size: 0.8em; padding: 0.06rem 0.4rem; }
 
   /* diagram (hand-authored SVG, boxes & arrows) — framed, centered, bounded */
-  figure.diagram { background: var(--mantle); border-radius: 10px; padding: 1.1rem 1.2rem; margin: 1.5rem 0; overflow-x: auto; }
+  figure.diagram { background: var(--mantle); border-radius: 10px; padding: 0.7rem 0.85rem; margin: 1.5rem 0; overflow-x: auto; }
   figure.diagram svg { display: block; width: 100%; height: auto; max-width: 860px; margin: 0 auto; }
-  figure.diagram figcaption { font-family: "JetBrains Mono", monospace; font-size: 0.72rem; color: var(--overlay1); text-align: center; margin-top: 0.65rem; }
+  figure.diagram figcaption { font-family: "JetBrains Mono", monospace; font-size: 0.7rem; color: var(--overlay1); text-align: center; margin-top: 0.5rem; }
+
+  /* copy controls — injected on code blocks and diagrams, revealed on hover */
+  .copy-wrap { position: relative; }
+  .copy-ctl { position: absolute; top: 0.55rem; right: 0.55rem; display: flex; gap: 0.3rem; opacity: 0; transition: opacity 120ms ease; z-index: 3; }
+  .copy-wrap:hover .copy-ctl, .copy-ctl:focus-within { opacity: 1; }
+  .copy-btn { font-family: "JetBrains Mono", monospace; font-size: 0.62rem; letter-spacing: 0.03em; line-height: 1; padding: 0.24rem 0.42rem; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--surface0) 82%, transparent); color: var(--overlay2); cursor: pointer; backdrop-filter: blur(4px); }
+  .copy-btn:hover { background: var(--surface1); color: var(--text); }
+  .copy-btn.ok { color: var(--green); }
+  .copy-btn.err { color: var(--red); }
 
   /* small popover menu */
   .menu { background: var(--mantle); border-radius: 8px; box-shadow: 0 10px 30px -10px rgba(0,0,0,0.6); padding: 0.25rem; }
@@ -352,6 +357,91 @@
     });
   }
 
+  // ───── copy controls: code blocks copy their text; SVGs copy source or a rendered PNG ─────
+  const RASTER_SCALE = 2;        // upscale factor for a crisp PNG
+  const RASTER_BG = '#1e1e2e';   // diagram canvas background baked into the PNG
+
+  function flashBtn(btn, label, cls) {
+    btn.textContent = label;
+    btn.classList.remove('ok', 'err');
+    if (cls) btn.classList.add(cls);
+    clearTimeout(btn._t);
+    btn._t = setTimeout(() => { btn.textContent = btn.dataset.label; btn.classList.remove('ok', 'err'); }, 1100);
+  }
+
+  async function copyTextTo(btn, text) {
+    try { await navigator.clipboard.writeText(text); flashBtn(btn, 'copied', 'ok'); }
+    catch { flashBtn(btn, 'failed', 'err'); }
+  }
+
+  function svgSource(svg) {
+    const clone = svg.cloneNode(true);
+    if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    if (!clone.getAttribute('font-family')) clone.setAttribute('font-family', '"JetBrains Mono", ui-monospace, monospace');
+    return new XMLSerializer().serializeToString(clone);
+  }
+
+  async function copySvgPng(btn, svg) {
+    try {
+      const src = svgSource(svg);
+      const vb = svg.viewBox && svg.viewBox.baseVal;
+      const w = (vb && vb.width) || svg.clientWidth || 960;
+      const h = (vb && vb.height) || svg.clientHeight || 480;
+      const url = URL.createObjectURL(new Blob([src], { type: 'image/svg+xml;charset=utf-8' }));
+      const img = new Image();
+      await new Promise((ok, no) => { img.onload = ok; img.onerror = no; img.src = url; });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(w * RASTER_SCALE);
+      canvas.height = Math.round(h * RASTER_SCALE);
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = RASTER_BG;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      const blob = await new Promise(r => canvas.toBlob(r, 'image/png'));
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      flashBtn(btn, 'copied', 'ok');
+    } catch { flashBtn(btn, 'failed', 'err'); }
+  }
+
+  function makeCopyBtn(label, onClick) {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'copy-btn';
+    b.textContent = label;
+    b.dataset.label = label;
+    b.addEventListener('click', e => { e.preventDefault(); onClick(b); });
+    return b;
+  }
+
+  function wrapWithCtl(el, buttons) {
+    const wrap = document.createElement('div');
+    wrap.className = 'copy-wrap';
+    el.parentNode.insertBefore(wrap, el);
+    wrap.appendChild(el);
+    const ctl = document.createElement('div');
+    ctl.className = 'copy-ctl';
+    buttons.forEach(b => ctl.appendChild(b));
+    wrap.appendChild(ctl);
+  }
+
+  function decorateCopyables() {
+    contentEl.querySelectorAll('pre').forEach(pre => {
+      if (pre.closest('.copy-wrap')) return;
+      const code = pre.querySelector('code') || pre;
+      wrapWithCtl(pre, [makeCopyBtn('copy', b => copyTextTo(b, code.innerText))]);
+    });
+    contentEl.querySelectorAll('svg').forEach(svg => {
+      if (svg.classList.contains('lucide')) return;   // skip injected icons
+      const target = svg.closest('figure.diagram') || svg;
+      if (target.closest('.copy-wrap')) return;
+      wrapWithCtl(target, [
+        makeCopyBtn('svg', b => copyTextTo(b, svgSource(svg))),
+        makeCopyBtn('png', b => copySvgPng(b, svg)),
+      ]);
+    });
+  }
+
   function buildToc() {
     if (tocObserver) { tocObserver.disconnect(); tocObserver = null; }
     const headings = [...contentEl.querySelectorAll('h2, h3')];
@@ -397,6 +487,7 @@
       contentEl.innerHTML = text;
     }
     highlightCode();
+    decorateCopyables();
     buildToc();
     rebuildIcons();
     document.querySelector('main').scrollTo({ top: 0, behavior: 'instant' });
