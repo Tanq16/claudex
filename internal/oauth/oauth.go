@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -84,12 +85,27 @@ func WaitForCallback(ctx context.Context, port int, expectedState string) (strin
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
 
+	// Non-blocking sends: only the first callback matters, so a duplicate /callback
+	// request can never park a handler goroutine on a full channel.
+	sendCode := func(code string) {
+		select {
+		case codeCh <- code:
+		default:
+		}
+	}
+	sendErr := func(err error) {
+		select {
+		case errCh <- err:
+		default:
+		}
+	}
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/callback", func(w http.ResponseWriter, r *http.Request) {
 		state := r.URL.Query().Get("state")
 		if state != expectedState {
 			http.Error(w, "Invalid state parameter", http.StatusBadRequest)
-			errCh <- fmt.Errorf("state mismatch: expected %s, got %s", expectedState, state)
+			sendErr(fmt.Errorf("state mismatch: expected %s, got %s", expectedState, state))
 			return
 		}
 
@@ -100,13 +116,13 @@ func WaitForCallback(ctx context.Context, port int, expectedState string) (strin
 				errMsg = "no authorization code received"
 			}
 			http.Error(w, errMsg, http.StatusBadRequest)
-			errCh <- fmt.Errorf("authorization failed: %s", errMsg)
+			sendErr(fmt.Errorf("authorization failed: %s", errMsg))
 			return
 		}
 
 		w.Header().Set("Content-Type", "text/html")
 		fmt.Fprint(w, "<h2>Authentication successful</h2><p>You can close this tab.</p>")
-		codeCh <- code
+		sendCode(code)
 	})
 
 	listener, err := net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", port))
@@ -116,11 +132,16 @@ func WaitForCallback(ctx context.Context, port int, expectedState string) (strin
 
 	server := &http.Server{Handler: mux}
 	go func() {
-		if err := server.Serve(listener); err != nil && err != http.ErrServerClosed {
-			errCh <- fmt.Errorf("callback server error: %w", err)
+		if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			sendErr(fmt.Errorf("callback server error: %w", err))
 		}
 	}()
-	defer server.Shutdown(context.Background())
+	// Bound shutdown so a lingering connection can't hang the deferred cleanup.
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		server.Shutdown(shutdownCtx)
+	}()
 
 	select {
 	case code := <-codeCh:
