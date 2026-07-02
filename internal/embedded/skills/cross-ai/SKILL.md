@@ -34,10 +34,12 @@ Run these verbatim, substituting `<TASK>` and `<FILE>`. Each is read-only — no
 
 `@<FILE>` injection is for `agy`/`gemini`. `codex`/`cursor`/`claude` read the current working directory themselves — reference paths in `<TASK>` and they will open them.
 
-`agy` truncation guard: if its output looks cut off or garbled (it misbehaves on a non-TTY pipe), rerun under a pty and strip ANSI:
-```
-script -qec 'agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions' /dev/null < /dev/null | sed -r 's/\x1B\[[0-9;]*[A-Za-z]//g'
-```
+`agy` truncation guard: if its output looks cut off or garbled (it misbehaves on a non-TTY pipe), rerun under a pty and strip ANSI. `script`'s flags differ by OS — claudex runs on both:
+
+- macOS (BSD `script`): `script -q /dev/null agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions`
+- Linux (GNU `script`): `script -qec 'agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions' /dev/null`
+
+Pipe either through `perl -pe 's/\e\[[0-9;]*[A-Za-z]//g'` to strip color codes (portable across macOS/Linux).
 
 ## Execution recipe
 
