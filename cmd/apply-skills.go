@@ -18,6 +18,15 @@ var applySkillsCmd = &cobra.Command{
 	Run:   runApplySkills,
 }
 
+var applySkillsFlags struct {
+	fullWipe bool
+}
+
+func init() {
+	applySkillsCmd.Flags().BoolVar(&applySkillsFlags.fullWipe, "full-wipe", false,
+		"Before installing, clear the project's .claude skills, output-styles, and settings for a clean slate (refused in the home directory, which holds the live ~/.claude config)")
+}
+
 func runApplySkills(cmd *cobra.Command, args []string) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -25,6 +34,11 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 	}
 
 	claudeDir := filepath.Join(cwd, ".claude")
+
+	if applySkillsFlags.fullWipe {
+		fullWipeProjectClaude(claudeDir)
+	}
+
 	targetRoot := filepath.Join(claudeDir, "skills")
 
 	entries, err := fs.ReadDir(embedded.SkillsFS, "skills")
@@ -61,6 +75,50 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 		u.PrintFatal("failed to install output styles", err)
 	}
 	u.PrintSuccess(fmt.Sprintf("Installed %d output style(s) into %s (enable with /config)", styleCount, u.AbbreviatePath(styleDest)))
+}
+
+func fullWipeProjectClaude(claudeDir string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		u.PrintFatal("--full-wipe: cannot resolve home to confirm the wipe is safe", err)
+	}
+	// Never wipe the live ~/.claude config, even when reached via a symlinked cwd or .claude.
+	if samePath(claudeDir, filepath.Join(home, ".claude")) {
+		u.PrintWarn("--full-wipe skipped: this .claude is your live ~/.claude config, not a project config", nil)
+		return
+	}
+
+	targets := []string{
+		filepath.Join(claudeDir, "skills"),
+		filepath.Join(claudeDir, "output-styles"),
+		filepath.Join(claudeDir, "settings.json"),
+		filepath.Join(claudeDir, "settings.local.json"),
+	}
+	removed := 0
+	for _, t := range targets {
+		if _, err := os.Lstat(t); os.IsNotExist(err) {
+			continue
+		}
+		if err := os.RemoveAll(t); err != nil {
+			u.PrintFatal(fmt.Sprintf("failed to wipe %q", u.AbbreviatePath(t)), err)
+		}
+		removed++
+	}
+	u.PrintSuccess(fmt.Sprintf("--full-wipe: cleared %d existing item(s) under %s", removed, u.AbbreviatePath(claudeDir)))
+}
+
+func samePath(a, b string) bool {
+	if ai, err := os.Stat(a); err == nil {
+		if bi, err := os.Stat(b); err == nil {
+			return os.SameFile(ai, bi)
+		}
+	}
+	ra, err1 := filepath.EvalSymlinks(a)
+	rb, err2 := filepath.EvalSymlinks(b)
+	if err1 == nil && err2 == nil {
+		return filepath.Clean(ra) == filepath.Clean(rb)
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
 }
 
 func writeOutputStyles(dest string) (int, error) {
