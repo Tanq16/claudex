@@ -36,7 +36,7 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 	claudeDir := filepath.Join(cwd, ".claude")
 
 	if applySkillsFlags.fullWipe {
-		fullWipeProjectClaude(cwd, claudeDir)
+		fullWipeProjectClaude(claudeDir)
 	}
 
 	targetRoot := filepath.Join(claudeDir, "skills")
@@ -77,13 +77,19 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 	u.PrintSuccess(fmt.Sprintf("Installed %d output style(s) into %s (enable with /config)", styleCount, u.AbbreviatePath(styleDest)))
 }
 
-// fullWipeProjectClaude clears the project's claudex-managed .claude artifacts — skills,
-// output-styles, and the settings files — so the install that follows starts from a clean
-// slate. It refuses to run in the home directory, where .claude is the default account's live
-// Claude Code config dir rather than a project-local one.
-func fullWipeProjectClaude(cwd, claudeDir string) {
-	if home, err := os.UserHomeDir(); err == nil && filepath.Clean(cwd) == filepath.Clean(home) {
-		u.PrintWarn("--full-wipe skipped: the home directory's .claude is your live Claude Code config, not a project config", nil)
+// fullWipeProjectClaude clears the project's .claude skills, output-styles, and settings files
+// so the install that follows starts from a clean slate. It refuses when the target .claude
+// resolves to the live ~/.claude config dir — covering the home directory, symlinked or
+// /private-prefixed paths, case-insensitive filesystems, and a project .claude symlinked at
+// ~/.claude — so a wipe can never take out the default account's real config. If the home
+// directory itself cannot be resolved, it fails closed (refuses) rather than risking a wipe.
+func fullWipeProjectClaude(claudeDir string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		u.PrintFatal("--full-wipe: cannot resolve the home directory to confirm the wipe is safe", err)
+	}
+	if samePath(claudeDir, filepath.Join(home, ".claude")) {
+		u.PrintWarn("--full-wipe skipped: this .claude resolves to your live ~/.claude config, not a project config", nil)
 		return
 	}
 
@@ -95,7 +101,9 @@ func fullWipeProjectClaude(cwd, claudeDir string) {
 	}
 	removed := 0
 	for _, t := range targets {
-		if _, err := os.Stat(t); os.IsNotExist(err) {
+		// Lstat (not Stat) so a dangling symlink counts as present and gets removed; RemoveAll on
+		// a symlink drops the link itself, never the directory it points into.
+		if _, err := os.Lstat(t); os.IsNotExist(err) {
 			continue
 		}
 		if err := os.RemoveAll(t); err != nil {
@@ -104,6 +112,24 @@ func fullWipeProjectClaude(cwd, claudeDir string) {
 		removed++
 	}
 	u.PrintSuccess(fmt.Sprintf("--full-wipe: cleared %d existing item(s) under %s", removed, u.AbbreviatePath(claudeDir)))
+}
+
+// samePath reports whether a and b are the same filesystem object, resolving symlinks,
+// /private prefixes, and case-insensitive mounts via device+inode identity (os.SameFile). When
+// either path does not exist yet it falls back to symlink-resolved path comparison, then to a
+// plain cleaned-string comparison.
+func samePath(a, b string) bool {
+	if ai, err := os.Stat(a); err == nil {
+		if bi, err := os.Stat(b); err == nil {
+			return os.SameFile(ai, bi)
+		}
+	}
+	ra, err1 := filepath.EvalSymlinks(a)
+	rb, err2 := filepath.EvalSymlinks(b)
+	if err1 == nil && err2 == nil {
+		return filepath.Clean(ra) == filepath.Clean(rb)
+	}
+	return filepath.Clean(a) == filepath.Clean(b)
 }
 
 func writeOutputStyles(dest string) (int, error) {
