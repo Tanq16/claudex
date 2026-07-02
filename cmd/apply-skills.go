@@ -77,19 +77,14 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 	u.PrintSuccess(fmt.Sprintf("Installed %d output style(s) into %s (enable with /config)", styleCount, u.AbbreviatePath(styleDest)))
 }
 
-// fullWipeProjectClaude clears the project's .claude skills, output-styles, and settings files
-// so the install that follows starts from a clean slate. It refuses when the target .claude
-// resolves to the live ~/.claude config dir — covering the home directory, symlinked or
-// /private-prefixed paths, case-insensitive filesystems, and a project .claude symlinked at
-// ~/.claude — so a wipe can never take out the default account's real config. If the home
-// directory itself cannot be resolved, it fails closed (refuses) rather than risking a wipe.
 func fullWipeProjectClaude(claudeDir string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		u.PrintFatal("--full-wipe: cannot resolve the home directory to confirm the wipe is safe", err)
+		u.PrintFatal("--full-wipe: cannot resolve home to confirm the wipe is safe", err)
 	}
+	// Never wipe the live ~/.claude config, even when reached via a symlinked cwd or .claude.
 	if samePath(claudeDir, filepath.Join(home, ".claude")) {
-		u.PrintWarn("--full-wipe skipped: this .claude resolves to your live ~/.claude config, not a project config", nil)
+		u.PrintWarn("--full-wipe skipped: this .claude is your live ~/.claude config, not a project config", nil)
 		return
 	}
 
@@ -101,8 +96,6 @@ func fullWipeProjectClaude(claudeDir string) {
 	}
 	removed := 0
 	for _, t := range targets {
-		// Lstat (not Stat) so a dangling symlink counts as present and gets removed; RemoveAll on
-		// a symlink drops the link itself, never the directory it points into.
 		if _, err := os.Lstat(t); os.IsNotExist(err) {
 			continue
 		}
@@ -114,10 +107,6 @@ func fullWipeProjectClaude(claudeDir string) {
 	u.PrintSuccess(fmt.Sprintf("--full-wipe: cleared %d existing item(s) under %s", removed, u.AbbreviatePath(claudeDir)))
 }
 
-// samePath reports whether a and b are the same filesystem object, resolving symlinks,
-// /private prefixes, and case-insensitive mounts via device+inode identity (os.SameFile). When
-// either path does not exist yet it falls back to symlink-resolved path comparison, then to a
-// plain cleaned-string comparison.
 func samePath(a, b string) bool {
 	if ai, err := os.Stat(a); err == nil {
 		if bi, err := os.Stat(b); err == nil {
