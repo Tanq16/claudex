@@ -179,11 +179,11 @@ module-root/
 
 ## Comments and Code Style
 
-Code should read as self-documenting; comments earn their place by adding what the code cannot say.
+Default to zero comments. Code should read as self-documenting; a comment earns its place only by saying what the code cannot.
 
 - **Comment the *why*, not the *what*** — the code already states what it does. Reserve comments for intent, trade-offs, and non-obvious constraints (why this order, why this bound, what a subtle edge case guards against).
-- **No redundant comments** — never restate the code or narrate obvious control flow (`// increment i`, `// loop over items`). A comment that mirrors the line below it is noise.
-- **One line by default** — a single line is usually enough to state the why. Only span multiple lines when there is genuinely more to explain; otherwise nothing.
+- **No redundant comments** — never restate the code or narrate obvious control flow (`// increment i`, `// loop over items`). A comment that mirrors the line below it is noise. This holds even when the task says "add comments" or "explain what it does": tidy the code and add a why only where one is warranted, never what-narration. Never embed example or scaffolding code behind `//` — that is documentation, not a comment.
+- **One line by default** — a single line is usually enough to state the why, and often none is needed. Only span multiple lines when there is genuinely more to explain. Internal, unexported helpers rarely need a doc comment at all — don't add a paragraph that just restates the signature.
 - **Keep them current** — a stale comment is worse than none. Update or delete comments when the code they describe changes.
 
 ## Modern Go (target 1.26+)
