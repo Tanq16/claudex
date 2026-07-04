@@ -45,13 +45,14 @@ Before writing code, emit a short checklist — the **specific** rules from the 
 
 ```
 Rules in effect (CLI Only, new command):
+- Comments: why-not-what, one line by default (often none) — never restate code or embed scaffolding
 - Output via utils printer (PrintInfo/PrintSuccess/...), never fmt.Println
 - zerolog only behind --debug; human output through utils otherwise
 - Tables via utils.PrintTable; honor --for-ai plain-text path
 - New command file under cmd/, registered in root.go init()
 ```
 
-This keeps the rules in front of you while you code — it is the main defense against rules decaying out of attention mid-session.
+A few rules are **always in effect** for any Go work regardless of task — first among them comment discipline (`go-foundations` → *Comments and Code Style*). Put these on the checklist every time: being cross-cutting rather than task-specific, they are the first to drop off the list and the first to decay mid-session. This keeps the rules in front of you while you code — it is the main defense against rules decaying out of attention mid-session.
 
 ### Step 4: Do the work
 
