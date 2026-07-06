@@ -10,17 +10,17 @@ type AccountInfo struct {
 }
 
 type UsageWindow struct {
+	Kind        string    `json:"kind"`
+	Scope       string    `json:"scope,omitempty"`
 	Utilization float64   `json:"utilization"`
 	ResetsAt    time.Time `json:"resetsAt"`
 }
 
 type AccountUsage struct {
-	Account          AccountInfo `json:"account"`
-	FiveHour         *UsageWindow `json:"fiveHour,omitempty"`
-	SevenDay         *UsageWindow `json:"sevenDay,omitempty"`
-	SevenDaySonnet   *UsageWindow `json:"sevenDaySonnet,omitempty"`
-	TokenExpired     bool         `json:"tokenExpired,omitempty"`
-	APIError         string       `json:"apiError,omitempty"`
+	Account      AccountInfo   `json:"account"`
+	Windows      []UsageWindow `json:"windows,omitempty"`
+	TokenExpired bool          `json:"tokenExpired,omitempty"`
+	APIError     string        `json:"apiError,omitempty"`
 }
 
 type HistoryEntry struct {
