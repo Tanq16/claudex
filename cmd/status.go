@@ -80,12 +80,12 @@ func renderStatus(accounts []model.AccountUsage) {
 			continue
 		}
 
-		renderWindows(acct.FiveHour, acct.SevenDay, acct.SevenDaySonnet)
+		renderWindows(acct.Windows)
 
-		if acct.FiveHour != nil && acct.FiveHour.Utilization >= 80 {
+		if s := sessionWindow(acct.Windows); s != nil && s.Utilization >= 80 {
 			u.PrintGeneric("")
 			u.PrintWarn("Approaching 5h limit. Consider switching accounts.", nil)
-		} else if acct.FiveHour != nil && acct.FiveHour.Utilization < 10 {
+		} else if s != nil && s.Utilization < 10 {
 			u.PrintGeneric("")
 			u.PrintSuccess("Plenty of capacity available.")
 		}
@@ -93,27 +93,46 @@ func renderStatus(accounts []model.AccountUsage) {
 	u.PrintGeneric("")
 }
 
-func renderWindows(fiveHour, sevenDay, sevenDaySonnet *model.UsageWindow) {
-	if fiveHour != nil {
-		resetStr := formatResetTime(fiveHour.ResetsAt)
-		u.PrintGeneric(fmt.Sprintf("  5h Session: %s %s",
-			renderBar(fiveHour.Utilization),
-			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
+func renderWindows(windows []model.UsageWindow) {
+	labels := make([]string, len(windows))
+	width := 0
+	for i, w := range windows {
+		labels[i] = windowLabel(w)
+		width = max(width, len(labels[i]))
 	}
-	if sevenDay != nil {
-		resetStr := formatResetTime(sevenDay.ResetsAt)
-		u.PrintGeneric(fmt.Sprintf("  7d All:     %s %s",
-			renderBar(sevenDay.Utilization),
-			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
-	}
-	if sevenDaySonnet != nil {
-		resetStr := formatResetTime(sevenDaySonnet.ResetsAt)
-		u.PrintGeneric(fmt.Sprintf("  7d Sonnet:  %s %s",
-			renderBar(sevenDaySonnet.Utilization),
+	for i, w := range windows {
+		resetStr := formatResetTime(w.ResetsAt)
+		u.PrintGeneric(fmt.Sprintf("  %-*s %s %s",
+			width+1, labels[i]+":",
+			renderBar(w.Utilization),
 			dimStyle.Render(fmt.Sprintf("(%s)", resetStr))))
 	}
 }
 
+func windowLabel(w model.UsageWindow) string {
+	switch w.Kind {
+	case "session":
+		return "5h Session"
+	case "weekly_all":
+		return "7d All"
+	case "weekly_scoped":
+		if w.Scope != "" {
+			return "7d " + w.Scope
+		}
+		return "7d Scoped"
+	default:
+		return w.Kind
+	}
+}
+
+func sessionWindow(windows []model.UsageWindow) *model.UsageWindow {
+	for i := range windows {
+		if windows[i].Kind == "session" {
+			return &windows[i]
+		}
+	}
+	return nil
+}
 
 func formatResetTime(t time.Time) string {
 	if t.IsZero() {
