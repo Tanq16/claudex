@@ -8,7 +8,7 @@
 
 ---
 
-A multi-account companion for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, install the statusline, and apply a bundled skill set to projects. Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
+A multi-account companion for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, configure account settings and the statusline, and apply a bundled skill set to projects. Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
 
 ## Capabilities
 
@@ -18,7 +18,7 @@ A multi-account companion for Claude Code: monitor usage across accounts, browse
 | Conversations | `list` | List recent conversations with session IDs, message counts, and projects |
 | | `switch` | Move a conversation from one account to another |
 | Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
-| Statusline | `statusline` | Install the claudex statusline into an account's Claude Code config |
+| Configuration | `configure` | Apply claudex's preferred Claude Code settings and statusline to an account |
 | Skills | `apply-skills` | Install the embedded development skill set and output style into the current project |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
@@ -95,14 +95,14 @@ For new sessions, the remaining steps are:
 
 Resume sessions skip the prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`.
 
-### `statusline`
+### `configure`
 
-Install the embedded claudex statusline into an account's Claude Code config. Writes `statusline.sh` into the account directory and merges the `statusLine` block into its `settings.json` without touching any other settings. The account label shown is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`).
+Apply claudex's preferred Claude Code configuration to an account. Writes `statusline.sh` into the account directory and merges a set of opinionated defaults into its `settings.json` — the statusline block, effort level, fullscreen TUI, auto-updater and connector env vars, and similar quality-of-life settings. Existing unrelated settings are preserved, and any env vars you already set survive the merge. The statusline label shown is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`).
 
 ```bash
-claudex statusline
-claudex statusline -A ~/.claude2
-claudex statusline -A ~/.claude2 --label prod
+claudex configure
+claudex configure -A ~/.claude2
+claudex configure -A ~/.claude2 --label prod
 ```
 
 ### `apply-skills`
