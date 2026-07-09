@@ -181,6 +181,8 @@ module-root/
 
 Default to zero comments. Code should read as self-documenting; a comment earns its place only by saying what the code cannot.
 
+The sole test for a comment is whether its *why* is **load-bearing** — would a competent reader misread the intent, a trade-off, or a non-obvious constraint without it? If not, delete it. That it reads as a reasonable explanation, or that the code is intricate, does not qualify it. Judge every comment on its own merit against this test.
+
 - **Comment the *why*, not the *what*** — the code already states what it does. Reserve comments for intent, trade-offs, and non-obvious constraints (why this order, why this bound, what a subtle edge case guards against).
 - **No redundant comments** — never restate the code or narrate obvious control flow (`// increment i`, `// loop over items`). A comment that mirrors the line below it is noise. This holds even when the task says "add comments" or "explain what it does": tidy the code and add a why only where one is warranted, never what-narration. Never embed example or scaffolding code behind `//` — that is documentation, not a comment.
 - **One line by default** — a single line is usually enough to state the why, and often none is needed. Only span multiple lines when there is genuinely more to explain. Internal, unexported helpers rarely need a doc comment at all — don't add a paragraph that just restates the signature.
