@@ -12,19 +12,19 @@ import (
 	u "github.com/tanq16/claudex/utils"
 )
 
-var statuslineFlags struct {
+var configureFlags struct {
 	account string
 	label   string
 }
 
-var statuslineCmd = &cobra.Command{
-	Use:   "statusline",
-	Short: "Install the claudex statusline into an account's Claude Code config",
-	Run:   runStatusline,
+var configureCmd = &cobra.Command{
+	Use:   "configure",
+	Short: "Apply claudex's preferred Claude Code settings and statusline to an account",
+	Run:   runConfigure,
 }
 
-func runStatusline(cmd *cobra.Command, args []string) {
-	accountDir := u.ResolveConfigDir(statuslineFlags.account)
+func runConfigure(cmd *cobra.Command, args []string) {
+	accountDir := u.ResolveConfigDir(configureFlags.account)
 
 	info, err := os.Stat(accountDir)
 	if err != nil || !info.IsDir() {
@@ -46,9 +46,11 @@ func runStatusline(cmd *cobra.Command, args []string) {
 		u.PrintFatal("failed to read settings.json", err)
 	}
 
+	applyPreferredSettings(settings)
+
 	command := scriptPath
-	if statuslineFlags.label != "" {
-		command += " " + shellQuote(statuslineFlags.label)
+	if configureFlags.label != "" {
+		command += " " + shellQuote(configureFlags.label)
 	}
 	settings["statusLine"] = map[string]any{
 		"type":    "command",
@@ -65,13 +67,30 @@ func runStatusline(cmd *cobra.Command, args []string) {
 		u.PrintFatal("failed to write settings.json", err)
 	}
 
-	labelDesc := statuslineFlags.label
+	labelDesc := configureFlags.label
 	if labelDesc == "" {
 		labelDesc = "(auto)"
 	}
-	u.PrintSuccess(fmt.Sprintf("Statusline installed for %s (label: %s)", u.AbbreviatePath(accountDir), labelDesc))
-	u.PrintGeneric("  script:   " + scriptPath)
-	u.PrintGeneric("  settings: " + settingsPath)
+	u.PrintSuccess(fmt.Sprintf("Configured %s (label: %s)", u.AbbreviatePath(accountDir), labelDesc))
+	u.PrintGeneric("  statusline: " + scriptPath)
+	u.PrintGeneric("  settings:   " + settingsPath)
+}
+
+func applyPreferredSettings(settings map[string]any) {
+	settings["attribution"] = map[string]any{"commit": ""}
+	settings["effortLevel"] = "xhigh"
+	settings["tui"] = "fullscreen"
+	settings["autoMemoryEnabled"] = false
+	settings["skipDangerousModePermissionPrompt"] = true
+	settings["CLAUDE_AFK_TIMEOUT_MS"] = "10000000"
+
+	env, ok := settings["env"].(map[string]any)
+	if !ok {
+		env = map[string]any{}
+	}
+	env["DISABLE_AUTOUPDATER"] = "1"
+	env["ENABLE_CLAUDEAI_MCP_SERVERS"] = "false"
+	settings["env"] = env
 }
 
 func shellQuote(s string) string {
@@ -97,6 +116,6 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 }
 
 func init() {
-	statuslineCmd.Flags().StringVarP(&statuslineFlags.account, "account", "A", "", "Account config dir to install into (default ~/.claude)")
-	statuslineCmd.Flags().StringVarP(&statuslineFlags.label, "label", "l", "", "Override the account label shown in the statusline (default: word derived from dir name)")
+	configureCmd.Flags().StringVarP(&configureFlags.account, "account", "A", "", "Account config dir to configure (default ~/.claude)")
+	configureCmd.Flags().StringVarP(&configureFlags.label, "label", "l", "", "Override the account label shown in the statusline (default: word derived from dir name)")
 }

@@ -45,7 +45,7 @@ Before writing code, emit a short checklist — the **specific** rules from the 
 
 ```
 Rules in effect (CLI Only, new command):
-- Comments: why-not-what, one line by default (often none) — never restate code or embed scaffolding
+- Comments: default none; keep one only if its *why* is load-bearing, judged on its own merit — why-not-what, one line, never restate code or embed scaffolding
 - Output via utils printer (PrintInfo/PrintSuccess/...), never fmt.Println
 - zerolog only behind --debug; human output through utils otherwise
 - Tables via utils.PrintTable; honor --for-ai plain-text path
