@@ -1,6 +1,6 @@
 # Command Templates
 
-Full Cobra code templates for CLI Only and CLI + Web projects. The `SKILL.md` describes when to use each; copy the concrete code from here. Replace `[GITHUB_USER]`/`REPO_NAME`/`appname` placeholders.
+Full Cobra code templates for CLI Only and Web Only projects (a CLI + Web hybrid uses the CLI Only root plus the Web Only `serve` command). The `SKILL.md` describes when to use each; copy the concrete code from here. Replace `[GITHUB_USER]`/`REPO_NAME`/`appname` placeholders.
 
 ## main.go (Entry Point)
 
@@ -95,7 +95,7 @@ func init() {
 }
 ```
 
-## cmd/root.go — CLI + Web
+## cmd/root.go — Web Only
 
 No debug/for-ai flags, no setupLogs, no zerolog, no utils import.
 
@@ -184,7 +184,7 @@ func init() {
 }
 ```
 
-## Simple Command — CLI + Web (serve example)
+## Simple Command — Web Only (serve example)
 
 Uses `log.Printf` with manual prefixes and `log.Fatalf` for fatal errors. No utils import:
 

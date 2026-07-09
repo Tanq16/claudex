@@ -1,6 +1,6 @@
 # Utils Package Templates
 
-**Applies to: CLI Only projects.** CLI + Web projects use `log.Printf` with manual prefixes and do not have a `utils/` package.
+**Applies to: CLI Only projects and the command surface of CLI + Web hybrids.** Web Only projects use `log.Printf` with manual prefixes and do not have a `utils/` package.
 
 ## Package Structure
 

@@ -1,6 +1,6 @@
 # Review Domain: Go Foundations
 
-**Applies to:** Go CLI Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-foundations/SKILL.md`
 
 ---
@@ -16,8 +16,8 @@ Verify against the project layout defined in `go-foundations`:
 | internal/ preferred | Business logic in `internal/`, not `pkg/` (unless explicitly reusable) | Glob for `internal/` and `pkg/`, flag `pkg/` usage if not intentionally public |
 | Subcommand packages | Grouped subcommands have their own package under `cmd/` | Glob for `cmd/*/`, verify parent commands have no `Run` function |
 | Frontend assets location | If web project, static files in `internal/server/static/` | Glob for static file directories |
-| Utils package (CLI Only) | `utils/` exists at project root with expected files (globals.go, printer.go) | Glob for `utils/` |
-| No utils package (CLI + Web) | `utils/` does NOT exist at project root | Glob for `utils/`, flag if it exists |
+| Utils package (CLI Only / CLI + Web) | `utils/` exists at project root with expected files (globals.go, printer.go) | Glob for `utils/` |
+| No utils package (Web Only) | `utils/` does NOT exist at project root | Glob for `utils/`, flag if it exists |
 
 ---
 
@@ -34,7 +34,7 @@ Verify against the project layout defined in `go-foundations`:
 
 ## Category 2b: Modern Go (go-foundations)
 
-**Applies to:** Go CLI Only, Go CLI + Web
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web
 
 Verify the project is written to the Go 1.26+ baseline defined in `go-foundations` ("Modern Go" section + `../../go-foundations/references/modern-go.md`). **Only flag the high-signal patterns below.** Do NOT flag classic `for i := 0; i < n; i++` loops, manual slice/map operations that could use `slices`/`maps`, or any other modernization that is purely stylistic — those generate noise and fall outside this check.
 
@@ -56,7 +56,7 @@ Verify the project is written to the Go 1.26+ baseline defined in `go-foundation
 | Uses zerolog | `rs/zerolog` imported, `ConsoleWriter` configured | Grep for zerolog imports in `cmd/root.go` |
 | Debug flag controls log level | `zerolog.SetGlobalLevel` toggled by `debugFlag` | Read `cmd/root.go`, check `setupLogs()` function |
 
-**CLI + Web checks:**
+**Web Only checks** (a CLI + Web hybrid applies these to its `internal/server/` layer only, and the zerolog checks above to `cmd/`):
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -68,7 +68,7 @@ Verify the project is written to the Go 1.26+ baseline defined in `go-foundation
 
 ## Category 4: Utils Package (go-foundations)
 
-**Applies to: CLI Only**
+**Applies to: CLI Only and CLI + Web (hybrid)**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -85,7 +85,7 @@ Verify the project is written to the Go 1.26+ baseline defined in `go-foundation
 
 ## Category 4b: No Utils Package (go-foundations)
 
-**Applies to: CLI + Web**
+**Applies to: Web Only**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|

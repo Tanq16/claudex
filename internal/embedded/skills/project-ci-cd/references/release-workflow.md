@@ -2,7 +2,7 @@
 
 Automated release workflow triggered on push to main. Creates versioned releases with Docker images and multi-platform binaries.
 
-## CLI + Web Workflow (Docker + Binaries)
+## Web Only Workflow (Docker + Binaries)
 
 ```yaml
 name: Release
@@ -296,7 +296,7 @@ The workflow has 5 phases:
 4. **publish** - Make release public after all artifacts uploaded
 5. **cleanup-on-failure** - Delete draft release if any job fails
 
-Unit testing is first-class (see `go-foundations`), so the release is gated on `go test ./...`. The CLI + Web test job runs `make assets` first because `//go:embed static` needs the `static/` tree populated to compile.
+Unit testing is first-class (see `go-foundations`), so the release is gated on `go test ./...`. The Web Only test job runs `make assets` first because `//go:embed static` needs the `static/` tree populated to compile.
 
 ### Version Calculation
 
@@ -309,7 +309,7 @@ Uses `make -s version` which reads the latest git tag and commit message:
 
 | Secret | Purpose | Project Type |
 |--------|---------|--------------|
-| `DOCKER_ACCESS_TOKEN` | Docker Hub push access | **CLI + Web only** |
+| `DOCKER_ACCESS_TOKEN` | Docker Hub push access | **Web Only / CLI + Web** |
 
 `GITHUB_TOKEN` is automatically available via `github.token`. CLI Only projects need no additional secrets.
 

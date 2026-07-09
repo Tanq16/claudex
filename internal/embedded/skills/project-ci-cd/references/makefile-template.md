@@ -2,9 +2,9 @@
 
 Complete Makefile for Go projects with CI/CD automation.
 
-## CLI + Web Template (With Frontend Assets and Docker)
+## Web Only Template (With Frontend Assets and Docker)
 
-For CLI + Web projects with embedded frontend (web servers, dashboards):
+For Web Only projects with embedded frontend (web servers, dashboards):
 
 ```makefile
 .PHONY: help assets verify-assets clean build build-for build-all docker-build docker-push version

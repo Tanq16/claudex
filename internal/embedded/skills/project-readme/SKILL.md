@@ -20,8 +20,9 @@ Use this skill when:
 
 | Project Type | Key Sections |
 |--------------|--------------|
-| CLI + Web (Web Apps, Dashboards) | Header → Intro → Features → Screenshots → Install/Usage → Tips |
 | CLI Only (Command-Line Tools) | Header → Capabilities Table → Installation → Usage (by command) → Tips |
+| Web Only (Web Apps, Dashboards) | Header → Intro → Features → Screenshots → Install/Usage → Tips |
+| CLI + Web (CLI tool that also serves a web app) | CLI Only shape (Capabilities → Install → Usage) plus a Web UI section with screenshots |
 | Chrome Extension | Header → Intro → Features → Screenshots → Install → Permissions → Tips |
 
 Project type names match the canonical taxonomy in `go-foundations` (Project Taxonomy). A Headless API Service uses the CLI Only README shape (no screenshots); a Library / Module uses an API/usage README focused on `go get` and exported functions.
@@ -63,8 +64,9 @@ Replace the bracketed placeholders (`PROJECT_NAME`, `REPO_NAME`, `[GITHUB_USER]`
 
 | If Project Has... | Type |
 |-------------------|------|
-| Web UI, server, dashboard | CLI + Web |
 | CLI commands, terminal tool | CLI Only |
+| Web UI, server, dashboard (no real CLI) | Web Only |
+| Both a web UI and real CLI commands | CLI + Web |
 | manifest.json, browser extension | Chrome Extension |
 
 ### Step 2: Generate README

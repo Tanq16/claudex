@@ -22,9 +22,9 @@ Use this skill when:
 
 ## Project Type Context
 
-CLI Only and CLI + Web projects have different root command setups:
+CLI Only and Web Only projects have different root command setups (CLI + Web hybrids use the CLI Only setup, plus a `serve` command):
 
-| Aspect | CLI Only | CLI + Web |
+| Aspect | CLI Only | Web Only |
 |--------|----------|-----------|
 | Root command | Full: zerolog, utils, --debug, --for-ai, setupLogs | Simplified: just rootCmd, Execute(), init() with AddCommand |
 | Logging | zerolog via setupLogs() | Standard `log` package (no setupLogs) |
@@ -36,7 +36,7 @@ CLI Only and CLI + Web projects have different root command setups:
 
 `main.go` only calls `cmd.Execute()`. The root command differs by project type:
 
-| | CLI Only | CLI + Web |
+| | CLI Only | Web Only |
 |---|----------|-----------|
 | Imports | zerolog, utils, subcommand pkgs | cobra + subcommand pkgs only |
 | Flags | `--debug`, `--for-ai` (mutually exclusive) | none |
@@ -47,10 +47,10 @@ Both set `Use`, `Short`, `Version` (from `AppVersion` ldflag), and `HiddenDefaul
 
 ## Command Patterns
 
-- **Simple command (no subcommands):** define directly in `cmd/` with its own flag struct and `init()`. CLI Only uses `u.Print*`/`u.PrintFatal`; CLI + Web uses `log.Printf`/`log.Fatalf`.
+- **Simple command (no subcommands):** define directly in `cmd/` with its own flag struct and `init()`. CLI Only (and a hybrid's CLI subcommands) use `u.Print*`/`u.PrintFatal`; Web Only (and a hybrid's `serve`/server) uses `log.Printf`/`log.Fatalf`.
 - **Subcommand group:** create a package under `cmd/` (e.g. `cmd/feature-cmd/`) with an exported parent command (no `Run`) and unexported subcommands (each with `Run`). Wire them in the package's `init()`.
 
-Full `serve` (CLI Only + CLI + Web) and subcommand-package templates are in `./references/command-templates.md`.
+Full `serve` and subcommand-package templates are in `./references/command-templates.md`.
 
 ## Flag Patterns
 

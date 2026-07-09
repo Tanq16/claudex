@@ -1,6 +1,6 @@
 # Review Domain: Go CLI
 
-**Applies to:** Go CLI Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-cli/SKILL.md`
 
 ---
@@ -20,7 +20,7 @@
 | Hidden help command | `rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})` | Read `cmd/root.go` |
 | Command registration | Commands added via `rootCmd.AddCommand()` in `init()` | Read `cmd/root.go` |
 
-**CLI + Web checks:**
+**Web Only checks:**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -51,7 +51,7 @@
 |-------|-----------------|---------------|
 | Utils for output | Commands use `u.PrintInfo`, `u.PrintSuccess`, `u.PrintFatal` etc., not raw `fmt.Println` | Grep for `fmt.Println` or `fmt.Printf` in `cmd/` files (should use utils instead) |
 
-**CLI + Web additional check:**
+**Web Only additional check:**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -61,7 +61,7 @@
 
 ## Category 6b: Output Lifecycle Patterns (go-cli)
 
-**Applies to: CLI Only.** SKIP for CLI + Web projects. Only check if the project uses output lifecycle patterns (phases, running indicators, progress bars).
+**Applies to: CLI Only (and the CLI surface of CLI + Web hybrids).** SKIP for Web Only projects. Only check if the project uses output lifecycle patterns (phases, running indicators, progress bars).
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -76,7 +76,7 @@
 
 ## Category 7: TUI Output (go-cli)
 
-**Applies to: CLI Only.** SKIP for CLI + Web projects.
+**Applies to: CLI Only (and the CLI surface of CLI + Web hybrids).** SKIP for Web Only projects.
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|

@@ -39,8 +39,9 @@ Inspect the current directory to determine what kind of project this is:
 
 | Indicator | Project Type |
 |-----------|--------------|
-| `go.mod` + `internal/server/` or `static/` | Go CLI + Web |
-| `go.mod` + `cmd/` but no server/frontend indicators | Go CLI Only |
+| `go.mod` + `cmd/`, `utils/`, no `internal/server/` | Go CLI Only |
+| `go.mod` + `internal/server/static/`, no `utils/` | Go Web Only |
+| `go.mod` + `internal/server/static/` **and** `utils/` | Go CLI + Web (hybrid) |
 | `manifest.json` with `manifest_version` field | Chrome Extension |
 | `go.mod` only (minimal) | Go Project (treat as CLI Only) |
 
@@ -103,7 +104,8 @@ Determine which domains apply based on project type:
 | Project Type | Applicable Domains |
 |--------------|-------------------|
 | Go CLI Only | Go Foundations, Go CLI, Go Concurrency (conditional), Infrastructure |
-| Go CLI + Web | Go Foundations, Go CLI, Go Backend & Frontend, Go Concurrency (conditional), Infrastructure |
+| Go Web Only | Go Foundations, Go CLI, Go Backend & Frontend, Infrastructure |
+| Go CLI + Web (hybrid) | Go Foundations, Go CLI, Go Backend & Frontend, Go Concurrency (conditional), Infrastructure |
 | Chrome Extension | Infrastructure |
 
 **If only one domain applies** (e.g., Chrome Extension), skip sub-agents and handle it directly — read the domain reference file, load its skills, run checks, and generate the report inline. Go to **Step 4**.
@@ -180,7 +182,7 @@ Present the final report in this format:
 ```
 ## Code Review Report: [Project Name]
 
-**Project type:** [CLI Only | CLI + Web | Chrome Extension]
+**Project type:** [CLI Only | Web Only | CLI + Web | Chrome Extension]
 **Review scope:** [Full | Targeted: domain-name | Targeted: package-path]
 **Skills checked against:** [list of loaded skills]
 
