@@ -54,6 +54,10 @@ func Fetch(src Source, pluginsBase string) (string, error) {
 		}
 		return dest, nil
 	}
+	// git clone refuses a non-empty dir, so clear any partial checkout first.
+	if err := os.RemoveAll(dest); err != nil {
+		return "", err
+	}
 	if err := clone(src.URL, dest); err != nil {
 		return "", err
 	}
@@ -85,34 +89,42 @@ func EnsureDefaultPlugin(dir string) (bool, error) {
 }
 
 func clone(url, dest string) error {
-	args := append(gitAuthArgs(), "clone", "--depth", "1", url, dest)
-	return runGit(args...)
+	args, env := gitAuth()
+	args = append(args, "clone", "--depth", "1", url, dest)
+	return runGit(env, args...)
 }
 
 func update(dest string) error {
-	fetchArgs := append([]string{"-C", dest}, gitAuthArgs()...)
+	args, env := gitAuth()
+	fetchArgs := append([]string{"-C", dest}, args...)
 	fetchArgs = append(fetchArgs, "fetch", "--depth", "1", "origin")
-	if err := runGit(fetchArgs...); err != nil {
+	if err := runGit(env, fetchArgs...); err != nil {
 		return err
 	}
-	return runGit("-C", dest, "reset", "--hard", "FETCH_HEAD")
+	return runGit(nil, "-C", dest, "reset", "--hard", "FETCH_HEAD")
 }
 
-func gitAuthArgs() []string {
+func gitAuth() (args, env []string) {
 	if token := cmp.Or(os.Getenv("GH_TOKEN"), os.Getenv("GITHUB_TOKEN")); token != "" {
 		basic := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
-		return []string{"-c", "http.extraheader=AUTHORIZATION: basic " + basic}
+		// Pass the token via env, not a -c arg, so it never lands in the process table.
+		return nil, []string{
+			"GIT_CONFIG_COUNT=1",
+			"GIT_CONFIG_KEY_0=http.extraheader",
+			"GIT_CONFIG_VALUE_0=AUTHORIZATION: basic " + basic,
+		}
 	}
 	if _, err := exec.LookPath("gh"); err == nil {
-		return []string{"-c", "credential.https://github.com.helper=!gh auth git-credential"}
+		return []string{"-c", "credential.https://github.com.helper=!gh auth git-credential"}, nil
 	}
-	return nil
+	return nil, nil
 }
 
-func runGit(args ...string) error {
+func runGit(extraEnv []string, args ...string) error {
 	cmd := exec.Command("git", args...)
 	// Fail fast instead of hanging on git's interactive credential prompt.
 	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(cmd.Env, extraEnv...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

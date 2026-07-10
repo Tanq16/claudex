@@ -98,28 +98,32 @@ func TestClassifyExpandsHome(t *testing.T) {
 	}
 }
 
-func TestGitAuthArgs(t *testing.T) {
-	basicFor := func(token string) []string {
-		header := "http.extraheader=AUTHORIZATION: basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token))
-		return []string{"-c", header}
+func TestGitAuth(t *testing.T) {
+	envFor := func(token string) []string {
+		value := "GIT_CONFIG_VALUE_0=AUTHORIZATION: basic " + base64.StdEncoding.EncodeToString([]byte("x-access-token:"+token))
+		return []string{"GIT_CONFIG_COUNT=1", "GIT_CONFIG_KEY_0=http.extraheader", value}
 	}
 
 	tests := []struct {
 		name        string
 		ghToken     string
 		githubToken string
-		want        []string
+		wantEnv     []string
 	}{
-		{"GH_TOKEN used", "tokA", "", basicFor("tokA")},
-		{"GITHUB_TOKEN fallback", "", "tokB", basicFor("tokB")},
-		{"GH_TOKEN takes precedence", "tokA", "tokB", basicFor("tokA")},
+		{"GH_TOKEN used", "tokA", "", envFor("tokA")},
+		{"GITHUB_TOKEN fallback", "", "tokB", envFor("tokB")},
+		{"GH_TOKEN takes precedence", "tokA", "tokB", envFor("tokA")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("GH_TOKEN", tt.ghToken)
 			t.Setenv("GITHUB_TOKEN", tt.githubToken)
-			if got := gitAuthArgs(); !slices.Equal(got, tt.want) {
-				t.Fatalf("gitAuthArgs() = %v, want %v", got, tt.want)
+			args, env := gitAuth()
+			if args != nil {
+				t.Fatalf("gitAuth() args = %v, want nil so the token stays out of argv", args)
+			}
+			if !slices.Equal(env, tt.wantEnv) {
+				t.Fatalf("gitAuth() env = %v, want %v", env, tt.wantEnv)
 			}
 		})
 	}

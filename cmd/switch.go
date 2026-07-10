@@ -122,8 +122,7 @@ func doSwitch(id, fromDir, toDir string) {
 		if len(matching) > 0 {
 			if err := convo.AppendRawHistory(toDir, matching); err != nil {
 				u.PrintWarn("Could not append to target history", err)
-			}
-			if err := convo.WriteRawHistory(fromDir, rest); err != nil {
+			} else if err := convo.WriteRawHistory(fromDir, rest); err != nil {
 				u.PrintWarn("Could not update source history", err)
 			}
 		}

@@ -239,7 +239,8 @@ func resolvePluginDirs() []string {
 			u.ClearLines(1)
 		}
 		if err != nil {
-			u.PrintFatal("Plugin "+spec+" could not be prepared", err)
+			u.PrintWarn("Plugin "+spec+" skipped", err)
+			continue
 		}
 		if !src.IsLocal {
 			u.PrintSuccess("Plugin ready: " + src.Name)

@@ -68,7 +68,7 @@ claudex list -j
 
 ### `switch`
 
-Move a conversation from one account to another. Transfers session files and migrates history entries between config directories. Run with no flags for the interactive selector: it lists recent sessions for the current project across all accounts, then prompts for the target account. Pass `--id`/`--from`/`--to` to skip the prompts and move a specific session non-interactively (handy for scripting).
+Move a conversation from one account to another. Transfers session files and migrates history entries between config directories. Run with no flags for the interactive selector: it lists recent sessions for the current project across all accounts, then prompts for the target account (skipped when only one other account exists). Pass `--id`/`--from`/`--to` to skip the prompts and move a specific session non-interactively (handy for scripting).
 
 ```bash
 claudex switch
@@ -97,7 +97,7 @@ For new sessions, the remaining steps are:
 
 Resume sessions skip the prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`.
 
-`launch` can also load Claude Code plugins alongside the session. A machine-local default plugin under `~/.config/claudex/default-plugin` is always loaded for every account (created empty on first use, for you to fill with your own always-on skills and output styles). Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins; named git repos are cloned (or shallow-updated) under `~/.config/claudex` and applied on both new and resumed sessions.
+`launch` can also load Claude Code plugins alongside the session. A machine-local default plugin under `~/.config/claudex/default-plugin` is always loaded for every account (created empty on first use, for you to fill with your own always-on skills and output styles). Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins; named git repos are cloned (or shallow-updated) under `~/.config/claudex/plugins` and applied on both new and resumed sessions.
 
 ```bash
 claudex launch
