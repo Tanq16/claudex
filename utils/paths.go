@@ -3,7 +3,7 @@ package utils
 import (
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -54,7 +54,7 @@ func DiscoverAccountPaths() []string {
 		return []string{filepath.Join(home, ".claude")}
 	}
 
-	sort.Strings(paths)
+	slices.Sort(paths)
 	return paths
 }
 
@@ -71,4 +71,18 @@ func AbbreviatePath(path string) string {
 		return "~" + path[len(home):]
 	}
 	return path
+}
+
+// Hardcoded (not XDG_CONFIG_HOME) so the path is identical on Linux and macOS.
+func ClaudexConfigDir() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, ".config", "claudex")
+}
+
+func DefaultPluginDir() string {
+	return filepath.Join(ClaudexConfigDir(), "default-plugin")
+}
+
+func PluginsDir() string {
+	return filepath.Join(ClaudexConfigDir(), "plugins")
 }

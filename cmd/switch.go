@@ -2,6 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/convo"
@@ -21,28 +24,93 @@ var switchCmd = &cobra.Command{
 }
 
 func runSwitch(cmd *cobra.Command, args []string) {
-	if switchFlags.id == "" {
-		u.PrintFatal("--id is required", nil)
+	if switchFlags.id != "" {
+		runSwitchExplicit()
+		return
 	}
-	if switchFlags.to == "" {
-		u.PrintFatal("--to is required", nil)
+	if u.GlobalForAIFlag {
+		u.PrintFatal("switch needs --id and --to in --for-ai mode", nil)
 	}
+	runSwitchInteractive()
+}
 
+func runSwitchExplicit() {
+	if switchFlags.to == "" {
+		u.PrintFatal("--to is required with --id", nil)
+	}
 	fromDir := u.ResolveConfigDir(switchFlags.from)
 	toDir := u.ExpandPath(switchFlags.to)
+	doSwitch(switchFlags.id, fromDir, toDir)
+}
 
-	sf, err := convo.FindSession(fromDir, switchFlags.id)
+func runSwitchInteractive() {
+	cwd, err := os.Getwd()
+	if err != nil {
+		u.PrintFatal("failed to resolve current directory", err)
+	}
+
+	accounts := u.DiscoverAccountPaths()
+	if len(accounts) < 2 {
+		u.PrintFatal("switch needs at least two accounts; only one was found", nil)
+	}
+
+	sessions := discoverSessions(accounts, cwd)
+	if len(sessions) == 0 {
+		u.PrintFatal("no sessions for this project were found in any account", nil)
+	}
+
+	labels := make([]string, len(sessions))
+	for i, s := range sessions {
+		msg := padRight(u.Truncate(strings.Join(strings.Fields(s.firstMessage), " "), 50), 50)
+		t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
+		labels[i] = fmt.Sprintf("%s  %s  %s", msg, t, u.AbbreviatePath(s.configDir))
+	}
+	idx, err := u.PromptSelect("Session to move", labels)
+	if err != nil {
+		u.PrintFatal("TUI error", err)
+	}
+	if idx < 0 {
+		return
+	}
+	sel := sessions[idx]
+
+	var others []string
+	for _, a := range accounts {
+		if a != sel.configDir {
+			others = append(others, a)
+		}
+	}
+
+	toDir := others[0]
+	if len(others) > 1 {
+		acctLabels := make([]string, len(others))
+		for i, a := range others {
+			acctLabels[i] = u.AbbreviatePath(a)
+		}
+		aidx, err := u.PromptSelect("Move to account", acctLabels)
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if aidx < 0 {
+			return
+		}
+		toDir = others[aidx]
+	}
+
+	doSwitch(sel.sessionID, sel.configDir, toDir)
+}
+
+func doSwitch(id, fromDir, toDir string) {
+	sf, err := convo.FindSession(fromDir, id)
 	if err != nil {
 		u.PrintFatal("Error searching source account", err)
 	}
 	if sf == nil {
-		u.PrintFatal(fmt.Sprintf("Session %s not found in %s", switchFlags.id, fromDir), nil)
+		u.PrintFatal(fmt.Sprintf("Session %s not found in %s", id, u.AbbreviatePath(fromDir)), nil)
 	}
 
-	projectPath := sf.ProjectPath
-	dstProjectDir := convo.ProjectDir(toDir, projectPath)
-
-	if err := convo.MoveSession(switchFlags.id, sf.ProjectDir, dstProjectDir); err != nil {
+	dstProjectDir := convo.ProjectDir(toDir, sf.ProjectPath)
+	if err := convo.MoveSession(id, sf.ProjectDir, dstProjectDir); err != nil {
 		u.PrintFatal("Failed to move session files", err)
 	}
 
@@ -50,24 +118,21 @@ func runSwitch(cmd *cobra.Command, args []string) {
 	if err != nil {
 		u.PrintWarn("Could not read source history", err)
 	} else {
-		matching, rest := convo.FilterBySession(srcEntries, switchFlags.id)
+		matching, rest := convo.FilterBySession(srcEntries, id)
 		if len(matching) > 0 {
 			if err := convo.AppendRawHistory(toDir, matching); err != nil {
 				u.PrintWarn("Could not append to target history", err)
-			}
-			if err := convo.WriteRawHistory(fromDir, rest); err != nil {
+			} else if err := convo.WriteRawHistory(fromDir, rest); err != nil {
 				u.PrintWarn("Could not update source history", err)
 			}
 		}
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Switched session %s from %s to %s", switchFlags.id, fromDir, toDir))
+	u.PrintSuccess(fmt.Sprintf("Switched session %s from %s to %s", id, u.AbbreviatePath(fromDir), u.AbbreviatePath(toDir)))
 }
 
 func init() {
-	switchCmd.Flags().StringVar(&switchFlags.id, "id", "", "Session UUID to switch")
+	switchCmd.Flags().StringVar(&switchFlags.id, "id", "", "Session UUID to switch (non-interactive; skips the selector)")
 	switchCmd.Flags().StringVar(&switchFlags.from, "from", "", "Source config directory (default ~/.claude)")
-	switchCmd.Flags().StringVar(&switchFlags.to, "to", "", "Target config directory")
-	switchCmd.MarkFlagRequired("id")
-	switchCmd.MarkFlagRequired("to")
+	switchCmd.Flags().StringVar(&switchFlags.to, "to", "", "Target config directory (required with --id)")
 }
