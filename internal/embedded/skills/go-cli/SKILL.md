@@ -161,6 +161,15 @@ Use ANSI standard color indices (0-15) instead of hardcoded hex values. These in
 
 The full `lipgloss.ANSIColor` palette and common style definitions are in `./references/command-templates.md` (Terminal Colors section).
 
+### Selection Prompts
+
+For interactive choices, reuse the `utils` selector helpers rather than hand-rolling a bubbletea model per command:
+
+- `PromptSelect(label, options) (int, error)` — single-choice list; arrow / `j` / `k` to move, `enter` to pick, `esc` / `ctrl+c` to cancel. Returns the chosen index, or `-1` when cancelled.
+- `PromptMultiSelect(label, options) (map[int]bool, error)` — multi-choice list; `space` toggles, `enter` confirms. Returns the selected indices, or `nil` when cancelled.
+
+Both branch on `--for-ai`: instead of a TUI they read a line from stdin — a 1-based index for `PromptSelect`, and a comma-separated list of indices (or `none`) for `PromptMultiSelect` — so choices stay scriptable (`echo "2" | tool cmd --for-ai`). Always treat the cancel path (`idx < 0` / `nil` map) as a clean no-op abort.
+
 ## Output Tier Behavior (CLI Only)
 
 `--debug` and `--for-ai` are **mutually exclusive** (enforced via `MarkFlagsMutuallyExclusive`).

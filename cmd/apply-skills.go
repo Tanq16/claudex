@@ -14,17 +14,24 @@ import (
 
 var applySkillsCmd = &cobra.Command{
 	Use:   "apply-skills",
-	Short: "Install the embedded skills (and the caveman output style) into the current project",
+	Short: "Install the embedded skill set into the current project",
 	Run:   runApplySkills,
 }
 
 var applySkillsFlags struct {
-	fullWipe bool
+	fullWipe      bool
+	preserveLocal bool
+	dir           string
 }
 
 func init() {
 	applySkillsCmd.Flags().BoolVar(&applySkillsFlags.fullWipe, "full-wipe", false,
-		"Before installing, clear the project's .claude skills, output-styles, and settings for a clean slate (refused in the home directory, which holds the live ~/.claude config)")
+		"Before installing, clear the project's .claude skills and settings for a clean slate (refused in the home directory, which holds the live ~/.claude config)")
+	applySkillsCmd.Flags().BoolVar(&applySkillsFlags.preserveLocal, "preserve-local", false,
+		"Keep any skill that already exists in the project; install only the ones not already present")
+	applySkillsCmd.Flags().StringVar(&applySkillsFlags.dir, "dir", "",
+		"Install skills from this directory instead of claudex's embedded set")
+	applySkillsCmd.MarkFlagsMutuallyExclusive("full-wipe", "preserve-local")
 }
 
 func runApplySkills(cmd *cobra.Command, args []string) {
@@ -33,48 +40,59 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 		u.PrintFatal("failed to resolve current directory", err)
 	}
 
-	claudeDir := filepath.Join(cwd, ".claude")
+	var srcFS fs.FS = embedded.SkillsFS
+	srcRoot := "skills"
+	sourceLabel := "claudex's embedded set"
+	if applySkillsFlags.dir != "" {
+		dir := u.ExpandPath(applySkillsFlags.dir)
+		info, statErr := os.Stat(dir)
+		if statErr != nil || !info.IsDir() {
+			u.PrintFatal(fmt.Sprintf("--dir %s is not a directory", applySkillsFlags.dir), statErr)
+		}
+		srcFS, srcRoot, sourceLabel = os.DirFS(dir), ".", u.AbbreviatePath(dir)
+	}
 
+	claudeDir := filepath.Join(cwd, ".claude")
 	if applySkillsFlags.fullWipe {
 		fullWipeProjectClaude(claudeDir)
 	}
-
 	targetRoot := filepath.Join(claudeDir, "skills")
 
-	entries, err := fs.ReadDir(embedded.SkillsFS, "skills")
+	entries, err := fs.ReadDir(srcFS, srcRoot)
 	if err != nil {
-		u.PrintFatal("failed to read embedded skills", err)
+		u.PrintFatal("failed to read skills source", err)
 	}
 
-	skillCount, fileCount := 0, 0
+	installed, preserved, fileCount := 0, 0, 0
 	for _, entry := range entries {
 		if !entry.IsDir() {
 			continue
 		}
 		name := entry.Name()
 		dest := filepath.Join(targetRoot, name)
+		if applySkillsFlags.preserveLocal {
+			if _, err := os.Stat(dest); err == nil {
+				preserved++
+				continue
+			}
+		}
 		// Replace any same-named skill wholesale so renamed/removed files never linger.
 		if err := os.RemoveAll(dest); err != nil {
 			u.PrintFatal(fmt.Sprintf("failed to replace existing skill %q", name), err)
 		}
-		n, err := writeSkillTree(name, dest)
+		n, err := writeSkillTree(srcFS, srcRoot, name, dest)
 		if err != nil {
 			u.PrintFatal(fmt.Sprintf("failed to install skill %q", name), err)
 		}
-		skillCount++
+		installed++
 		fileCount += n
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Installed %d skills (%d files) into %s", skillCount, fileCount, u.AbbreviatePath(targetRoot)))
-
-	// Output styles are a Claude Code feature; install them into .claude/output-styles alongside the
-	// skills. Existing files there are left untouched — only same-named styles are overwritten.
-	styleDest := filepath.Join(claudeDir, "output-styles")
-	styleCount, err := writeOutputStyles(styleDest)
-	if err != nil {
-		u.PrintFatal("failed to install output styles", err)
+	msg := fmt.Sprintf("Installed %d skills (%d files) from %s into %s", installed, fileCount, sourceLabel, u.AbbreviatePath(targetRoot))
+	if applySkillsFlags.preserveLocal {
+		msg += fmt.Sprintf("; preserved %d existing", preserved)
 	}
-	u.PrintSuccess(fmt.Sprintf("Installed %d output style(s) into %s (enable with /config)", styleCount, u.AbbreviatePath(styleDest)))
+	u.PrintSuccess(msg)
 }
 
 func fullWipeProjectClaude(claudeDir string) {
@@ -90,7 +108,6 @@ func fullWipeProjectClaude(claudeDir string) {
 
 	targets := []string{
 		filepath.Join(claudeDir, "skills"),
-		filepath.Join(claudeDir, "output-styles"),
 		filepath.Join(claudeDir, "settings.json"),
 		filepath.Join(claudeDir, "settings.local.json"),
 	}
@@ -121,35 +138,13 @@ func samePath(a, b string) bool {
 	return filepath.Clean(a) == filepath.Clean(b)
 }
 
-func writeOutputStyles(dest string) (int, error) {
-	entries, err := fs.ReadDir(embedded.OutputStylesFS, "output-styles")
-	if err != nil {
-		return 0, err
-	}
-	if err := os.MkdirAll(dest, 0o755); err != nil {
-		return 0, err
+func writeSkillTree(srcFS fs.FS, srcRoot, name, dest string) (int, error) {
+	root := name
+	if srcRoot != "." {
+		root = srcRoot + "/" + name
 	}
 	count := 0
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		data, err := embedded.OutputStylesFS.ReadFile("output-styles/" + entry.Name())
-		if err != nil {
-			return count, err
-		}
-		if err := os.WriteFile(filepath.Join(dest, entry.Name()), data, 0o644); err != nil {
-			return count, err
-		}
-		count++
-	}
-	return count, nil
-}
-
-func writeSkillTree(name, dest string) (int, error) {
-	root := "skills/" + name
-	count := 0
-	err := fs.WalkDir(embedded.SkillsFS, root, func(path string, d fs.DirEntry, walkErr error) error {
+	err := fs.WalkDir(srcFS, root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -160,7 +155,7 @@ func writeSkillTree(name, dest string) (int, error) {
 		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
 			return err
 		}
-		data, err := embedded.SkillsFS.ReadFile(path)
+		data, err := fs.ReadFile(srcFS, path)
 		if err != nil {
 			return err
 		}

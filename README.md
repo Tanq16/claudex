@@ -16,10 +16,11 @@ A multi-account companion for Claude Code: monitor usage across accounts, browse
 |----------|----------|-------------|
 | Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
 | Conversations | `list` | List recent conversations with session IDs, message counts, and projects |
-| | `switch` | Move a conversation from one account to another |
-| Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session |
+| | `switch` | Move a conversation between accounts, interactively or by session ID |
+| Launcher | `launch` | Interactive TUI to configure and launch a Claude Code session, optionally loading plugins |
 | Configuration | `configure` | Apply claudex's preferred Claude Code settings and statusline to an account |
-| Skills | `apply-skills` | Install the embedded development skill set and output style into the current project |
+| Skills | `apply-skills` | Install the embedded development skill set into the current project |
+| | `apply-output-styles` | Install the embedded output style(s) into the current project |
 | Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
 
 ## Installation
@@ -67,9 +68,10 @@ claudex list -j
 
 ### `switch`
 
-Move a conversation from one account to another. Transfers session files and migrates history entries between config directories.
+Move a conversation from one account to another. Transfers session files and migrates history entries between config directories. Run with no flags for the interactive selector: it lists recent sessions for the current project across all accounts, then prompts for the target account. Pass `--id`/`--from`/`--to` to skip the prompts and move a specific session non-interactively (handy for scripting).
 
 ```bash
+claudex switch
 claudex switch --id <session-uuid> --to ~/.claude2
 claudex switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
 ```
@@ -95,6 +97,14 @@ For new sessions, the remaining steps are:
 
 Resume sessions skip the prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`.
 
+`launch` can also load Claude Code plugins alongside the session. A machine-local default plugin under `~/.config/claudex/default-plugin` is always loaded for every account (created empty on first use, for you to fill with your own always-on skills and output styles). Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins; named git repos are cloned (or shallow-updated) under `~/.config/claudex` and applied on both new and resumed sessions.
+
+```bash
+claudex launch
+claudex launch --plugins ~/my-plugin
+claudex launch --plugins https://github.com/user/some-plugin
+```
+
 ### `configure`
 
 Apply claudex's preferred Claude Code configuration to an account. Writes `statusline.sh` into the account directory and merges a set of opinionated defaults into its `settings.json` — the statusline block, effort level, fullscreen TUI, auto-updater and connector env vars, and similar quality-of-life settings. Existing unrelated settings are preserved, and any env vars you already set survive the merge. The statusline label shown is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`).
@@ -107,10 +117,20 @@ claudex configure -A ~/.claude2 --label prod
 
 ### `apply-skills`
 
-Install claudex's embedded skill set into the current project, under `.claude/skills/`. Matching is by skill name: each embedded skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match an embedded name is left untouched. It also installs the embedded output style(s) into `.claude/output-styles/` (overwriting only same-named files); enable one ad hoc via `/config`. Run it from the project root.
+Install a skill set into the current project, under `.claude/skills/`. By default it installs claudex's embedded development skills; point `--dir` at a directory to install your own skills instead. Matching is by skill name: each source skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match a source name is left untouched. Use `--preserve-local` to keep every existing project skill and only add ones that aren't already present, or `--full-wipe` to clear the project's `.claude` skills and settings (`settings.json`/`settings.local.json`) first for a clean slate. Run it from the project root.
 
 ```bash
 claudex apply-skills
+claudex apply-skills --dir ~/my-skills
+claudex apply-skills --preserve-local
+```
+
+### `apply-output-styles`
+
+Install claudex's embedded output style(s) into the current project, under `.claude/output-styles/` (overwriting only same-named files, leaving your other styles untouched). Once installed, enable one ad hoc via `/config`. Run it from the project root.
+
+```bash
+claudex apply-output-styles
 ```
 
 ### `oauth-token`

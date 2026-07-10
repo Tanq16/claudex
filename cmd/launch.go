@@ -13,6 +13,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/parser"
+	"github.com/tanq16/claudex/internal/plugins"
 	u "github.com/tanq16/claudex/utils"
 )
 
@@ -24,10 +25,19 @@ type sessionEntry struct {
 	configDir    string
 }
 
+var launchFlags struct {
+	plugins []string
+}
+
 var launchCmd = &cobra.Command{
 	Use:   "launch",
 	Short: "Launch a Claude Code session with interactive config selection",
 	Run:   runLaunch,
+}
+
+func init() {
+	launchCmd.Flags().StringSliceVar(&launchFlags.plugins, "plugins", nil,
+		"Local plugin directories or git repo URLs to load via --plugin-dir (repeatable or comma-separated)")
 }
 
 func runLaunch(cmd *cobra.Command, args []string) {
@@ -137,6 +147,13 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	for _, dir := range resolvePluginDirs() {
+		cliArgs = append(cliArgs, "--plugin-dir", dir)
+	}
+	if len(launchFlags.plugins) > 0 {
+		summary = append(summary, fmt.Sprintf("plugins: %d", len(launchFlags.plugins)))
+	}
+
 	cliArgs = append(cliArgs, "--dangerously-skip-permissions")
 
 	// strip any inherited CLAUDE_CONFIG_DIR so it can't override the chosen account
@@ -197,4 +214,38 @@ func padRight(s string, width int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", width-len(runes))
+}
+
+func resolvePluginDirs() []string {
+	var dirs []string
+
+	defaultDir := u.DefaultPluginDir()
+	if created, err := plugins.EnsureDefaultPlugin(defaultDir); err != nil {
+		u.PrintWarn("could not prepare the default plugin", err)
+	} else {
+		if created {
+			u.PrintInfo("Created empty default plugin at " + u.AbbreviatePath(defaultDir))
+		}
+		dirs = append(dirs, defaultDir)
+	}
+
+	for _, spec := range launchFlags.plugins {
+		src := plugins.Classify(spec)
+		if !src.IsLocal {
+			u.PrintRunning("Fetching plugin " + src.Name)
+		}
+		dir, err := plugins.Fetch(src, u.PluginsDir())
+		if !src.IsLocal {
+			u.ClearLines(1)
+		}
+		if err != nil {
+			u.PrintFatal("Plugin "+spec+" could not be prepared", err)
+		}
+		if !src.IsLocal {
+			u.PrintSuccess("Plugin ready: " + src.Name)
+		}
+		dirs = append(dirs, dir)
+	}
+
+	return dirs
 }
