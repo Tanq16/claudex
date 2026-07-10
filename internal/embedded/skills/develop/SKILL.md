@@ -30,7 +30,7 @@ Run it *before* writing code — its whole job is to make sure the governing ski
 
 State in one line what is being built or changed. Then classify:
 
-- **Project type** — per the `go-foundations` taxonomy: CLI Only / CLI + Web / Headless API Service / Library / Chrome Extension. Infer it from the tree (`go.mod`, `cmd/`, `internal/server/static/`, `manifest.json`, presence/absence of `utils/`, …).
+- **Project type** — per the `go-foundations` taxonomy: CLI Only / Web Only / CLI + Web / Headless API Service / Library / Chrome Extension. Infer it from the tree (`go.mod`, `cmd/`, `internal/server/static/`, `manifest.json`, presence/absence of `utils/`, …).
 - **Work type** — new project, feature, refactor, bug fix, tests, infra/CI, docs.
 
 ### Step 2: Select and READ the governing skills

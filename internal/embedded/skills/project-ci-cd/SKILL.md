@@ -33,7 +33,9 @@ Use this skill when:
 
 **No Dockerfile, no docker-compose, no docker targets in Makefile.**
 
-### Go CLI + Web Projects
+### Go Web Only Projects
+
+> **CLI + Web hybrids** use this same Web Only CI/CD (Docker + multi-platform binaries). A **Headless API Service** uses it too but drops the frontend-asset targets (`make assets` / `make verify-assets`).
 
 | File | Purpose |
 |------|---------|
@@ -62,7 +64,7 @@ Configure these secrets in GitHub repository settings:
 
 | Secret | Purpose | Project Type |
 |--------|---------|--------------|
-| `DOCKER_ACCESS_TOKEN` | Push images to Docker Hub | **CLI + Web only** |
+| `DOCKER_ACCESS_TOKEN` | Push images to Docker Hub | **Web Only / CLI + Web** |
 
 The `GITHUB_TOKEN` is automatically available - no configuration needed. CLI Only projects need no additional secrets.
 
@@ -76,26 +78,26 @@ Use `./references/makefile-template.md` to create the Makefile.
 
 **CLI Only projects:** Use the CLI Only Template (no assets, no docker targets).
 
-**CLI + Web projects with frontend assets:** Use the CLI + Web Template with full `assets`, `verify-assets`, `docker-build`, and `docker-push` targets.
+**Web Only projects with frontend assets:** Use the Web Only Template with full `assets`, `verify-assets`, `docker-build`, and `docker-push` targets.
 
-**CLI + Web projects without frontend assets:** Use the CLI + Web Template but remove `assets` and `verify-assets` targets.
+**Web Only projects without frontend assets:** Use the Web Only Template but remove `assets` and `verify-assets` targets.
 
 **Customize these values:**
 - `APP_NAME` - your project name
-- Asset versions - update to latest as needed (CLI + Web only)
-- `STATIC_DIR` paths - match your project structure (CLI + Web only)
+- Asset versions - update to latest as needed (**Web Only / CLI + Web**)
+- `STATIC_DIR` paths - match your project structure (**Web Only / CLI + Web**)
 - Version variable path in `-ldflags` - match your cmd package path
 
-### Step 2: Create Dockerfile (CLI + Web Only)
+### Step 2: Create Dockerfile (Web Only)
 
 **CLI Only projects skip this step entirely — they do not have a Dockerfile.**
 
 Use `./references/dockerfile-template.md` to create the Dockerfile.
 
-**For CLI + Web projects with frontend assets:**
+**For Web Only projects with frontend assets:**
 - Include `make assets` in the build stage
 
-**For CLI + Web projects without frontend assets:**
+**For Web Only projects without frontend assets:**
 - Use the Minimal Template (no `make assets` step)
 
 **Customize:**
@@ -111,11 +113,11 @@ Use `./references/release-workflow.md` to create `.github/workflows/release.yaml
 - Go version in the setup step
 - Docker Hub username (if different)
 
-### Step 4: Create docker-compose.yaml (CLI + Web Only, Optional)
+### Step 4: Create docker-compose.yaml (Web Only, Optional)
 
 **CLI Only projects skip this step — they do not use Docker.**
 
-For easy local deployment of CLI + Web projects:
+For easy local deployment of Web Only projects:
 
 ```yaml
 services:
@@ -155,14 +157,14 @@ git commit -m "Fix bug in handler"  # patch release
 | Target | Description | Project Type |
 |--------|-------------|--------------|
 | `make help` | Show all available targets | All |
-| `make assets` | Download frontend assets | CLI + Web only |
-| `make verify-assets` | Verify required assets exist | CLI + Web only |
+| `make assets` | Download frontend assets | **Web Only / CLI + Web** |
+| `make verify-assets` | Verify required assets exist | **Web Only / CLI + Web** |
 | `make clean` | Remove built binaries and assets | All |
 | `make build` | Build for current platform | All |
 | `make build-for GOOS=linux GOARCH=amd64` | Build for specific platform | All |
 | `make build-all` | Build all platform binaries | All |
-| `make docker-build` | Build Docker image | CLI + Web only |
-| `make docker-push` | Build and push Docker image | CLI + Web only |
+| `make docker-build` | Build Docker image | **Web Only / CLI + Web** |
+| `make docker-push` | Build and push Docker image | **Web Only / CLI + Web** |
 | `make version` | Calculate next version from commits | All |
 
 ---

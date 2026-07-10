@@ -27,7 +27,7 @@ Complete templates for each project type.
 
 ---
 
-## CLI + Web Project (Web Apps, Dashboards)
+## Web Only Project (Web Apps, Dashboards)
 
 ```markdown
 <div align="center">

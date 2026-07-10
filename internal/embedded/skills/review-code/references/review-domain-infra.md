@@ -1,6 +1,6 @@
 # Review Domain: Infrastructure
 
-**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web, Chrome Extension **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../project-ci-cd/SKILL.md`
 - `../../chrome-extension-basics/SKILL.md` (Chrome Extension projects only)
 - `../../project-readme/SKILL.md`
@@ -10,7 +10,7 @@
 
 ## Category 12: CI/CD Configuration (project-ci-cd)
 
-**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web, Chrome Extension
 
 **Common checks (all Go project types):**
 
@@ -32,7 +32,7 @@
 | No docker Makefile targets | Makefile has NO `docker-build` or `docker-push` targets | Read Makefile, flag if docker targets exist |
 | No docker job in workflow | Release workflow has NO `docker` job | Read release workflow, flag if docker job exists |
 
-**CLI + Web additional checks:**
+**Web Only / CLI + Web additional checks:**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -62,7 +62,7 @@
 
 ## Category 14: README Structure (project-readme)
 
-**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web, Chrome Extension
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -70,14 +70,14 @@
 | Centered header | `<div align="center">` with logo image and project name | Read top of README.md |
 | Badges | Build status badge and GitHub Release badge present | Grep for badge image URLs |
 | Navigation links | Anchor links to main sections | Read header section |
-| Correct template type | CLI Only, CLI + Web, or Chrome Extension template used based on project type | Compare README structure to project-readme templates |
+| Correct template type | CLI Only, Web Only, CLI + Web, or Chrome Extension template used based on project type | Compare README structure to project-readme templates |
 | Security disclaimer (extensions) | If extension handles sensitive data, security note is present | Read README for security disclaimer |
 
 ---
 
 ## Category 15: Dependencies (go-foundations: Dependency Selection)
 
-**Applies to:** Go CLI Only, Go CLI + Web, Chrome Extension
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web, Chrome Extension
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|
@@ -92,7 +92,7 @@
 |-------|-----------------|---------------|
 | CLI packages present | `zerolog`, `charm.land/bubbletea/v2`, `charm.land/lipgloss/v2`, `charm.land/bubbles/v2` expected in `go.mod` | Read `go.mod`, verify these are present |
 
-**CLI + Web additional check:**
+**Web Only / CLI + Web additional check:**
 
 | Check | Expected Pattern | How to Verify |
 |-------|-----------------|---------------|

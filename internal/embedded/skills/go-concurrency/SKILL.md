@@ -89,7 +89,7 @@ Full code for all six patterns (WaitGroup fire-and-forget, errgroup, errgroup+li
 
 **Unified job execution with progress tracking and state persistence.**
 
-**Applies to CLI Only projects.** The highway/display pattern assumes the `utils/` package and `--for-ai` flag exist (see `go-foundations` and `go-cli`). CLI + Web projects do not use it.
+**Applies to CLI Only projects and the CLI surface of CLI + Web hybrids.** The highway/display pattern assumes the `utils/` package and `--for-ai` flag exist (see `go-foundations` and `go-cli`). Web Only projects do not use it.
 
 ## When to Use the Highway
 

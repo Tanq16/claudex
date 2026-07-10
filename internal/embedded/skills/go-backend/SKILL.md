@@ -20,7 +20,7 @@ Use this skill when:
 
 **Requires:** `go-foundations` for project layout and principles.
 
-**CLI + Web constraint:** Internal packages in CLI + Web projects must NOT import `utils/`. Use `log.Printf` with manual level prefixes (e.g., `log.Printf("ERROR ...")`) and `log.Fatal()`/`log.Fatalf()` for fatal errors. Keep messages generic — no package-name prefix.
+**Web Only constraint:** Internal packages in Web Only projects — and the server layer of CLI + Web hybrids — must NOT import `utils/`. Use `log.Printf` with manual level prefixes (e.g., `log.Printf("ERROR ...")`) and `log.Fatal()`/`log.Fatalf()` for fatal errors. Keep messages generic — no package-name prefix. (A hybrid's CLI-operation packages follow CLI Only conventions instead.)
 
 ## Package Architecture
 
@@ -95,7 +95,7 @@ Run: func(cmd *cobra.Command, args []string) {
 }
 ```
 
-CLI + Web pattern (the interaction layer is HTTP handlers, shown in the HTTP Server Pattern section, which use `log.Printf`). For Cobra commands in CLI + Web:
+Web Only pattern (the interaction layer is HTTP handlers, shown in the HTTP Server Pattern section, which use `log.Printf`). For Cobra commands in a Web Only project (or a hybrid's `serve` command):
 ```go
 // cmd/download.go
 Run: func(cmd *cobra.Command, args []string) {
@@ -273,7 +273,7 @@ Run: func(cmd *cobra.Command, args []string) {
 }
 ```
 
-CLI + Web (uses `log.Fatalf`):
+Web Only (uses `log.Fatalf`):
 ```go
 // cmd/download.go
 Run: func(cmd *cobra.Command, args []string) {

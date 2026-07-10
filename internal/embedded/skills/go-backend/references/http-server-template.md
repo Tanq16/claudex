@@ -1,6 +1,6 @@
 # HTTP Server Template
 
-Canonical embedded-static `net/http` server for CLI + Web projects. This is the single source of truth for the `embed.FS` + `fs.Sub` + `http.StripPrefix` + `handleIndex` boilerplate — `go-frontend` references this file instead of re-defining it.
+Canonical embedded-static `net/http` server for Web Only projects and the `serve` command of CLI + Web hybrids. This is the single source of truth for the `embed.FS` + `fs.Sub` + `http.StripPrefix` + `handleIndex` boilerplate — `go-frontend` references this file instead of re-defining it.
 
 Use standard `net/http` (KISS principle). No third-party routers (gin, chi, echo).
 

@@ -4,7 +4,7 @@ Full code for the vanilla concurrency primitives. These run inside a job's `Run(
 
 > **Logging note:** the fire-and-forget pattern below logs errors. Use the project's logging
 > convention from `go-foundations` — zerolog (`log.Error()...`) for CLI Only, `log.Printf("ERROR ...")`
-> for CLI + Web. Never mix the two.
+> for Web Only (and a hybrid's server). Never mix the two.
 
 ---
 
@@ -13,7 +13,7 @@ Full code for the vanilla concurrency primitives. These run inside a job's `Run(
 Run N operations concurrently, wait for all to complete. Errors are logged, not collected. Use `wg.Go` (Go 1.25+) — it spawns the goroutine and handles `Add`/`Done` internally.
 
 ```go
-import "github.com/rs/zerolog/log" // CLI Only; CLI + Web uses the std "log" package
+import "github.com/rs/zerolog/log" // CLI Only; Web Only uses the std "log" package
 
 func (j *MyJob) Run(ctx context.Context, progress chan<- Progress) error {
     var wg sync.WaitGroup

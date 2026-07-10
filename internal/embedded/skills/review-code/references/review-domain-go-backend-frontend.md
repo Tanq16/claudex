@@ -1,6 +1,6 @@
 # Review Domain: Go Backend & Frontend
 
-**Applies to:** Go CLI + Web only **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
+**Applies to:** Go Web Only and Go CLI + Web hybrids **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
 - `../../go-backend/SKILL.md`
 - `../../go-frontend/SKILL.md`
 
@@ -18,7 +18,7 @@
 | Middleware pattern | If middleware exists, uses wrapper function pattern (`func withLogging(next http.HandlerFunc) http.HandlerFunc`) | Grep for middleware patterns |
 | Storage interface | If persistence used, `Store` interface with concrete implementations | Grep for storage interface definitions |
 | Config struct pattern | Internal packages accept config structs mapped from Cobra flags | Grep for `Config` struct definitions in internal packages |
-| No utils import | Internal packages do not import `utils` package (CLI + Web uses `log.Printf` instead) | Grep for `utils` import paths in `internal/` `.go` files |
+| No utils import (server) | Server packages under `internal/server/` do not import `utils` (Web Only has no `utils/` at all; a hybrid's server layer uses `log.Printf` instead) | Grep for `utils` import paths in `internal/server/` `.go` files |
 
 ---
 

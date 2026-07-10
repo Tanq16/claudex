@@ -1,6 +1,6 @@
 # Dockerfile Template
 
-**Applies to: CLI + Web projects only.** CLI Only projects do not have a Dockerfile.
+**Applies to: Web Only projects only.** CLI Only projects do not have a Dockerfile.
 
 Two-stage Docker build for Go projects with minimal runtime image.
 
@@ -45,7 +45,7 @@ CMD ["-d", "/data", "-H", "0.0.0.0"]
 
 ## Minimal Template (No Frontend Assets)
 
-For CLI + Web projects without downloadable frontend assets (NOT for CLI Only projects — those have no Dockerfile at all):
+For Web Only projects without downloadable frontend assets (NOT for CLI Only projects — those have no Dockerfile at all):
 
 ```dockerfile
 # Build stage
