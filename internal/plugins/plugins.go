@@ -69,8 +69,6 @@ func Fetch(src Source, pluginsBase string) (string, error) {
 	return dest, nil
 }
 
-// refresh replaces the curated items by name; !refresh writes them only when absent, so a launch
-// before configure still lands the defaults without clobbering anything the user added.
 func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool) error {
 	if err := writeGlobalManifest(dir); err != nil {
 		return err

@@ -15,8 +15,6 @@ type Flavor struct {
 	Body string
 }
 
-// Auto is set only when default.md is the lone flavor: apply it with no TUI. Choices holds the
-// selectable flavors (default first when present) for the TUI; empty means show nothing.
 type Options struct {
 	Auto    *Flavor
 	Choices []Flavor

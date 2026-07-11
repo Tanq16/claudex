@@ -226,7 +226,6 @@ func padRight(s string, width int) string {
 	return s + strings.Repeat(" ", width-len(runes))
 }
 
-// (nil, false) means proceed with no flavor; (f, true) apply f; (nil, true) the user cancelled.
 func selectFlavor() (*flavors.Flavor, bool) {
 	opts, err := flavors.Load(u.FlavorsDir())
 	if err != nil {
