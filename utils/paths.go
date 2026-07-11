@@ -79,8 +79,8 @@ func ClaudexConfigDir() string {
 	return filepath.Join(home, ".config", "claudex")
 }
 
-func DefaultPluginDir() string {
-	return filepath.Join(ClaudexConfigDir(), "default-plugin")
+func GlobalPluginDir() string {
+	return filepath.Join(ClaudexConfigDir(), "global")
 }
 
 func PluginsDir() string {

@@ -129,25 +129,25 @@ func TestGitAuth(t *testing.T) {
 	}
 }
 
-func TestEnsureDefaultPlugin(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "default-plugin")
+func TestEnsureGlobalPlugin(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "global")
 
-	created, err := EnsureDefaultPlugin(dir)
+	created, err := EnsureGlobalPlugin(dir)
 	if err != nil {
-		t.Fatalf("EnsureDefaultPlugin() error = %v", err)
+		t.Fatalf("EnsureGlobalPlugin() error = %v", err)
 	}
 	if !created {
-		t.Fatal("EnsureDefaultPlugin() created = false on first call, want true")
+		t.Fatal("EnsureGlobalPlugin() created = false on first call, want true")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json")); err != nil {
 		t.Fatalf("manifest not written: %v", err)
 	}
 
-	created, err = EnsureDefaultPlugin(dir)
+	created, err = EnsureGlobalPlugin(dir)
 	if err != nil {
-		t.Fatalf("EnsureDefaultPlugin() second call error = %v", err)
+		t.Fatalf("EnsureGlobalPlugin() second call error = %v", err)
 	}
 	if created {
-		t.Fatal("EnsureDefaultPlugin() created = true on second call, want false")
+		t.Fatal("EnsureGlobalPlugin() created = true on second call, want false")
 	}
 }

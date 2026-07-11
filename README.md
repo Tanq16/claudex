@@ -48,7 +48,7 @@ make build
 
 ### `status`
 
-Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns per account. Fetches directly from Anthropic's usage API using OAuth tokens stored in macOS Keychain.
+Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns per account. Fetches directly from Anthropic's usage API using each account's OAuth token — read from the macOS Keychain on macOS, and from `.credentials.json` in the account's config dir on Linux/Windows.
 
 ```bash
 claudex status
@@ -97,7 +97,16 @@ For new sessions, the remaining steps are:
 
 Resume sessions skip the prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`.
 
-`launch` can also load Claude Code plugins alongside the session. A machine-local default plugin under `~/.config/claudex/default-plugin` is always loaded for every account (created empty on first use, for you to fill with your own always-on skills and output styles). Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins; named git repos are cloned (or shallow-updated) under `~/.config/claudex/plugins` and applied on both new and resumed sessions.
+`launch` can also load Claude Code plugins alongside the session. A **global plugin** under `~/.config/claudex/global` is always loaded for every account — created on first use as an empty-but-valid plugin (just a `.claude-plugin/plugin.json` manifest named `global`) for you to fill with your own always-on skills and output styles. Drop them into the conventional plugin folders and they load on every launch, across every account:
+
+```
+~/.config/claudex/global/
+├── .claude-plugin/plugin.json    # created for you — nothing else to edit
+├── skills/<skill-name>/SKILL.md  # your always-on skills, invoked as /global:<skill-name>
+└── output-styles/<name>.md       # your always-on output styles
+```
+
+Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins; named git repos are cloned (or shallow-updated) under `~/.config/claudex/plugins` and applied on both new and resumed sessions.
 
 ```bash
 claudex launch
@@ -148,5 +157,5 @@ claudex oauth-token --port 8080
 
 - Accounts are auto-discovered (`~/.claude`, `~/.claude2`, …)
 - Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
-- OAuth tokens are read from macOS Keychain; they refresh automatically when Claude Code is running
+- OAuth tokens are read from the macOS Keychain (macOS) or `.credentials.json` in the account's config dir (Linux/Windows); they refresh automatically when Claude Code is running
 - If a token is expired, launch Claude Code on that account to refresh it

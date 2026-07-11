@@ -65,7 +65,7 @@ func Fetch(src Source, pluginsBase string) (string, error) {
 }
 
 // Intentionally empty: claudex ships no defaults; the user fills this slot.
-func EnsureDefaultPlugin(dir string) (bool, error) {
+func EnsureGlobalPlugin(dir string) (bool, error) {
 	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
 	if _, err := os.Stat(manifest); err == nil {
 		return false, nil
@@ -74,8 +74,8 @@ func EnsureDefaultPlugin(dir string) (bool, error) {
 		return false, err
 	}
 	data, err := json.MarshalIndent(map[string]any{
-		"name":        "claudex-default",
-		"description": "Machine-local plugin auto-loaded by claudex across every account",
+		"name":        "global",
+		"description": "Global plugin auto-loaded by claudex across every account",
 		"version":     "0.0.1",
 	}, "", "  ")
 	if err != nil {

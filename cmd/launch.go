@@ -219,14 +219,14 @@ func padRight(s string, width int) string {
 func resolvePluginDirs() []string {
 	var dirs []string
 
-	defaultDir := u.DefaultPluginDir()
-	if created, err := plugins.EnsureDefaultPlugin(defaultDir); err != nil {
-		u.PrintWarn("could not prepare the default plugin", err)
+	globalDir := u.GlobalPluginDir()
+	if created, err := plugins.EnsureGlobalPlugin(globalDir); err != nil {
+		u.PrintWarn("could not prepare the global plugin", err)
 	} else {
 		if created {
-			u.PrintInfo("Created empty default plugin at " + u.AbbreviatePath(defaultDir))
+			u.PrintInfo("Created empty global plugin at " + u.AbbreviatePath(globalDir))
 		}
-		dirs = append(dirs, defaultDir)
+		dirs = append(dirs, globalDir)
 	}
 
 	for _, spec := range launchFlags.plugins {
