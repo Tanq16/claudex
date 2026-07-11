@@ -111,8 +111,6 @@ func applyPreferredSettings(settings map[string]any) {
 	settings["tui"] = "fullscreen"
 	settings["autoMemoryEnabled"] = false
 	settings["skipDangerousModePermissionPrompt"] = true
-	// An older configure set this top-level, where Claude Code ignores it (it's an env var); scrub the dead key.
-	delete(settings, "CLAUDE_AFK_TIMEOUT_MS")
 
 	env, ok := settings["env"].(map[string]any)
 	if !ok {
