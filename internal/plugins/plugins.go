@@ -6,11 +6,16 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 )
+
+var globalPluginSkills = []string{"cross-ai", "ai-docs"}
+
+const globalPluginOutputStyle = "caveman.md"
 
 type Source struct {
 	Raw     string
@@ -64,28 +69,80 @@ func Fetch(src Source, pluginsBase string) (string, error) {
 	return dest, nil
 }
 
-// Intentionally empty: claudex ships no defaults; the user fills this slot.
-func EnsureGlobalPlugin(dir string) (bool, error) {
-	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
-	if _, err := os.Stat(manifest); err == nil {
-		return false, nil
+// refresh replaces the curated items by name; !refresh writes them only when absent, so a launch
+// before configure still lands the defaults without clobbering anything the user added.
+func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool) error {
+	if err := writeGlobalManifest(dir); err != nil {
+		return err
 	}
+	for _, name := range globalPluginSkills {
+		dest := filepath.Join(dir, "skills", name)
+		if err := installTree(skillsFS, "skills/"+name, dest, refresh); err != nil {
+			return err
+		}
+	}
+	styleDest := filepath.Join(dir, "output-styles", globalPluginOutputStyle)
+	return installFile(outputStylesFS, "output-styles/"+globalPluginOutputStyle, styleDest, refresh)
+}
+
+// Always rewritten (not write-if-missing) so a manifest from an older plugin name migrates to "claudex".
+func writeGlobalManifest(dir string) error {
+	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
 	if err := os.MkdirAll(filepath.Dir(manifest), 0o755); err != nil {
-		return false, err
+		return err
 	}
 	data, err := json.MarshalIndent(map[string]any{
-		"name":        "global",
-		"description": "Global plugin auto-loaded by claudex across every account",
+		"name":        "claudex",
+		"description": "claudex's curated skills and output styles, auto-loaded across every account",
 		"version":     "0.0.1",
 	}, "", "  ")
 	if err != nil {
-		return false, err
+		return err
 	}
 	data = append(data, '\n')
-	if err := os.WriteFile(manifest, data, 0o644); err != nil {
-		return false, err
+	return os.WriteFile(manifest, data, 0o644)
+}
+
+func installTree(srcFS fs.FS, root, dest string, refresh bool) error {
+	if _, err := os.Stat(dest); err == nil {
+		if !refresh {
+			return nil
+		}
+		if err := os.RemoveAll(dest); err != nil {
+			return err
+		}
 	}
-	return true, nil
+	return fs.WalkDir(srcFS, root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		out := filepath.Join(dest, strings.TrimPrefix(path, root+"/"))
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			return err
+		}
+		data, err := fs.ReadFile(srcFS, path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, data, 0o644)
+	})
+}
+
+func installFile(srcFS fs.FS, srcPath, dest string, refresh bool) error {
+	if _, err := os.Stat(dest); err == nil && !refresh {
+		return nil
+	}
+	data, err := fs.ReadFile(srcFS, srcPath)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(dest, data, 0o644)
 }
 
 func clone(url, dest string) error {

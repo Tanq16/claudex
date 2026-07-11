@@ -36,7 +36,8 @@ elif [[ "$CONFIG_DIR_NAME" == ".claude2" ]]; then
 elif [[ "$CONFIG_DIR_NAME" == ".claude3" ]]; then
     ACCT_LABEL="third"
 else
-    ACCT_LABEL="acct${CONFIG_DIR_NAME##.claude}"
+    suffix="${CONFIG_DIR_NAME##.claude}"
+    ACCT_LABEL="${suffix#-}"
 fi
 
 input=$(cat)

@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/tanq16/claudex/internal/embedded"
+	"github.com/tanq16/claudex/internal/flavors"
 	"github.com/tanq16/claudex/internal/parser"
 	"github.com/tanq16/claudex/internal/plugins"
 	u "github.com/tanq16/claudex/utils"
@@ -147,6 +149,14 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	if flavor, ok := selectFlavor(); ok {
+		if flavor == nil {
+			return
+		}
+		cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
+		summary = append(summary, "flavor: "+flavor.Name)
+	}
+
 	for _, dir := range resolvePluginDirs() {
 		cliArgs = append(cliArgs, "--plugin-dir", dir)
 	}
@@ -216,16 +226,46 @@ func padRight(s string, width int) string {
 	return s + strings.Repeat(" ", width-len(runes))
 }
 
+// (nil, false) means proceed with no flavor; (f, true) apply f; (nil, true) the user cancelled.
+func selectFlavor() (*flavors.Flavor, bool) {
+	opts, err := flavors.Load(u.FlavorsDir())
+	if err != nil {
+		u.PrintWarn("could not read flavors", err)
+		return nil, false
+	}
+	if opts.Auto != nil {
+		return opts.Auto, true
+	}
+	if len(opts.Choices) == 0 {
+		return nil, false
+	}
+
+	labels := make([]string, len(opts.Choices)+1)
+	for i, f := range opts.Choices {
+		labels[i] = f.Name
+	}
+	labels[len(opts.Choices)] = "None"
+
+	idx, err := u.PromptSelect("Flavor", labels)
+	if err != nil {
+		u.PrintFatal("TUI error", err)
+	}
+	if idx < 0 {
+		return nil, true
+	}
+	if idx == len(opts.Choices) {
+		return nil, false
+	}
+	return &opts.Choices[idx], true
+}
+
 func resolvePluginDirs() []string {
 	var dirs []string
 
 	globalDir := u.GlobalPluginDir()
-	if created, err := plugins.EnsureGlobalPlugin(globalDir); err != nil {
+	if err := plugins.BuildGlobalPlugin(globalDir, embedded.SkillsFS, embedded.OutputStylesFS, false); err != nil {
 		u.PrintWarn("could not prepare the global plugin", err)
 	} else {
-		if created {
-			u.PrintInfo("Created empty global plugin at " + u.AbbreviatePath(globalDir))
-		}
 		dirs = append(dirs, globalDir)
 	}
 
