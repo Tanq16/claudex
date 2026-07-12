@@ -13,10 +13,6 @@ import (
 	"strings"
 )
 
-var globalPluginSkills = []string{"cross-ai", "ai-docs"}
-
-const globalPluginOutputStyle = "caveman.md"
-
 type Source struct {
 	Raw     string
 	IsLocal bool
@@ -73,14 +69,36 @@ func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool)
 	if err := writeGlobalManifest(dir); err != nil {
 		return err
 	}
-	for _, name := range globalPluginSkills {
-		dest := filepath.Join(dir, "skills", name)
-		if err := installTree(skillsFS, "default-skills/"+name, dest, refresh); err != nil {
+
+	skills, err := fs.ReadDir(skillsFS, "default-skills")
+	if err != nil {
+		return err
+	}
+	for _, e := range skills {
+		if !e.IsDir() {
+			continue
+		}
+		dest := filepath.Join(dir, "skills", e.Name())
+		if err := installTree(skillsFS, "default-skills/"+e.Name(), dest, refresh); err != nil {
 			return err
 		}
 	}
-	styleDest := filepath.Join(dir, "output-styles", globalPluginOutputStyle)
-	return installFile(outputStylesFS, "output-styles/"+globalPluginOutputStyle, styleDest, refresh)
+
+	styles, err := fs.ReadDir(outputStylesFS, "output-styles")
+	if err != nil {
+		return err
+	}
+	for _, e := range styles {
+		if e.IsDir() {
+			continue
+		}
+		dest := filepath.Join(dir, "output-styles", e.Name())
+		if err := installFile(outputStylesFS, "output-styles/"+e.Name(), dest, refresh); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Always rewritten (not write-if-missing) so a manifest from an older plugin name migrates to "claudex".

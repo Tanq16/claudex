@@ -138,10 +138,9 @@ func testGlobalFS() (skills, styles fs.FS) {
 			"default-skills/cross-ai/SKILL.md":    {Data: []byte("cross-ai v1")},
 			"default-skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
 			"default-skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
-			"default-skills/go-cli/SKILL.md":      {Data: []byte("not curated")},
 		}, fstest.MapFS{
 			"output-styles/caveman.md": {Data: []byte("caveman v1")},
-			"output-styles/other.md":   {Data: []byte("not curated")},
+			"output-styles/robot.md":   {Data: []byte("robot v1")},
 		}
 }
 
@@ -154,7 +153,7 @@ func read(t *testing.T, path string) string {
 	return string(data)
 }
 
-func TestBuildGlobalPluginCurates(t *testing.T) {
+func TestBuildGlobalPluginInstallsEverything(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "global")
 	skills, styles := testGlobalFS()
 
@@ -180,8 +179,8 @@ func TestBuildGlobalPluginCurates(t *testing.T) {
 	if got := read(t, filepath.Join(dir, "output-styles", "caveman.md")); got != "caveman v1" {
 		t.Fatalf("caveman = %q", got)
 	}
-	if _, err := os.Stat(filepath.Join(dir, "skills", "go-cli")); err == nil {
-		t.Fatal("non-curated skill go-cli was copied into the plugin")
+	if got := read(t, filepath.Join(dir, "output-styles", "robot.md")); got != "robot v1" {
+		t.Fatalf("robot style = %q", got)
 	}
 }
 
