@@ -75,7 +75,7 @@ func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool)
 	}
 	for _, name := range globalPluginSkills {
 		dest := filepath.Join(dir, "skills", name)
-		if err := installTree(skillsFS, "skills/"+name, dest, refresh); err != nil {
+		if err := installTree(skillsFS, "default-skills/"+name, dest, refresh); err != nil {
 			return err
 		}
 	}

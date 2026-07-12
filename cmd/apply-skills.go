@@ -43,8 +43,6 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 	var srcFS fs.FS = embedded.SkillsFS
 	srcRoot := "skills"
 	sourceLabel := "claudex's embedded set"
-	// cross-ai and ai-docs ship only via the global plugin, so keep them out of the per-project bucket.
-	embeddedExclude := map[string]bool{"cross-ai": true, "ai-docs": true}
 	if applySkillsFlags.dir != "" {
 		dir := u.ExpandPath(applySkillsFlags.dir)
 		info, statErr := os.Stat(dir)
@@ -52,7 +50,6 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 			u.PrintFatal(fmt.Sprintf("--dir %s is not a directory", applySkillsFlags.dir), statErr)
 		}
 		srcFS, srcRoot, sourceLabel = os.DirFS(dir), ".", u.AbbreviatePath(dir)
-		embeddedExclude = nil
 	}
 
 	claudeDir := filepath.Join(cwd, ".claude")
@@ -72,9 +69,6 @@ func runApplySkills(cmd *cobra.Command, args []string) {
 			continue
 		}
 		name := entry.Name()
-		if embeddedExclude[name] {
-			continue
-		}
 		dest := filepath.Join(targetRoot, name)
 		if applySkillsFlags.preserveLocal {
 			if _, err := os.Stat(dest); err == nil {

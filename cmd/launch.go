@@ -262,7 +262,7 @@ func resolvePluginDirs() []string {
 	var dirs []string
 
 	globalDir := u.GlobalPluginDir()
-	if err := plugins.BuildGlobalPlugin(globalDir, embedded.SkillsFS, embedded.OutputStylesFS, false); err != nil {
+	if err := plugins.BuildGlobalPlugin(globalDir, embedded.DefaultSkillsFS, embedded.OutputStylesFS, false); err != nil {
 		u.PrintWarn("could not prepare the global plugin", err)
 	} else {
 		dirs = append(dirs, globalDir)

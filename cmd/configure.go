@@ -104,7 +104,7 @@ func configureAccount(accountDir, label string) error {
 
 func applyGlobalDefaults() {
 	globalDir := u.GlobalPluginDir()
-	if err := plugins.BuildGlobalPlugin(globalDir, embedded.SkillsFS, embedded.OutputStylesFS, true); err != nil {
+	if err := plugins.BuildGlobalPlugin(globalDir, embedded.DefaultSkillsFS, embedded.OutputStylesFS, true); err != nil {
 		u.PrintFatal("failed to build the global plugin", err)
 	}
 	flavorsDir := u.FlavorsDir()

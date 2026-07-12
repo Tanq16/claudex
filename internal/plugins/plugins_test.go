@@ -135,10 +135,10 @@ func TestGitAuth(t *testing.T) {
 
 func testGlobalFS() (skills, styles fs.FS) {
 	return fstest.MapFS{
-			"skills/cross-ai/SKILL.md":    {Data: []byte("cross-ai v1")},
-			"skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
-			"skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
-			"skills/go-cli/SKILL.md":      {Data: []byte("not curated")},
+			"default-skills/cross-ai/SKILL.md":    {Data: []byte("cross-ai v1")},
+			"default-skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
+			"default-skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
+			"default-skills/go-cli/SKILL.md":      {Data: []byte("not curated")},
 		}, fstest.MapFS{
 			"output-styles/caveman.md": {Data: []byte("caveman v1")},
 			"output-styles/other.md":   {Data: []byte("not curated")},
@@ -202,8 +202,8 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	}
 
 	newSkills := fstest.MapFS{
-		"skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
-		"skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
+		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
 	}
 	newStyles := fstest.MapFS{"output-styles/caveman.md": {Data: []byte("caveman v2")}}
 
@@ -236,8 +236,8 @@ func TestBuildGlobalPluginRefreshIsCleanSwap(t *testing.T) {
 	}
 
 	newSkills := fstest.MapFS{
-		"skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
-		"skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
+		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
 	}
 	if err := BuildGlobalPlugin(dir, newSkills, styles, true); err != nil {
 		t.Fatalf("refresh build error = %v", err)
