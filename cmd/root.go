@@ -62,7 +62,6 @@ func init() {
 
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(oauthTokenCmd)
-	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(configureCmd)

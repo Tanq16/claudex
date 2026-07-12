@@ -3,24 +3,25 @@
   <h1>Claudex</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
-  <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
+  <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a>
 </div>
 
 ---
 
-A multi-account companion and single point of control for Claude Code: monitor usage across accounts, browse and move conversations, launch configured sessions, and provision every account at once. The model has two axes — **global** defaults you set once with `configure` (a curated always-on plugin, launch-time flavors, and per-account statusline/settings written across *every* discovered account) and **per-session** choices you make at `launch` (account, MCP mode, flavor, and any extra plugins). Usage data comes in real time from Anthropic's OAuth API — exact 5-hour session, 7-day overall, and 7-day Sonnet limits with reset times.
+Claudex is a companion CLI for running Claude Code across more than one account. If you keep separate Claude subscriptions — a personal one, a work one, a spare for when the first hits its limit — claudex is the single place to see where each one stands, jump into the right one, move a conversation between them, and set them all up identically in one shot.
+
+It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.claude2`, `~/.claude3`, …). Everything claudex sets up for itself — a shared global plugin, your launch flavors, and any plugins it fetches — lives under `~/.config/claudex`. The whole workflow is two steps: run `configure` once to provision every account, then use `launch` every time you start working.
 
 ## Capabilities
 
-| Category | Commands | Description |
-|----------|----------|-------------|
-| Monitoring | `status` | Live 5h session, 7d overall, and 7d Sonnet utilization with reset countdowns |
-| Conversations | `list` | List recent conversations with session IDs, message counts, and projects |
-| | `switch` | Move a conversation between accounts, interactively or by session ID |
-| Launcher | `launch` | Interactive TUI to launch a Claude Code session — pick account, MCP mode, and flavor; always loads the global default plugin |
-| Configuration | `configure` | Provision all accounts at once: preferred settings and statusline per account, plus the global default plugin and flavors directory |
-| Skills | `apply-skills` | Install the embedded personal development skill set into the current project |
-| Authentication | `oauth-token` | Obtain a Claude OAuth access token via browser-based PKCE flow |
+| Command | What it gives you |
+|---------|-------------------|
+| `configure` | One-shot setup of every account plus the shared global plugin and flavors — run it once after installing |
+| `status` | Live usage across all accounts: 5h session, weekly overall, and weekly per-model windows, each with a reset countdown |
+| `launch` | Guided start of a Claude Code session — right account, MCP mode, and flavor, with the global plugin always loaded |
+| `switch` | Move a conversation from one account to another and continue it there |
+| `oauth-token` | A Claude OAuth access token via the browser PKCE flow |
+| `apply-skills` | Drop claudex's opinionated development skills into the current project |
 
 ## Installation
 
@@ -43,11 +44,30 @@ cd claudex
 make build
 ```
 
+Once it's on your PATH, run `claudex configure` — that one command sets up every account and lays down the global defaults. After that, `claudex launch` is all you need day to day.
+
 ## Usage
+
+### `configure`
+
+Run this once, right after installing. With no arguments it provisions **every account it discovers** in a single pass:
+
+- **Per account** — writes a statusline and a set of opinionated `settings.json` defaults into each account directory. Your existing settings and env vars are preserved; only claudex's keys are merged in.
+- **The global plugin** — builds a single always-on plugin at `~/.config/claudex/global` that every account shares. This is claudex's single point of control for global content: it ships one output style (`caveman`) and two skills, `cross-ai` and `ai-docs`, so those are present in every session on every account with no per-account setup. Anything you drop into its `skills/` or `output-styles/` folders rides along the same way.
+- **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
+
+Target a single account with `-A <path>`; `--label` names that account's statusline and only applies with `-A`. After this, day-to-day use is just `launch`.
+
+```bash
+claudex configure
+claudex configure -A ~/.claude2 --label prod
+```
 
 ### `status`
 
-Show live usage for all monitored accounts. Displays 5-hour session, 7-day overall, and 7-day Sonnet-specific utilization with reset countdowns per account. Fetches directly from Anthropic's usage API using each account's OAuth token — read from the macOS Keychain on macOS, and from `.credentials.json` in the account's config dir on Linux/Windows.
+See live usage for every account at once — the 5-hour session window, the weekly overall window, and the weekly per-model windows (currently Fable), each with a reset countdown. This is the multi-account payoff: one glance tells you which account has room and which is about to hit a limit, so you know where to launch next.
+
+Numbers come straight from Anthropic's OAuth usage API — the same source as the official dashboard. Tokens are read from the macOS Keychain, or from each account's `.credentials.json` on Linux/Windows, and refresh on their own while Claude Code is running; if one shows as expired, launch Claude Code on that account to refresh it.
 
 ```bash
 claudex status
@@ -55,71 +75,27 @@ claudex status -A ~/.claude2
 claudex status -j
 ```
 
-### `list`
-
-List recent conversations across all discovered accounts. Shows session ID, message count, project, first message, and last activity time.
-
-```bash
-claudex list
-claudex list -n 5
-claudex list -j
-```
-
-### `switch`
-
-Move a conversation from one account to another. Transfers session files and migrates history entries between config directories. Run with no flags for the interactive selector: it lists recent sessions for the current project across all accounts, then prompts for the target account (skipped when only one other account exists). Pass `--id`/`--from`/`--to` to skip the prompts and move a specific session non-interactively (handy for scripting).
-
-```bash
-claudex switch
-claudex switch --id <session-uuid> --to ~/.claude2
-claudex switch --id <session-uuid> --from ~/.claude2 --to ~/.claude3
-```
-
 ### `launch`
 
-Interactively launch a Claude Code session — this is where you make your per-session choices. Presents a TUI to select session mode, account, MCP/connector behavior, and flavor, then execs directly into `claude` with the assembled flags and environment. The global default plugin is always loaded (see below).
+The one command you run to start working. Rather than remembering which account is which, which env vars turn on connectors, and which system prompt you wanted, `launch` walks you through it and execs straight into `claude` with everything wired up:
 
-```bash
-claudex launch
-```
+- **Account** — pick which one to use (skipped if you only have one).
+- **MCP + connectors** — MCP servers only, MCP servers plus claude.ai connectors (Gmail, Slack, …), or none at all.
+- **Flavor** — a system-prompt posture (see below).
+- **Resume** — when the current directory has recent sessions, jump back into one instead; it targets the right account automatically.
 
-The TUI starts with a mode selection (shown only when resumable sessions exist):
-- **New session** — walks through account, MCP/connector, and flavor selection
-- **Resume** — pick from the most recent sessions for the current directory (across all accounts)
+Every launch loads the global plugin that `configure` built, so your global skills and output style are always there. (Launching before you've run `configure` still works — it lays down anything missing without touching what you've customized.)
 
-For new sessions, the remaining steps are:
-- **Account** — select which account directory (`~/.claude`, `~/.claude2`, …) to use (skipped if only one exists)
-- **MCP + Connectors** — choose one of:
-  - **MCPs only** — load your configured MCP servers, no claude.ai connectors
-  - **MCPs + Connectors** — load MCP servers and enable claude.ai connectors (Gmail, Slack, etc.) via the `ENABLE_CLAUDEAI_MCP_SERVERS` setting
-  - **None** — pass `--strict-mcp-config` to block all MCP servers and connectors
-- **Flavor** — pick a system-prompt posture from `~/.config/claudex/flavors/` (see below); shown whenever at least one non-default flavor exists (a lone `default.md` is applied silently with no prompt)
-
-Resume sessions skip the account/MCP prompts and automatically target the correct account via `CLAUDE_CONFIG_DIR`, but still apply the global plugin and flavor.
-
-**Global default plugin.** A plugin under `~/.config/claudex/global` (manifest name `claudex`) is always loaded for every account, on every launch. It ships curated, broadly-useful content: the `cross-ai` and `ai-docs` skills (invoked as `/claudex:cross-ai` and `/claudex:ai-docs`) and the `caveman` output style. `launch` performs a gentle write-if-missing build — it lays down any missing curated items so a launch-before-configure still gets the defaults, but never clobbers items you or `configure` already refreshed. You can drop your own always-on skills and output styles into the conventional plugin folders and they load on every launch, across every account:
-
-```
-~/.config/claudex/global/
-├── .claude-plugin/plugin.json    # manifest named "claudex"
-├── skills/<skill-name>/SKILL.md  # your always-on skills, invoked as /claudex:<skill-name>
-└── output-styles/<name>.md       # your always-on output styles
-```
-
-Because `caveman` ships inside this plugin, it is available in every claudex-launched session — no separate install step. Select it once with `/output-style` and the choice persists.
-
-**Flavors.** Files in `~/.config/claudex/flavors/*.md` are launch-time system-prompt append postures. Each file's whole content is the append text (no frontmatter), applied via `--append-system-prompt`, and the filename stem is its TUI label. The `default.md` file is not a master switch — it is the auto-apply-when-alone, pre-selected-when-many entry:
+**Flavors** are reusable launch-time postures — one `.md` file per posture in `~/.config/claudex/flavors/`, where the whole file becomes the appended system prompt and the filename is its label. Keep a few modes around (terse, planning-first, review-only, whatever fits) and pick one at launch. `default.md` is not a master switch, just a convenient default:
 
 | `flavors/` contains | Behavior at launch |
 |---|---|
 | nothing | nothing applied, no prompt |
-| only `default.md` | apply it silently — no TUI, no None |
+| only `default.md` | applied silently — no prompt |
 | `default.md` + others | pick one (`default` pre-selected) or None |
 | others, no `default.md` | pick one or None |
 
-Running `configure` creates this directory for you; add your own flavor `.md` files to it.
-
-**Extra plugins.** Pass `--plugins` with one or more local directories or git repo URLs to load additional plugins alongside the global one; named git repos are cloned (or shallow-updated) under `~/.config/claudex/plugins` and applied on both new and resumed sessions.
+**Extra plugins for a single session** go through `--plugins`, taking a local directory or a git URL. Git repos are cloned (or shallow-updated if already fetched) under `~/.config/claudex/plugins` and loaded alongside the global one. This is deliberately simpler than Claude Code's built-in plugin manager, which tends to leave orphaned versions behind — claudex just clones the repo to a fixed spot, pulls latest when it's already there, and loads it inline.
 
 ```bash
 claudex launch
@@ -127,47 +103,29 @@ claudex launch --plugins ~/my-plugin
 claudex launch --plugins https://github.com/user/some-plugin
 ```
 
-### `configure`
+### `switch`
 
-The single control point for your global defaults. By default it provisions **every discovered account at once** and lays down all account-independent defaults in one run:
-
-- **Per account** — writes `statusline.sh` into each account directory and merges a set of opinionated defaults into its `settings.json`: the statusline block, effort level, fullscreen TUI, auto-updater and connector env vars, and similar quality-of-life settings. Existing unrelated settings are preserved, and any env vars you already set survive the merge. The statusline label is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`, `~/.claude3` → `third`).
-- **Global default plugin** — authoritatively refreshes the curated items in `~/.config/claudex/global` to the latest embedded versions (replace-by-name), while preserving any skills or output styles you added yourself. (`launch` only writes missing items; `configure` brings them fully up to date.)
-- **Flavors** — scaffolds `~/.config/claudex/flavors/` so you can drop in your launch-time postures.
-
-Use `-A <path>` to target a single account instead of all of them. `--label` is a per-account statusline override and is only meaningful with `-A` (it errors if given without it).
+Started a conversation on the wrong account, or want to keep going on one with more capacity? `switch` moves a conversation from one account to another — it relocates the session's project directory and its history entries into the target account so you can pick the thread right back up there. Run it bare for an interactive picker, or pass `--id`/`--from`/`--to` to move a specific session non-interactively.
 
 ```bash
-claudex configure
-claudex configure -A ~/.claude2
-claudex configure -A ~/.claude2 --label prod
-```
-
-### `apply-skills`
-
-Install the personal development skill set into the current project, under `.claude/skills/` — the per-project helper (the broadly-useful `cross-ai` and `ai-docs` skills now ride the global plugin instead). By default it installs claudex's embedded development skills; point `--dir` at a directory to install your own skills instead. Matching is by skill name: each source skill **replaces** any same-named skill directory wholesale (so renamed or removed files never linger), while any existing skill that doesn't match a source name is left untouched. Use `--preserve-local` to keep every existing project skill and only add ones that aren't already present, or `--full-wipe` to clear the project's `.claude` skills and settings (`settings.json`/`settings.local.json`) first for a clean slate. Run it from the project root.
-
-```bash
-claudex apply-skills
-claudex apply-skills --dir ~/my-skills
-claudex apply-skills --preserve-local
+claudex switch
+claudex switch --id <session-uuid> --to ~/.claude2
 ```
 
 ### `oauth-token`
 
-Obtain a Claude OAuth access token via the browser-based PKCE flow. Opens your browser for authentication and prints the access token to stdout.
+Obtain a Claude OAuth access token via the browser-based PKCE flow (valid one hour by default). It opens your browser to authenticate and prints the token to stdout, so `TOKEN=$(claudex oauth-token)` just works. `--expires-in` and `--port` are there if you need them.
 
 ```bash
 claudex oauth-token
 TOKEN=$(claudex oauth-token)
-claudex oauth-token --expires-in 3600
-claudex oauth-token --port 8080
 ```
 
-## Tips and Notes
+### `apply-skills`
 
-- Accounts are auto-discovered — `~/.claude` and its numeric siblings (`~/.claude2`, `~/.claude3`, …) are picked up automatically
-- Run `configure` once to provision every account and lay down the global defaults (curated plugin + flavors directory); make per-session choices at `launch`
-- Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
-- OAuth tokens are read from the macOS Keychain (macOS) or `.credentials.json` in the account's config dir (Linux/Windows); they refresh automatically when Claude Code is running
-- If a token is expired, launch Claude Code on that account to refresh it
+An author-opinionated set of development skills you can drop into a project's `.claude/skills/` — run it from a project root and it installs claudex's embedded dev skills there, and only there. Point `--dir` at your own skill set instead, `--preserve-local` to add only what's missing, or `--full-wipe` to clear the project's claudex skills and settings first for a clean slate. (These are per-project skills; the always-on `cross-ai` and `ai-docs` skills ride the global plugin instead.)
+
+```bash
+claudex apply-skills
+claudex apply-skills --dir ~/my-skills
+```
