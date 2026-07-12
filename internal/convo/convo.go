@@ -20,7 +20,6 @@ type RawHistoryEntry struct {
 	Raw    []byte
 }
 
-// SessionFiles describes all files belonging to a conversation session.
 type SessionFiles struct {
 	ConfigDir    string
 	ProjectDir   string
@@ -29,19 +28,15 @@ type SessionFiles struct {
 	SubAgentDir  string
 }
 
-// EncodeProjectPath converts an absolute path to the directory name used by Claude.
-// e.g., "/Users/foo/bar" -> "-Users-foo-bar"
+// Claude's on-disk project dir: every "/" in the abs path becomes "-" (e.g. /Users/foo -> -Users-foo).
 func EncodeProjectPath(absPath string) string {
 	return strings.ReplaceAll(absPath, "/", "-")
 }
 
-// DecodeProjectPath converts an encoded directory name back to an absolute path.
-// e.g., "-Users-foo-bar" -> "/Users/foo/bar"
 func DecodeProjectPath(encoded string) string {
 	return strings.ReplaceAll(encoded, "-", "/")
 }
 
-// ProjectDir returns the full path to a project's conversation directory.
 func ProjectDir(configDir, projectPath string) string {
 	return filepath.Join(configDir, "projects", EncodeProjectPath(projectPath))
 }
@@ -107,7 +102,6 @@ func WriteRawHistory(configDir string, entries []RawHistoryEntry) error {
 	return os.Rename(tmp, path)
 }
 
-// AppendRawHistory appends entries to history.jsonl.
 func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {
 	path := filepath.Join(configDir, "history.jsonl")
 	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
@@ -124,7 +118,6 @@ func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {
 	return w.Flush()
 }
 
-// FilterBySession partitions entries into matching and non-matching for a session ID.
 func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, rest []RawHistoryEntry) {
 	for _, e := range entries {
 		if e.Parsed.SessionID == sessionID {
@@ -138,7 +131,6 @@ func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, res
 
 // --- Session file discovery ---
 
-// FindSession searches for a session's files in a specific config dir.
 func FindSession(configDir, sessionID string) (*SessionFiles, error) {
 	projectsDir := filepath.Join(configDir, "projects")
 	dirEntries, err := os.ReadDir(projectsDir)
@@ -183,7 +175,6 @@ func FindSession(configDir, sessionID string) (*SessionFiles, error) {
 
 // --- Move operations ---
 
-// MoveSession moves session files from srcProjectDir to dstProjectDir.
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 	if err := os.MkdirAll(dstProjectDir, 0700); err != nil {
 		return fmt.Errorf("creating target directory: %w", err)
