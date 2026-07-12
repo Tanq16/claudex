@@ -296,4 +296,3 @@ func copyDirAndRemove(src, dst string) error {
 
 	return os.Remove(src)
 }
-
