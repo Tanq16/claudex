@@ -10,9 +10,26 @@ permissions:
 
 jobs:
   # ===========================================================================
+  # Step 0: Run tests (gates the release)
+  # ===========================================================================
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+
+      - name: Run Tests
+        run: go test ./...
+
+  # ===========================================================================
   # Step 1: Calculate version and create draft release
   # ===========================================================================
   create-release:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
