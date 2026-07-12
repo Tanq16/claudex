@@ -22,6 +22,7 @@ It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.cl
 | `switch` | Move a conversation from one account to another and continue it there |
 | `oauth-token` | A Claude OAuth access token via the browser PKCE flow |
 | `apply-skills` | Drop ClaudeX's opinionated development skills into the current project |
+| `ai-docs` | Serve the ai-docs viewer for capturing durable HTML docs in the current project |
 
 ## Installation
 
@@ -128,4 +129,13 @@ An author-opinionated set of development skills you can drop into a project's `.
 ```bash
 claudex apply-skills
 claudex apply-skills --dir ~/my-skills
+```
+
+### `ai-docs`
+
+`ai-docs` is one of the global-plugin skills — it captures durable deliverables (architecture, design, research, analysis) as curated HTML you read through a small local viewer. This command is a thin launcher for that viewer: it execs the skill's Node server and serves `./AI-docs` in the current project (created on first run) at `http://127.0.0.1:4321`. It depends on Node.js being on your PATH and the global plugin being built (`claudex configure`). Use `--docs` to serve a different directory and `--port` to run more than one viewer at once.
+
+```bash
+claudex ai-docs
+claudex ai-docs --docs security-docs --port 4322
 ```
