@@ -41,9 +41,6 @@ func ProjectDir(configDir, projectPath string) string {
 	return filepath.Join(configDir, "projects", EncodeProjectPath(projectPath))
 }
 
-// --- History JSONL operations ---
-
-// ReadRawHistory reads all entries from history.jsonl, preserving raw bytes.
 func ReadRawHistory(configDir string) ([]RawHistoryEntry, error) {
 	path := filepath.Join(configDir, "history.jsonl")
 	f, err := os.Open(path)
@@ -129,8 +126,6 @@ func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, res
 	return
 }
 
-// --- Session file discovery ---
-
 func FindSession(configDir, sessionID string) (*SessionFiles, error) {
 	projectsDir := filepath.Join(configDir, "projects")
 	dirEntries, err := os.ReadDir(projectsDir)
@@ -173,8 +168,6 @@ func FindSession(configDir, sessionID string) (*SessionFiles, error) {
 	return nil, nil
 }
 
-// --- Move operations ---
-
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 	if err := os.MkdirAll(dstProjectDir, 0700); err != nil {
 		return fmt.Errorf("creating target directory: %w", err)
@@ -212,7 +205,6 @@ func moveFileOrDir(src, dst string) error {
 		return nil
 	}
 
-	// Fall back to copy for cross-filesystem moves
 	if linkErr, ok := err.(*os.LinkError); ok && errors.Is(linkErr.Err, syscall.EXDEV) {
 		return copyAndRemove(src, dst)
 	}
