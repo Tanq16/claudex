@@ -1,6 +1,6 @@
 <div align="center">
   <img src=".github/assets/logo.svg" alt="Claudex Logo" width="200">
-  <h1>Claudex</h1>
+  <h1>ClaudeX</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
   <a href="#capabilities">Capabilities</a> &bull; <a href="#installation">Installation</a> &bull; <a href="#usage">Usage</a>
@@ -8,20 +8,20 @@
 
 ---
 
-Claudex is a companion CLI for running Claude Code across more than one account. If you keep separate Claude subscriptions — a personal one, a work one, a spare for when the first hits its limit — claudex is the single place to see where each one stands, jump into the right one, move a conversation between them, and set them all up identically in one shot.
+ClaudeX is a companion CLI for running Claude Code across more than one account. If you keep separate Claude subscriptions — a personal one, a work one, a spare for when the first hits its limit — ClaudeX is the single place to see where each one stands, jump into the right one, move a conversation between them, and set them all up identically in one shot.
 
-It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.claude2`, `~/.claude3`, …). Everything claudex sets up for itself — a shared global plugin, your launch flavors, and any plugins it fetches — lives under `~/.config/claudex`. The whole workflow is two steps: run `configure` once to provision every account, then use `launch` every time you start working.
+It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.claude2`, `~/.claude3`, …). Everything ClaudeX sets up for itself — a shared global plugin, your launch flavors, and any plugins it fetches — lives under `~/.config/claudex`. The whole workflow is two steps: run `configure` once to provision every account, then use `launch` every time you start working.
 
 ## Capabilities
 
 | Command | What it gives you |
 |---------|-------------------|
-| `configure` | One-shot setup of every account plus the shared global plugin and flavors — run it once after installing |
+| `configure` | One-shot setup of every account plus the shared global plugin — run it once after installing |
 | `status` | Live usage across all accounts: 5h session, weekly overall, and weekly per-model windows, each with a reset countdown |
 | `launch` | Guided start of a Claude Code session — right account, MCP mode, and flavor, with the global plugin always loaded |
 | `switch` | Move a conversation from one account to another and continue it there |
 | `oauth-token` | A Claude OAuth access token via the browser PKCE flow |
-| `apply-skills` | Drop claudex's opinionated development skills into the current project |
+| `apply-skills` | Drop ClaudeX's opinionated development skills into the current project |
 
 ## Installation
 
@@ -52,8 +52,8 @@ Once it's on your PATH, run `claudex configure` — that one command sets up eve
 
 Run this once, right after installing. With no arguments it provisions **every account it discovers** in a single pass:
 
-- **Per account** — writes a statusline and a set of opinionated `settings.json` defaults into each account directory. Your existing settings and env vars are preserved; only claudex's keys are merged in.
-- **The global plugin** — builds a single always-on plugin at `~/.config/claudex/global` that every account shares. This is claudex's single point of control for global content: it ships one output style (`caveman`) and two skills, `cross-ai` and `ai-docs`, so those are present in every session on every account with no per-account setup. Anything you drop into its `skills/` or `output-styles/` folders rides along the same way.
+- **Per account** — writes a statusline and a set of opinionated `settings.json` defaults into each account directory. Your existing settings and env vars are preserved; only ClaudeX's keys are merged in.
+- **The global plugin** — builds a single always-on plugin at `~/.config/claudex/global` that every account shares. This is ClaudeX's single point of control for global content: it ships one output style (`caveman`) and two skills, `cross-ai` and `ai-docs`, so those are present in every session on every account with no per-account setup. Anything you drop into its `skills/` or `output-styles/` folders rides along the same way.
 - **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
 
 Target a single account with `-A <path>`; `--label` names that account's statusline and only applies with `-A`. After this, day-to-day use is just `launch`.
@@ -123,7 +123,7 @@ TOKEN=$(claudex oauth-token)
 
 ### `apply-skills`
 
-An author-opinionated set of development skills you can drop into a project's `.claude/skills/` — run it from a project root and it installs claudex's embedded dev skills there, and only there. Point `--dir` at your own skill set instead, `--preserve-local` to add only what's missing, or `--full-wipe` to clear the project's claudex skills and settings first for a clean slate. (These are per-project skills; the always-on `cross-ai` and `ai-docs` skills ride the global plugin instead.)
+An author-opinionated set of development skills you can drop into a project's `.claude/skills/` — run it from a project root and it installs ClaudeX's embedded dev skills there, and only there. Point `--dir` at your own skill set instead, `--preserve-local` to add only what's missing, or `--full-wipe` to clear the project's ClaudeX skills and settings first for a clean slate. (These are per-project skills; the always-on `cross-ai` and `ai-docs` skills ride the global plugin instead.)
 
 ```bash
 claudex apply-skills
