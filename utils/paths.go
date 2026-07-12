@@ -4,7 +4,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 )
 
@@ -38,15 +37,8 @@ func DiscoverAccountPaths() []string {
 		if !e.IsDir() {
 			continue
 		}
-		if name == ".claude" {
+		if name == ".claude" || numberedAccount(name) {
 			paths = append(paths, filepath.Join(home, name))
-			continue
-		}
-		if strings.HasPrefix(name, ".claude") {
-			suffix := name[len(".claude"):]
-			if _, err := strconv.Atoi(suffix); err == nil {
-				paths = append(paths, filepath.Join(home, name))
-			}
 		}
 	}
 
@@ -56,6 +48,19 @@ func DiscoverAccountPaths() []string {
 
 	slices.Sort(paths)
 	return paths
+}
+
+func numberedAccount(name string) bool {
+	suffix, ok := strings.CutPrefix(name, ".claude")
+	if !ok || suffix == "" {
+		return false
+	}
+	for _, r := range suffix {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func ResolveAccountPaths(account string) []string {
@@ -81,6 +86,10 @@ func ClaudexConfigDir() string {
 
 func GlobalPluginDir() string {
 	return filepath.Join(ClaudexConfigDir(), "global")
+}
+
+func FlavorsDir() string {
+	return filepath.Join(ClaudexConfigDir(), "flavors")
 }
 
 func PluginsDir() string {

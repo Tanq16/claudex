@@ -80,7 +80,7 @@ func ComputeAccountUsage(configDir string) (model.AccountUsage, error) {
 	return usage, nil
 }
 
-// buildWindows reads the "limits" array (the only source of the per-model weekly limit) and falls back to the legacy fixed windows when it is absent.
+// The "limits" array is the authoritative per-model weekly source; fall back to the legacy fixed windows when it's absent.
 func buildWindows(resp *apiResponse) []model.UsageWindow {
 	if len(resp.Limits) > 0 {
 		windows := make([]model.UsageWindow, 0, len(resp.Limits))
@@ -126,7 +126,6 @@ type claudeCredentials struct {
 	} `json:"claudeAiOauth"`
 }
 
-// getOAuthToken reads the account's OAuth token: macOS from the Keychain, Linux/Windows from a .credentials.json file inside the config dir.
 func getOAuthToken(configDir string) (string, error) {
 	var raw []byte
 	if runtime.GOOS == "darwin" {

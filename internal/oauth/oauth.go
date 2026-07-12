@@ -22,7 +22,7 @@ const (
 	Scope        = "user:inference"
 
 	DefaultPort      = 54545
-	DefaultExpiresIn = 3600 // 1 hour
+	DefaultExpiresIn = 3600
 )
 
 type Config struct {
@@ -38,12 +38,10 @@ type tokenResponse struct {
 	ErrorDesc   string `json:"error_description"`
 }
 
-// urlBase64 encodes bytes as URL-safe base64 without padding.
 func urlBase64(data []byte) string {
 	return base64.RawURLEncoding.EncodeToString(data)
 }
 
-// generatePKCE returns a code_verifier and its S256 code_challenge.
 func generatePKCE() (verifier, challenge string, err error) {
 	buf := make([]byte, 32)
 	if _, err = rand.Read(buf); err != nil {
@@ -55,7 +53,6 @@ func generatePKCE() (verifier, challenge string, err error) {
 	return verifier, challenge, nil
 }
 
-// generateState returns a random state parameter.
 func generateState() (string, error) {
 	buf := make([]byte, 32)
 	if _, err := rand.Read(buf); err != nil {
@@ -64,7 +61,6 @@ func generateState() (string, error) {
 	return urlBase64(buf), nil
 }
 
-// BuildAuthorizeURL constructs the full OAuth authorize URL.
 func BuildAuthorizeURL(redirectURI, challenge, state string) string {
 	params := url.Values{
 		"code":                  {"true"},
@@ -79,8 +75,6 @@ func BuildAuthorizeURL(redirectURI, challenge, state string) string {
 	return AuthorizeURL + "?" + params.Encode()
 }
 
-// WaitForCallback starts a local HTTP server and waits for the OAuth callback.
-// Returns the authorization code. Respects context cancellation for clean shutdown.
 func WaitForCallback(ctx context.Context, port int, expectedState string) (string, error) {
 	codeCh := make(chan string, 1)
 	errCh := make(chan error, 1)
@@ -155,7 +149,6 @@ func WaitForCallback(ctx context.Context, port int, expectedState string) (strin
 	}
 }
 
-// ExchangeCode exchanges an authorization code for an access token.
 func ExchangeCode(code, verifier, state, redirectURI string, expiresIn int) (string, error) {
 	payload := map[string]any{
 		"grant_type":    "authorization_code",
@@ -205,8 +198,6 @@ func ExchangeCode(code, verifier, state, redirectURI string, expiresIn int) (str
 	return tokenResp.AccessToken, nil
 }
 
-// RunFlow executes the full OAuth PKCE flow and returns an access token.
-// The openBrowser callback is called with the authorize URL.
 func RunFlow(ctx context.Context, cfg Config, openBrowser func(string) error) (string, error) {
 	verifier, challenge, err := generatePKCE()
 	if err != nil {

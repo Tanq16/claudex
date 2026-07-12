@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,28 +65,131 @@ func Fetch(src Source, pluginsBase string) (string, error) {
 	return dest, nil
 }
 
-// Intentionally empty: claudex ships no defaults; the user fills this slot.
-func EnsureGlobalPlugin(dir string) (bool, error) {
-	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
-	if _, err := os.Stat(manifest); err == nil {
-		return false, nil
+func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool) error {
+	if err := writeGlobalManifest(dir); err != nil {
+		return err
 	}
+
+	skills, err := fs.ReadDir(skillsFS, "default-skills")
+	if err != nil {
+		return err
+	}
+	for _, e := range skills {
+		if !e.IsDir() {
+			continue
+		}
+		dest := filepath.Join(dir, "skills", e.Name())
+		if err := installTree(skillsFS, "default-skills/"+e.Name(), dest, refresh); err != nil {
+			return err
+		}
+	}
+
+	styles, err := fs.ReadDir(outputStylesFS, "output-styles")
+	if err != nil {
+		return err
+	}
+	for _, e := range styles {
+		if e.IsDir() {
+			continue
+		}
+		dest := filepath.Join(dir, "output-styles", e.Name())
+		if err := installFile(outputStylesFS, "output-styles/"+e.Name(), dest, refresh); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// Always rewritten (not write-if-missing) so a manifest from an older plugin name migrates to "claudex".
+func writeGlobalManifest(dir string) error {
+	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
 	if err := os.MkdirAll(filepath.Dir(manifest), 0o755); err != nil {
-		return false, err
+		return err
 	}
 	data, err := json.MarshalIndent(map[string]any{
-		"name":        "global",
-		"description": "Global plugin auto-loaded by claudex across every account",
+		"name":        "claudex",
+		"description": "claudex's curated skills and output styles, auto-loaded across every account",
 		"version":     "0.0.1",
 	}, "", "  ")
 	if err != nil {
-		return false, err
+		return err
 	}
 	data = append(data, '\n')
-	if err := os.WriteFile(manifest, data, 0o644); err != nil {
-		return false, err
+	return writeFileAtomic(manifest, data, 0o644)
+}
+
+func installTree(srcFS fs.FS, root, dest string, refresh bool) error {
+	if _, err := os.Stat(dest); err == nil && !refresh {
+		return nil
 	}
-	return true, nil
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	// Stage the whole tree beside dest, then swap it in with a rename so an interrupted build never leaves a half-written skill in place.
+	staging := dest + ".staging"
+	if err := os.RemoveAll(staging); err != nil {
+		return err
+	}
+	if err := copyTree(srcFS, root, staging); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	if err := os.RemoveAll(dest); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	if err := os.Rename(staging, dest); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	return nil
+}
+
+func copyTree(srcFS fs.FS, root, dest string) error {
+	return fs.WalkDir(srcFS, root, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() {
+			return nil
+		}
+		out := filepath.Join(dest, strings.TrimPrefix(path, root+"/"))
+		if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {
+			return err
+		}
+		data, err := fs.ReadFile(srcFS, path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(out, data, 0o644)
+	})
+}
+
+func installFile(srcFS fs.FS, srcPath, dest string, refresh bool) error {
+	if _, err := os.Stat(dest); err == nil && !refresh {
+		return nil
+	}
+	data, err := fs.ReadFile(srcFS, srcPath)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	return writeFileAtomic(dest, data, 0o644)
+}
+
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 func clone(url, dest string) error {

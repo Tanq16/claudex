@@ -45,18 +45,23 @@ var oauthTokenCmd = &cobra.Command{
 }
 
 func openBrowser(url string) error {
+	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
-		return exec.Command("open", url).Start()
+		cmd = exec.Command("open", url)
 	case "linux":
-		return exec.Command("xdg-open", url).Start()
+		cmd = exec.Command("xdg-open", url)
 	case "windows":
-		return exec.Command("rundll32", "url.dll,FileProtocolHandler", url).Start()
+		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
 		u.PrintWarn("Cannot auto-open browser. Open this URL manually:", nil)
 		u.PrintGeneric(url)
 		return nil
 	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("%s: %w", cmd.Args[0], err)
+	}
+	return nil
 }
 
 func init() {

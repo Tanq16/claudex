@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/embedded"
+	"github.com/tanq16/claudex/internal/plugins"
 	u "github.com/tanq16/claudex/utils"
 )
 
@@ -19,38 +20,62 @@ var configureFlags struct {
 
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Apply claudex's preferred Claude Code settings and statusline to an account",
+	Short: "Provision all accounts (settings + statusline) and lay down the global default plugin and flavors",
 	Run:   runConfigure,
 }
 
 func runConfigure(cmd *cobra.Command, args []string) {
-	accountDir := u.ResolveConfigDir(configureFlags.account)
+	if configureFlags.label != "" && configureFlags.account == "" {
+		u.PrintFatal("--label only applies with -A; without it, labels are auto-derived per account", nil)
+	}
 
+	if configureFlags.account != "" {
+		if err := configureAccount(u.ResolveConfigDir(configureFlags.account), configureFlags.label); err != nil {
+			u.PrintFatal("failed to configure account", err)
+		}
+	} else {
+		configured := 0
+		for _, accountDir := range u.DiscoverAccountPaths() {
+			if err := configureAccount(accountDir, ""); err != nil {
+				u.PrintWarn("Skipped "+u.AbbreviatePath(accountDir), err)
+				continue
+			}
+			configured++
+		}
+		if configured == 0 {
+			u.PrintWarn("No accounts configured; laying down global defaults only", nil)
+		}
+	}
+
+	applyGlobalDefaults()
+}
+
+func configureAccount(accountDir, label string) error {
 	info, err := os.Stat(accountDir)
 	if err != nil || !info.IsDir() {
-		u.PrintFatal(fmt.Sprintf("account config dir not found: %s", accountDir), err)
+		return fmt.Errorf("account config dir not found: %s", accountDir)
 	}
 
 	scriptPath := filepath.Join(accountDir, "statusline.sh")
 	if err := os.WriteFile(scriptPath, embedded.StatuslineScript, 0o755); err != nil {
-		u.PrintFatal("failed to write statusline script", err)
+		return fmt.Errorf("write statusline script: %w", err)
 	}
 
 	settingsPath := filepath.Join(accountDir, "settings.json")
 	settings := map[string]any{}
 	if data, err := os.ReadFile(settingsPath); err == nil {
 		if err := json.Unmarshal(data, &settings); err != nil {
-			u.PrintFatal(fmt.Sprintf("existing %s is not valid JSON; refusing to overwrite", settingsPath), err)
+			return fmt.Errorf("existing %s is not valid JSON; refusing to overwrite: %w", settingsPath, err)
 		}
 	} else if !os.IsNotExist(err) {
-		u.PrintFatal("failed to read settings.json", err)
+		return fmt.Errorf("read settings.json: %w", err)
 	}
 
 	applyPreferredSettings(settings)
 
 	command := scriptPath
-	if configureFlags.label != "" {
-		command += " " + shellQuote(configureFlags.label)
+	if label != "" {
+		command += " " + shellQuote(label)
 	}
 	settings["statusLine"] = map[string]any{
 		"type":    "command",
@@ -60,20 +85,35 @@ func runConfigure(cmd *cobra.Command, args []string) {
 
 	out, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		u.PrintFatal("failed to encode settings.json", err)
+		return fmt.Errorf("encode settings.json: %w", err)
 	}
 	out = append(out, '\n')
 	if err := writeFileAtomic(settingsPath, out, 0o644); err != nil {
-		u.PrintFatal("failed to write settings.json", err)
+		return fmt.Errorf("write settings.json: %w", err)
 	}
 
-	labelDesc := configureFlags.label
+	labelDesc := label
 	if labelDesc == "" {
 		labelDesc = "(auto)"
 	}
 	u.PrintSuccess(fmt.Sprintf("Configured %s (label: %s)", u.AbbreviatePath(accountDir), labelDesc))
 	u.PrintGeneric("  statusline: " + scriptPath)
 	u.PrintGeneric("  settings:   " + settingsPath)
+	return nil
+}
+
+func applyGlobalDefaults() {
+	globalDir := u.GlobalPluginDir()
+	if err := plugins.BuildGlobalPlugin(globalDir, embedded.DefaultSkillsFS, embedded.OutputStylesFS, true); err != nil {
+		u.PrintFatal("failed to build the global plugin", err)
+	}
+	flavorsDir := u.FlavorsDir()
+	if err := os.MkdirAll(flavorsDir, 0o755); err != nil {
+		u.PrintFatal("failed to create the flavors directory", err)
+	}
+	u.PrintSuccess("Refreshed global defaults")
+	u.PrintGeneric("  plugin:  " + u.AbbreviatePath(globalDir))
+	u.PrintGeneric("  flavors: " + u.AbbreviatePath(flavorsDir))
 }
 
 func applyPreferredSettings(settings map[string]any) {
@@ -82,7 +122,6 @@ func applyPreferredSettings(settings map[string]any) {
 	settings["tui"] = "fullscreen"
 	settings["autoMemoryEnabled"] = false
 	settings["skipDangerousModePermissionPrompt"] = true
-	settings["CLAUDE_AFK_TIMEOUT_MS"] = "10000000"
 
 	env, ok := settings["env"].(map[string]any)
 	if !ok {
@@ -117,5 +156,5 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 
 func init() {
 	configureCmd.Flags().StringVarP(&configureFlags.account, "account", "A", "", "Account config dir to configure (default ~/.claude)")
-	configureCmd.Flags().StringVarP(&configureFlags.label, "label", "l", "", "Override the account label shown in the statusline (default: word derived from dir name)")
+	configureCmd.Flags().StringVarP(&configureFlags.label, "label", "l", "", "Override the account label shown in the statusline; requires -A (errors without a single-account target)")
 }

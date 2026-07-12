@@ -10,16 +10,16 @@ import (
 
 var (
 	headerStyle = lipgloss.NewStyle().
-		Bold(true).
-		Foreground(lipgloss.ANSIColor(15)).
-		Padding(0, 1)
+			Bold(true).
+			Foreground(lipgloss.ANSIColor(15)).
+			Padding(0, 1)
 
 	cellStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.ANSIColor(7)).
-		Padding(0, 1)
+			Foreground(lipgloss.ANSIColor(7)).
+			Padding(0, 1)
 
 	borderStyle = lipgloss.NewStyle().
-		Foreground(lipgloss.ANSIColor(8))
+			Foreground(lipgloss.ANSIColor(8))
 )
 
 func PrintTable(headers []string, rows [][]string) {

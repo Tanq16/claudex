@@ -2,10 +2,14 @@ package plugins
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestRepoDirName(t *testing.T) {
@@ -129,25 +133,133 @@ func TestGitAuth(t *testing.T) {
 	}
 }
 
-func TestEnsureGlobalPlugin(t *testing.T) {
+func testGlobalFS() (skills, styles fs.FS) {
+	return fstest.MapFS{
+			"default-skills/cross-ai/SKILL.md":    {Data: []byte("cross-ai v1")},
+			"default-skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
+			"default-skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
+		}, fstest.MapFS{
+			"output-styles/caveman.md": {Data: []byte("caveman v1")},
+			"output-styles/robot.md":   {Data: []byte("robot v1")},
+		}
+}
+
+func read(t *testing.T, path string) string {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(data)
+}
+
+func TestBuildGlobalPluginInstallsEverything(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "global")
+	skills, styles := testGlobalFS()
 
-	created, err := EnsureGlobalPlugin(dir)
-	if err != nil {
-		t.Fatalf("EnsureGlobalPlugin() error = %v", err)
-	}
-	if !created {
-		t.Fatal("EnsureGlobalPlugin() created = false on first call, want true")
-	}
-	if _, err := os.Stat(filepath.Join(dir, ".claude-plugin", "plugin.json")); err != nil {
-		t.Fatalf("manifest not written: %v", err)
+	if err := BuildGlobalPlugin(dir, skills, styles, false); err != nil {
+		t.Fatalf("BuildGlobalPlugin() error = %v", err)
 	}
 
-	created, err = EnsureGlobalPlugin(dir)
-	if err != nil {
-		t.Fatalf("EnsureGlobalPlugin() second call error = %v", err)
+	manifestPath := filepath.Join(dir, ".claude-plugin", "plugin.json")
+	var manifest map[string]any
+	if err := json.Unmarshal([]byte(read(t, manifestPath)), &manifest); err != nil {
+		t.Fatalf("manifest is not valid JSON: %v", err)
 	}
-	if created {
-		t.Fatal("EnsureGlobalPlugin() created = true on second call, want false")
+	if manifest["name"] != "claudex" {
+		t.Fatalf("manifest name = %v, want claudex", manifest["name"])
+	}
+
+	if got := read(t, filepath.Join(dir, "skills", "cross-ai", "SKILL.md")); got != "cross-ai v1" {
+		t.Fatalf("cross-ai skill = %q", got)
+	}
+	if got := read(t, filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); got != "nested v1" {
+		t.Fatalf("ai-docs nested file = %q", got)
+	}
+	if got := read(t, filepath.Join(dir, "output-styles", "caveman.md")); got != "caveman v1" {
+		t.Fatalf("caveman = %q", got)
+	}
+	if got := read(t, filepath.Join(dir, "output-styles", "robot.md")); got != "robot v1" {
+		t.Fatalf("robot style = %q", got)
+	}
+}
+
+func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "global")
+	skills, styles := testGlobalFS()
+	if err := BuildGlobalPlugin(dir, skills, styles, false); err != nil {
+		t.Fatalf("initial build error = %v", err)
+	}
+
+	skillFile := filepath.Join(dir, "skills", "cross-ai", "SKILL.md")
+	styleFile := filepath.Join(dir, "output-styles", "caveman.md")
+	if err := os.WriteFile(skillFile, []byte("user edit"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(styleFile, []byte("user edit"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	newSkills := fstest.MapFS{
+		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
+		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+	}
+	newStyles := fstest.MapFS{"output-styles/caveman.md": {Data: []byte("caveman v2")}}
+
+	if err := BuildGlobalPlugin(dir, newSkills, newStyles, false); err != nil {
+		t.Fatalf("write-if-missing build error = %v", err)
+	}
+	if got := read(t, skillFile); got != "user edit" {
+		t.Fatalf("write-if-missing clobbered an existing skill: %q", got)
+	}
+	if got := read(t, styleFile); got != "user edit" {
+		t.Fatalf("write-if-missing clobbered an existing style: %q", got)
+	}
+
+	if err := BuildGlobalPlugin(dir, newSkills, newStyles, true); err != nil {
+		t.Fatalf("refresh build error = %v", err)
+	}
+	if got := read(t, skillFile); got != "cross-ai v2" {
+		t.Fatalf("refresh did not replace the skill: %q", got)
+	}
+	if got := read(t, styleFile); got != "caveman v2" {
+		t.Fatalf("refresh did not replace the style: %q", got)
+	}
+}
+
+func TestBuildGlobalPluginRefreshIsCleanSwap(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "global")
+	skills, styles := testGlobalFS()
+	if err := BuildGlobalPlugin(dir, skills, styles, true); err != nil {
+		t.Fatalf("initial build error = %v", err)
+	}
+
+	newSkills := fstest.MapFS{
+		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
+		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+	}
+	if err := BuildGlobalPlugin(dir, newSkills, styles, true); err != nil {
+		t.Fatalf("refresh build error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); err == nil {
+		t.Fatal("refresh left a file the new source dropped; the tree was not replaced wholesale")
+	}
+	assertNoResidue(t, dir)
+}
+
+func assertNoResidue(t *testing.T, root string) {
+	t.Helper()
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(d.Name(), ".staging") || strings.HasSuffix(d.Name(), ".tmp") {
+			t.Fatalf("build left staging residue: %s", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", root, err)
 	}
 }
