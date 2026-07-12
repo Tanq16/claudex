@@ -66,4 +66,5 @@ func init() {
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(configureCmd)
 	rootCmd.AddCommand(applySkillsCmd)
+	rootCmd.AddCommand(aiDocsCmd)
 }
