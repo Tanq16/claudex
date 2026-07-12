@@ -98,18 +98,37 @@ func writeGlobalManifest(dir string) error {
 		return err
 	}
 	data = append(data, '\n')
-	return os.WriteFile(manifest, data, 0o644)
+	return writeFileAtomic(manifest, data, 0o644)
 }
 
 func installTree(srcFS fs.FS, root, dest string, refresh bool) error {
-	if _, err := os.Stat(dest); err == nil {
-		if !refresh {
-			return nil
-		}
-		if err := os.RemoveAll(dest); err != nil {
-			return err
-		}
+	if _, err := os.Stat(dest); err == nil && !refresh {
+		return nil
 	}
+	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
+		return err
+	}
+	// Stage the whole tree beside dest, then swap it in with a rename so an interrupted build never leaves a half-written skill in place.
+	staging := dest + ".staging"
+	if err := os.RemoveAll(staging); err != nil {
+		return err
+	}
+	if err := copyTree(srcFS, root, staging); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	if err := os.RemoveAll(dest); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	if err := os.Rename(staging, dest); err != nil {
+		os.RemoveAll(staging)
+		return err
+	}
+	return nil
+}
+
+func copyTree(srcFS fs.FS, root, dest string) error {
 	return fs.WalkDir(srcFS, root, func(path string, d fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -140,7 +159,19 @@ func installFile(srcFS fs.FS, srcPath, dest string, refresh bool) error {
 	if err := os.MkdirAll(filepath.Dir(dest), 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(dest, data, 0o644)
+	return writeFileAtomic(dest, data, 0o644)
+}
+
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, data, mode); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
+		return err
+	}
+	return nil
 }
 
 func clone(url, dest string) error {

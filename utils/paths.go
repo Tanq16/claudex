@@ -37,7 +37,7 @@ func DiscoverAccountPaths() []string {
 		if !e.IsDir() {
 			continue
 		}
-		if strings.HasPrefix(name, ".claude") {
+		if name == ".claude" || numberedAccount(name) {
 			paths = append(paths, filepath.Join(home, name))
 		}
 	}
@@ -48,6 +48,19 @@ func DiscoverAccountPaths() []string {
 
 	slices.Sort(paths)
 	return paths
+}
+
+func numberedAccount(name string) bool {
+	suffix, ok := strings.CutPrefix(name, ".claude")
+	if !ok || suffix == "" {
+		return false
+	}
+	for _, r := range suffix {
+		if r < '0' || r > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func ResolveAccountPaths(account string) []string {

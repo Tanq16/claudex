@@ -88,7 +88,7 @@ The TUI starts with a mode selection (shown only when resumable sessions exist):
 - **Resume** — pick from the most recent sessions for the current directory (across all accounts)
 
 For new sessions, the remaining steps are:
-- **Account** — select which `~/.claude*` directory to use (skipped if only one exists)
+- **Account** — select which account directory (`~/.claude`, `~/.claude2`, …) to use (skipped if only one exists)
 - **MCP + Connectors** — choose one of:
   - **MCPs only** — load your configured MCP servers, no claude.ai connectors
   - **MCPs + Connectors** — load MCP servers and enable claude.ai connectors (Gmail, Slack, etc.) via the `ENABLE_CLAUDEAI_MCP_SERVERS` setting
@@ -131,7 +131,7 @@ claudex launch --plugins https://github.com/user/some-plugin
 
 The single control point for your global defaults. By default it provisions **every discovered account at once** and lays down all account-independent defaults in one run:
 
-- **Per account** — writes `statusline.sh` into each account directory and merges a set of opinionated defaults into its `settings.json`: the statusline block, effort level, fullscreen TUI, auto-updater and connector env vars, and similar quality-of-life settings. Existing unrelated settings are preserved, and any env vars you already set survive the merge. The statusline label is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`, `~/.claude-alice` → `alice`).
+- **Per account** — writes `statusline.sh` into each account directory and merges a set of opinionated defaults into its `settings.json`: the statusline block, effort level, fullscreen TUI, auto-updater and connector env vars, and similar quality-of-life settings. Existing unrelated settings are preserved, and any env vars you already set survive the merge. The statusline label is derived from the directory name (`~/.claude` → `first`, `~/.claude2` → `second`, `~/.claude3` → `third`).
 - **Global default plugin** — authoritatively refreshes the curated items in `~/.config/claudex/global` to the latest embedded versions (replace-by-name), while preserving any skills or output styles you added yourself. (`launch` only writes missing items; `configure` brings them fully up to date.)
 - **Flavors** — scaffolds `~/.config/claudex/flavors/` so you can drop in your launch-time postures.
 
@@ -166,7 +166,7 @@ claudex oauth-token --port 8080
 
 ## Tips and Notes
 
-- Accounts are auto-discovered permissively — any `~/.claude*` directory counts, so `~/.claude`, `~/.claude2`, and arbitrary names like `~/.claude-alice` or `~/.claude-bob` are all picked up automatically
+- Accounts are auto-discovered — `~/.claude` and its numeric siblings (`~/.claude2`, `~/.claude3`, …) are picked up automatically
 - Run `configure` once to provision every account and lay down the global defaults (curated plugin + flavors directory); make per-session choices at `launch`
 - Usage data comes directly from Anthropic's OAuth API - same source as the official dashboard
 - OAuth tokens are read from the macOS Keychain (macOS) or `.credentials.json` in the account's config dir (Linux/Windows); they refresh automatically when Claude Code is running

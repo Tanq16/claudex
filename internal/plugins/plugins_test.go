@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -224,5 +225,42 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	}
 	if got := read(t, styleFile); got != "caveman v2" {
 		t.Fatalf("refresh did not replace the style: %q", got)
+	}
+}
+
+func TestBuildGlobalPluginRefreshIsCleanSwap(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "global")
+	skills, styles := testGlobalFS()
+	if err := BuildGlobalPlugin(dir, skills, styles, true); err != nil {
+		t.Fatalf("initial build error = %v", err)
+	}
+
+	newSkills := fstest.MapFS{
+		"skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
+		"skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+	}
+	if err := BuildGlobalPlugin(dir, newSkills, styles, true); err != nil {
+		t.Fatalf("refresh build error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); err == nil {
+		t.Fatal("refresh left a file the new source dropped; the tree was not replaced wholesale")
+	}
+	assertNoResidue(t, dir)
+}
+
+func assertNoResidue(t *testing.T, root string) {
+	t.Helper()
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if strings.HasSuffix(d.Name(), ".staging") || strings.HasSuffix(d.Name(), ".tmp") {
+			t.Fatalf("build left staging residue: %s", path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("walk %s: %v", root, err)
 	}
 }

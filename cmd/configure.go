@@ -30,35 +30,45 @@ func runConfigure(cmd *cobra.Command, args []string) {
 	}
 
 	if configureFlags.account != "" {
-		configureAccount(u.ResolveConfigDir(configureFlags.account), configureFlags.label)
+		if err := configureAccount(u.ResolveConfigDir(configureFlags.account), configureFlags.label); err != nil {
+			u.PrintFatal("failed to configure account", err)
+		}
 	} else {
+		configured := 0
 		for _, accountDir := range u.DiscoverAccountPaths() {
-			configureAccount(accountDir, "")
+			if err := configureAccount(accountDir, ""); err != nil {
+				u.PrintWarn("Skipped "+u.AbbreviatePath(accountDir), err)
+				continue
+			}
+			configured++
+		}
+		if configured == 0 {
+			u.PrintWarn("No accounts configured; laying down global defaults only", nil)
 		}
 	}
 
 	applyGlobalDefaults()
 }
 
-func configureAccount(accountDir, label string) {
+func configureAccount(accountDir, label string) error {
 	info, err := os.Stat(accountDir)
 	if err != nil || !info.IsDir() {
-		u.PrintFatal(fmt.Sprintf("account config dir not found: %s", accountDir), err)
+		return fmt.Errorf("account config dir not found: %s", accountDir)
 	}
 
 	scriptPath := filepath.Join(accountDir, "statusline.sh")
 	if err := os.WriteFile(scriptPath, embedded.StatuslineScript, 0o755); err != nil {
-		u.PrintFatal("failed to write statusline script", err)
+		return fmt.Errorf("write statusline script: %w", err)
 	}
 
 	settingsPath := filepath.Join(accountDir, "settings.json")
 	settings := map[string]any{}
 	if data, err := os.ReadFile(settingsPath); err == nil {
 		if err := json.Unmarshal(data, &settings); err != nil {
-			u.PrintFatal(fmt.Sprintf("existing %s is not valid JSON; refusing to overwrite", settingsPath), err)
+			return fmt.Errorf("existing %s is not valid JSON; refusing to overwrite: %w", settingsPath, err)
 		}
 	} else if !os.IsNotExist(err) {
-		u.PrintFatal("failed to read settings.json", err)
+		return fmt.Errorf("read settings.json: %w", err)
 	}
 
 	applyPreferredSettings(settings)
@@ -75,11 +85,11 @@ func configureAccount(accountDir, label string) {
 
 	out, err := json.MarshalIndent(settings, "", "  ")
 	if err != nil {
-		u.PrintFatal("failed to encode settings.json", err)
+		return fmt.Errorf("encode settings.json: %w", err)
 	}
 	out = append(out, '\n')
 	if err := writeFileAtomic(settingsPath, out, 0o644); err != nil {
-		u.PrintFatal("failed to write settings.json", err)
+		return fmt.Errorf("write settings.json: %w", err)
 	}
 
 	labelDesc := label
@@ -89,6 +99,7 @@ func configureAccount(accountDir, label string) {
 	u.PrintSuccess(fmt.Sprintf("Configured %s (label: %s)", u.AbbreviatePath(accountDir), labelDesc))
 	u.PrintGeneric("  statusline: " + scriptPath)
 	u.PrintGeneric("  settings:   " + settingsPath)
+	return nil
 }
 
 func applyGlobalDefaults() {
