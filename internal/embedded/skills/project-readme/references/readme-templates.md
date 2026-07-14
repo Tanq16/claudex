@@ -96,6 +96,102 @@ make build
 
 ---
 
+## Node Web Only Project (Node server that serves a frontend)
+
+A single Node process you call and it serves — an HTTP + WebSocket server that also serves an embedded/vendored SPA. Ships as a runtime-bundled tarball or a self-contained binary, not as a bare `node` invocation the user has to wire up.
+
+```markdown
+<div align="center">
+  <img src=".github/assets/logo.png" alt="[PROJECT_NAME] Logo" width="200">
+  <h1>[PROJECT_NAME]</h1>
+
+  <a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://hub.docker.com/r/[GITHUB_USER]/[REPO_NAME]"><img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/[GITHUB_USER]/[REPO_NAME]"></a><br>
+  <a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/[GITHUB_USER]/[REPO_NAME]"></a><br><br>
+  <a href="#screenshots">Screenshots</a> &bull; <a href="#installation-and-usage">Install & Use</a> &bull; <a href="#configuration">Configuration</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
+</div>
+
+---
+
+Brief 2-3 sentence description of what the project does and who it's for.
+
+## Features
+
+- Feature one with brief explanation
+- Feature two with brief explanation
+- Feature three with brief explanation
+
+## Screenshots
+
+<details>
+<summary>Click to expand screenshots</summary>
+
+![Screenshot 1](path/to/screenshot1.png)
+*Caption for screenshot 1*
+
+</details>
+
+## Installation and Usage
+
+[PROJECT_NAME] is a single process you launch and it serves the web UI over HTTP and WebSocket. Point a browser at the address it prints.
+
+### Self-Contained Binary
+
+Download the binary for your platform from [releases](https://github.com/[GITHUB_USER]/[REPO_NAME]/releases) and run it:
+
+\```bash
+chmod +x [REPO_NAME]
+./[REPO_NAME]
+\```
+
+### Runtime-Bundled Tarball
+
+Download the `.tar.gz` for your platform, extract, and run the launcher — it bundles the Node runtime, native addons, and assets, and injects the bundled config:
+
+\```bash
+tar -xzf [REPO_NAME]-linux-x64.tar.gz
+cd [REPO_NAME]
+./[REPO_NAME]
+\```
+
+### Docker
+
+\```bash
+docker run -d -p 8080:8080 -v $(pwd)/config.json:/app/config.json [GITHUB_USER]/[REPO_NAME]
+\```
+
+### From Source
+
+Requires Node >=24 (see `.node-version`).
+
+\```bash
+git clone https://github.com/[GITHUB_USER]/[REPO_NAME]
+cd [REPO_NAME]
+npm install
+node bin/app.js
+\```
+
+## Configuration
+
+[PROJECT_NAME] reads an optional `config.json` deep-merged over built-in defaults; anything you omit falls back to the default. Copy `config.example.json` and edit what you need, then pass its path:
+
+\```bash
+./[REPO_NAME] --config ./config.json
+\```
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `port` | Port the server listens on | `8080` |
+| `host` | Bind address | `127.0.0.1` |
+
+## Tips and Notes
+
+- Ships as a self-contained binary or a runtime-bundled tarball — no separate Node install required for release artifacts
+- Session secrets are ephemeral (regenerated on boot); only durable state is persisted to `state.json`
+- Note about reverse-proxy / TLS termination if applicable
+```
+
+---
+
 ## CLI Only Project (Command-Line Tools)
 
 ```markdown

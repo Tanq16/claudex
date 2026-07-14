@@ -24,6 +24,7 @@
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/static/css/inter.css">
+    <link rel="stylesheet" href="/static/css/jetbrains-mono.css">
 
     <!-- Icon Libraries (use what you need) -->
     <!-- Lucide (preferred) - initialize with lucide.createIcons() -->
@@ -150,6 +151,7 @@ Only use when explicitly requested.
 
     <!-- Stylesheets -->
     <link rel="stylesheet" href="/static/css/inter.css">
+    <link rel="stylesheet" href="/static/css/jetbrains-mono.css">
 
     <!-- Icon Libraries (use what you need) -->
     <!-- Lucide (preferred) - initialize with lucide.createIcons() -->
