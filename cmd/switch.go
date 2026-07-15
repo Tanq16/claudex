@@ -3,47 +3,34 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"strings"
-	"time"
+	"path/filepath"
+	"sort"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/convo"
+	"github.com/tanq16/claudex/internal/parser"
 	u "github.com/tanq16/claudex/utils"
 )
 
 var switchFlags struct {
-	id   string
-	from string
-	to   string
+	account string
 }
 
 var switchCmd = &cobra.Command{
 	Use:   "switch",
-	Short: "Move a conversation from one account to another",
+	Short: "Move the current project's sessions to another account",
 	Run:   runSwitch,
 }
 
+type projectSession struct {
+	sessionID    string
+	project      string
+	lastActivity int64
+	configDir    string
+	projectPath  string
+}
+
 func runSwitch(cmd *cobra.Command, args []string) {
-	if switchFlags.id != "" {
-		runSwitchExplicit()
-		return
-	}
-	if u.GlobalForAIFlag {
-		u.PrintFatal("switch needs --id and --to in --for-ai mode", nil)
-	}
-	runSwitchInteractive()
-}
-
-func runSwitchExplicit() {
-	if switchFlags.to == "" {
-		u.PrintFatal("--to is required with --id", nil)
-	}
-	fromDir := u.ResolveConfigDir(switchFlags.from)
-	toDir := u.ExpandPath(switchFlags.to)
-	doSwitch(switchFlags.id, fromDir, toDir)
-}
-
-func runSwitchInteractive() {
 	cwd, err := os.Getwd()
 	if err != nil {
 		u.PrintFatal("failed to resolve current directory", err)
@@ -54,85 +41,131 @@ func runSwitchInteractive() {
 		u.PrintFatal("switch needs at least two accounts; only one was found", nil)
 	}
 
-	sessions := discoverSessions(accounts, cwd)
+	sessions := gatherProjectSessions(accounts, cwd)
 	if len(sessions) == 0 {
 		u.PrintFatal("no sessions for this project were found in any account", nil)
 	}
 
-	labels := make([]string, len(sessions))
-	for i, s := range sessions {
-		msg := padRight(u.Truncate(strings.Join(strings.Fields(s.firstMessage), " "), 50), 50)
-		t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
-		labels[i] = fmt.Sprintf("%s  %s  %s", msg, t, u.AbbreviatePath(s.configDir))
-	}
-	idx, err := u.PromptSelect("Session to move", labels)
-	if err != nil {
-		u.PrintFatal("TUI error", err)
-	}
-	if idx < 0 {
-		return
-	}
-	sel := sessions[idx]
+	current := sessions[0].configDir
 
-	var others []string
-	for _, a := range accounts {
-		if a != sel.configDir {
-			others = append(others, a)
-		}
-	}
-
-	toDir := others[0]
-	if len(others) > 1 {
-		acctLabels := make([]string, len(others))
-		for i, a := range others {
-			acctLabels[i] = u.AbbreviatePath(a)
-		}
-		aidx, err := u.PromptSelect("Move to account", acctLabels)
-		if err != nil {
-			u.PrintFatal("TUI error", err)
-		}
-		if aidx < 0 {
+	var target string
+	if switchFlags.account != "" {
+		target = resolveTargetAccount(switchFlags.account, accounts)
+		if target == current {
+			u.PrintSuccess(fmt.Sprintf("Project already in %s; nothing to switch", u.AbbreviatePath(current)))
 			return
 		}
-		toDir = others[aidx]
+	} else if u.GlobalForAIFlag {
+		u.PrintFatal("switch needs -A/--account in --for-ai mode", nil)
+	} else {
+		var others []string
+		for _, a := range accounts {
+			if a != current {
+				others = append(others, a)
+			}
+		}
+		if len(others) == 0 {
+			u.PrintFatal("no other account to switch this project into", nil)
+		}
+		if len(others) == 1 {
+			target = others[0]
+		} else {
+			labels := make([]string, len(others))
+			for i, a := range others {
+				labels[i] = u.AbbreviatePath(a)
+			}
+			idx, err := u.PromptSelect("Move to account", labels)
+			if err != nil {
+				u.PrintFatal("TUI error", err)
+			}
+			if idx < 0 {
+				return
+			}
+			target = others[idx]
+		}
 	}
 
-	doSwitch(sel.sessionID, sel.configDir, toDir)
-}
-
-func doSwitch(id, fromDir, toDir string) {
-	sf, err := convo.FindSession(fromDir, id)
-	if err != nil {
-		u.PrintFatal("Error searching source account", err)
-	}
-	if sf == nil {
-		u.PrintFatal(fmt.Sprintf("Session %s not found in %s", id, u.AbbreviatePath(fromDir)), nil)
+	var ids []string
+	projectPath := ""
+	for _, s := range sessions {
+		if s.configDir == current {
+			ids = append(ids, s.sessionID)
+			projectPath = s.projectPath
+		}
 	}
 
-	dstProjectDir := convo.ProjectDir(toDir, sf.ProjectPath)
-	if err := convo.MoveSession(id, sf.ProjectDir, dstProjectDir); err != nil {
-		u.PrintFatal("Failed to move session files", err)
+	srcDir := convo.ProjectDir(current, projectPath)
+	dstDir := convo.ProjectDir(target, projectPath)
+	for _, id := range ids {
+		if err := convo.MoveSession(id, srcDir, dstDir); err != nil {
+			u.PrintFatal("Failed to move session files", err)
+		}
 	}
 
-	srcEntries, err := convo.ReadRawHistory(fromDir)
+	srcEntries, err := convo.ReadRawHistory(current)
 	if err != nil {
 		u.PrintWarn("Could not read source history", err)
 	} else {
-		matching, rest := convo.FilterBySession(srcEntries, id)
+		var matching []convo.RawHistoryEntry
+		rest := srcEntries
+		for _, id := range ids {
+			m, r := convo.FilterBySession(rest, id)
+			matching = append(matching, m...)
+			rest = r
+		}
 		if len(matching) > 0 {
-			if err := convo.AppendRawHistory(toDir, matching); err != nil {
+			if err := convo.AppendRawHistory(target, matching); err != nil {
 				u.PrintWarn("Could not append to target history", err)
-			} else if err := convo.WriteRawHistory(fromDir, rest); err != nil {
+			} else if err := convo.WriteRawHistory(current, rest); err != nil {
 				u.PrintWarn("Could not update source history", err)
 			}
 		}
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Switched session %s from %s to %s", id, u.AbbreviatePath(fromDir), u.AbbreviatePath(toDir)))
+	u.PrintSuccess(fmt.Sprintf("Switched project %s (%d session(s)) from %s to %s",
+		sessions[0].project, len(ids), u.AbbreviatePath(current), u.AbbreviatePath(target)))
+}
+
+func gatherProjectSessions(accounts []string, cwd string) []projectSession {
+	target := filepath.Clean(cwd)
+	var all []projectSession
+	for _, configDir := range accounts {
+		convos, err := parser.ParseConversations(configDir)
+		if err != nil {
+			continue
+		}
+		for _, c := range convos {
+			if filepath.Clean(c.ProjectPath) != target {
+				continue
+			}
+			all = append(all, projectSession{
+				sessionID:    c.SessionID,
+				project:      c.Project,
+				lastActivity: c.LastActivity,
+				configDir:    configDir,
+				projectPath:  c.ProjectPath,
+			})
+		}
+	}
+	sort.Slice(all, func(i, j int) bool {
+		return all[i].lastActivity > all[j].lastActivity
+	})
+	return all
+}
+
+func resolveTargetAccount(flag string, accounts []string) string {
+	expanded := filepath.Clean(u.ExpandPath(flag))
+	base := filepath.Base(flag)
+	for _, a := range accounts {
+		if filepath.Clean(a) == expanded || filepath.Base(a) == base {
+			return a
+		}
+	}
+	u.PrintFatal(fmt.Sprintf("account %q matches no discovered account", flag), nil)
+	return ""
 }
 
 func init() {
-	switchCmd.Flags().StringVar(&switchFlags.id, "id", "", "Session UUID to switch (non-interactive; skips the selector)")
-	switchCmd.Flags().StringVar(&switchFlags.from, "from", "", "Source config directory (default ~/.claude)")
-	switchCmd.Flags().StringVar(&switchFlags.to, "to", "", "Target config directory (required with --id)")
+	switchCmd.Flags().StringVarP(&switchFlags.account, "account", "A", "",
+		"Account to switch this project into (source is auto-detected from the current directory)")
 }

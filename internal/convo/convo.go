@@ -20,21 +20,9 @@ type RawHistoryEntry struct {
 	Raw    []byte
 }
 
-type SessionFiles struct {
-	ConfigDir    string
-	ProjectDir   string
-	ProjectPath  string
-	SessionJSONL string
-	SubAgentDir  string
-}
-
 // Claude's on-disk project dir: every "/" in the abs path becomes "-" (e.g. /Users/foo -> -Users-foo).
 func EncodeProjectPath(absPath string) string {
 	return strings.ReplaceAll(absPath, "/", "-")
-}
-
-func DecodeProjectPath(encoded string) string {
-	return strings.ReplaceAll(encoded, "-", "/")
 }
 
 func ProjectDir(configDir, projectPath string) string {
@@ -124,48 +112,6 @@ func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, res
 		}
 	}
 	return
-}
-
-func FindSession(configDir, sessionID string) (*SessionFiles, error) {
-	projectsDir := filepath.Join(configDir, "projects")
-	dirEntries, err := os.ReadDir(projectsDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	jsonlName := sessionID + ".jsonl"
-
-	for _, de := range dirEntries {
-		if !de.IsDir() {
-			continue
-		}
-		projDir := filepath.Join(projectsDir, de.Name())
-
-		sf := &SessionFiles{
-			ConfigDir:   configDir,
-			ProjectDir:  projDir,
-			ProjectPath: DecodeProjectPath(de.Name()),
-		}
-
-		jsonlPath := filepath.Join(projDir, jsonlName)
-		if _, err := os.Stat(jsonlPath); err == nil {
-			sf.SessionJSONL = jsonlPath
-		}
-
-		subDir := filepath.Join(projDir, sessionID)
-		if info, err := os.Stat(subDir); err == nil && info.IsDir() {
-			sf.SubAgentDir = subDir
-		}
-
-		if sf.SessionJSONL != "" || sf.SubAgentDir != "" {
-			return sf, nil
-		}
-	}
-
-	return nil, nil
 }
 
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {

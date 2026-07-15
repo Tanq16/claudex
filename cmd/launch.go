@@ -27,8 +27,16 @@ type sessionEntry struct {
 	configDir    string
 }
 
+const resumeNoID = "@"
+
 var launchFlags struct {
-	plugins []string
+	plugins    []string
+	account    string
+	mcp        string
+	newSession bool
+	resume     string
+	flavor     string
+	noFlavor   bool
 }
 
 var launchCmd = &cobra.Command{
@@ -40,11 +48,30 @@ var launchCmd = &cobra.Command{
 func init() {
 	launchCmd.Flags().StringSliceVar(&launchFlags.plugins, "plugins", nil,
 		"Local plugin directories or git repo URLs to load via --plugin-dir (repeatable or comma-separated)")
+	launchCmd.Flags().StringVarP(&launchFlags.account, "account", "A", "",
+		"Account to launch under (skips the account picker)")
+	launchCmd.Flags().StringVar(&launchFlags.mcp, "mcp", "",
+		`MCP mode: "mcps", "connectors", or "none" (skips the MCP picker)`)
+	launchCmd.Flags().BoolVar(&launchFlags.newSession, "new", false,
+		"Start a new session (skip the new/resume prompt)")
+	launchCmd.Flags().StringVar(&launchFlags.resume, "resume", "",
+		"Resume a session; give a session id to pick it directly, or bare --resume to resume mode")
+	launchCmd.Flags().Lookup("resume").NoOptDefVal = resumeNoID
+	launchCmd.MarkFlagsMutuallyExclusive("new", "resume")
+	launchCmd.Flags().StringVar(&launchFlags.flavor, "flavor", "",
+		"Select a flavor by name (skips the flavor picker)")
+	launchCmd.Flags().BoolVar(&launchFlags.noFlavor, "no-flavor", false,
+		"Do not apply any flavor (skips the flavor picker)")
+	launchCmd.MarkFlagsMutuallyExclusive("flavor", "no-flavor")
 }
 
 func runLaunch(cmd *cobra.Command, args []string) {
 	if u.GlobalForAIFlag {
 		u.PrintFatal("launch requires an interactive terminal", nil)
+	}
+
+	if launchFlags.mcp != "" && launchFlags.mcp != "mcps" && launchFlags.mcp != "connectors" && launchFlags.mcp != "none" {
+		u.PrintFatal(`--mcp must be one of "mcps", "connectors", or "none"`, nil)
 	}
 
 	claudePath, err := exec.LookPath("claude")
@@ -61,16 +88,34 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	sessions := discoverSessions(accounts, cwd)
 	multiAccount := len(accounts) > 1
 
+	resumeSet := cmd.Flags().Changed("resume")
+	var resumeID string
+	if resumeSet {
+		if len(sessions) == 0 {
+			u.PrintFatal("no sessions to resume for this project", nil)
+		}
+		if launchFlags.resume != resumeNoID {
+			resumeID = launchFlags.resume
+		}
+	}
+
 	var resumeMode bool
-	if len(sessions) > 0 {
-		idx, err := u.PromptSelect("Launch", []string{"New session", "Resume"})
-		if err != nil {
-			u.PrintFatal("TUI error", err)
+	switch {
+	case launchFlags.newSession:
+		resumeMode = false
+	case resumeSet:
+		resumeMode = true
+	default:
+		if len(sessions) > 0 {
+			idx, err := u.PromptSelect("Launch", []string{"New session", "Resume"})
+			if err != nil {
+				u.PrintFatal("TUI error", err)
+			}
+			if idx < 0 {
+				return
+			}
+			resumeMode = idx == 1
 		}
-		if idx < 0 {
-			return
-		}
-		resumeMode = idx == 1
 	}
 
 	var account string
@@ -78,30 +123,49 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	var summary []string
 
 	if resumeMode {
-		labels := make([]string, len(sessions))
-		for i, s := range sessions {
-			msg := padRight(u.Truncate(strings.Join(strings.Fields(s.firstMessage), " "), 60), 60)
-			t := time.UnixMilli(s.lastActivity).Local().Format("Jan 02 3:04pm")
-			labels[i] = fmt.Sprintf("%s  %s", msg, t)
-			if multiAccount {
-				labels[i] += "  " + u.AbbreviatePath(s.configDir)
+		var s sessionEntry
+		switch {
+		case resumeID != "":
+			found := false
+			for _, cand := range sessions {
+				if cand.sessionID == resumeID {
+					s = cand
+					found = true
+					break
+				}
 			}
+			if !found {
+				u.PrintFatal("session not found: "+resumeID, nil)
+			}
+		case resumeSet && len(sessions) == 1:
+			s = sessions[0]
+		default:
+			labels := make([]string, len(sessions))
+			for i, sess := range sessions {
+				msg := padRight(u.Truncate(strings.Join(strings.Fields(sess.firstMessage), " "), 60), 60)
+				t := time.UnixMilli(sess.lastActivity).Local().Format("Jan 02 3:04pm")
+				labels[i] = fmt.Sprintf("%s  %s", msg, t)
+				if multiAccount {
+					labels[i] += "  " + u.AbbreviatePath(sess.configDir)
+				}
+			}
+			idx, err := u.PromptSelect("Resume Session", labels)
+			if err != nil {
+				u.PrintFatal("TUI error", err)
+			}
+			if idx < 0 {
+				return
+			}
+			s = sessions[idx]
 		}
 
-		idx, err := u.PromptSelect("Resume Session", labels)
-		if err != nil {
-			u.PrintFatal("TUI error", err)
-		}
-		if idx < 0 {
-			return
-		}
-
-		s := sessions[idx]
 		account = s.configDir
 		cliArgs = []string{"claude", "--resume", s.sessionID}
 		summary = append(summary, "resume", s.project, u.AbbreviatePath(s.configDir))
 	} else {
-		if multiAccount {
+		if launchFlags.account != "" {
+			account = resolveAccountFlag(launchFlags.account, accounts)
+		} else if multiAccount {
 			acctLabels := make([]string, len(accounts))
 			for i, a := range accounts {
 				acctLabels[i] = u.AbbreviatePath(a)
@@ -119,42 +183,44 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 		summary = append(summary, u.AbbreviatePath(account))
 
-		mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
-			"MCPs only",
-			"MCPs + Connectors",
-			"None",
-		})
-		if err != nil {
-			u.PrintFatal("TUI error", err)
-		}
-		if mcpIdx < 0 {
-			return
-		}
-
 		cliArgs = []string{"claude"}
-		switch mcpIdx {
-		case 0:
-			summary = append(summary, "mcp: on")
-		case 1:
-			settingsJSON, _ := json.Marshal(map[string]any{
-				"env": map[string]string{
-					"ENABLE_CLAUDEAI_MCP_SERVERS": "true",
-				},
+		mode := launchFlags.mcp
+		if mode == "" {
+			mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
+				"MCPs only",
+				"MCPs + Connectors",
+				"None",
 			})
-			cliArgs = append(cliArgs, "--settings", string(settingsJSON))
-			summary = append(summary, "mcp: on", "connectors: on")
-		case 2:
-			cliArgs = append(cliArgs, "--strict-mcp-config")
-			summary = append(summary, "mcp: off")
+			if err != nil {
+				u.PrintFatal("TUI error", err)
+			}
+			if mcpIdx < 0 {
+				return
+			}
+			mode = []string{"mcps", "connectors", "none"}[mcpIdx]
 		}
+		cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 	}
 
-	if flavor, ok := selectFlavor(); ok {
-		if flavor == nil {
-			return
+	if !launchFlags.noFlavor {
+		if launchFlags.flavor != "" {
+			opts, err := flavors.Load(u.FlavorsDir())
+			if err != nil {
+				u.PrintFatal("could not read flavors", err)
+			}
+			flavor := findFlavor(opts, launchFlags.flavor)
+			if flavor == nil {
+				u.PrintFatal("flavor not found: "+launchFlags.flavor, nil)
+			}
+			cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
+			summary = append(summary, "flavor: "+flavor.Name)
+		} else if flavor, ok := selectFlavor(); ok {
+			if flavor == nil {
+				return
+			}
+			cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
+			summary = append(summary, "flavor: "+flavor.Name)
 		}
-		cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
-		summary = append(summary, "flavor: "+flavor.Name)
 	}
 
 	for _, dir := range resolvePluginDirs() {
@@ -186,6 +252,48 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	if err := syscall.Exec(claudePath, cliArgs, env); err != nil {
 		u.PrintFatal("Failed to exec claude", err)
 	}
+}
+
+func applyMCPMode(mode string, cliArgs, summary []string) ([]string, []string) {
+	switch mode {
+	case "mcps":
+		summary = append(summary, "mcp: on")
+	case "connectors":
+		settingsJSON, _ := json.Marshal(map[string]any{
+			"env": map[string]string{
+				"ENABLE_CLAUDEAI_MCP_SERVERS": "true",
+			},
+		})
+		cliArgs = append(cliArgs, "--settings", string(settingsJSON))
+		summary = append(summary, "mcp: on", "connectors: on")
+	case "none":
+		cliArgs = append(cliArgs, "--strict-mcp-config")
+		summary = append(summary, "mcp: off")
+	}
+	return cliArgs, summary
+}
+
+func resolveAccountFlag(flag string, accounts []string) string {
+	expanded := filepath.Clean(u.ExpandPath(flag))
+	for _, a := range accounts {
+		if filepath.Clean(a) == expanded || filepath.Base(a) == flag {
+			return a
+		}
+	}
+	u.PrintFatal("account not found: "+flag, nil)
+	return ""
+}
+
+func findFlavor(opts *flavors.Options, name string) *flavors.Flavor {
+	if opts.Auto != nil && opts.Auto.Name == name {
+		return opts.Auto
+	}
+	for i := range opts.Choices {
+		if opts.Choices[i].Name == name {
+			return &opts.Choices[i]
+		}
+	}
+	return nil
 }
 
 func discoverSessions(accounts []string, cwd string) []sessionEntry {
