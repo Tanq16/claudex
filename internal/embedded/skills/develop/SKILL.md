@@ -30,7 +30,7 @@ Run it *before* writing code — its whole job is to make sure the governing ski
 
 State in one line what is being built or changed. Then classify:
 
-- **Project type** — per the `go-foundations` taxonomy: CLI Only / Web Only / CLI + Web / Headless API Service / Library / Chrome Extension. Infer it from the tree (`go.mod`, `cmd/`, `internal/server/static/`, `manifest.json`, presence/absence of `utils/`, …).
+- **Project type** — per the `go-foundations` taxonomy: CLI Only / Web Only / CLI + Web / Headless API Service / Library / Chrome Extension, or **Node Web Only** (a Node server process that serves a frontend). Infer it from the tree (`go.mod`, `cmd/`, `internal/server/static/`, `manifest.json`, `package.json` with `"type":"module"` + `public/`, presence/absence of `utils/`, …).
 - **Work type** — new project, feature, refactor, bug fix, tests, infra/CI, docs.
 
 ### Step 2: Select and READ the governing skills
@@ -80,6 +80,9 @@ Escalate to `review-code` instead when: you are re-engaging a project you have n
 | HTTP servers, internal package architecture, storage, OAuth/auth | `go-backend` |
 | Embedded SPA frontend (`embed.FS`, Tailwind, Catppuccin, PWA) | `go-frontend` |
 | Goroutines, concurrent pipelines, fan-out/fan-in, progress/resume | `go-concurrency` |
+| Any Node code (Web Only: a server process that serves a frontend) | `node-foundations` (always, for Node) |
+| Node HTTP/WebSocket server, routing, auth, JSON state | `node-backend` |
+| Vanilla-JS SPA frontend (Catppuccin, vendored assets, WebSocket client) | `node-frontend` |
 | Makefile, GitHub Actions, Docker, releases, versioning | `project-ci-cd` |
 | README | `project-readme` |
 | Chrome extension (manifest, popup, content/background scripts) | `chrome-extension-basics` |

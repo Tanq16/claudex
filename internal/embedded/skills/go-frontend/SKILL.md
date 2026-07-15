@@ -64,7 +64,7 @@ See `./references/html-template.md` for the complete HTML template with:
 
 For Markdown rendering styles, see the Markdown Rendering section below.
 
-The minimal page is: `<head>` with icon links, Inter/Font Awesome CSS, an inline `:root` block of Catppuccin Mocha CSS variables, and the Tailwind Play-CDN script wiring those variables into `tailwind.config.theme.extend.colors`; `<body class="bg-base text-text min-h-screen">`. The full boilerplate is in `./references/html-template.md` — copy from there rather than retyping it.
+The minimal page is: `<head>` with icon links, font CSS (`css/inter.css` for body, `css/jetbrains-mono.css` for mono/code) plus Font Awesome CSS, an inline `:root` block of Catppuccin Mocha CSS variables, and the Tailwind Play-CDN script wiring those variables into `tailwind.config.theme.extend.colors`; `<body class="bg-base text-text min-h-screen">`. The full boilerplate is in `./references/html-template.md` — copy from there rather than retyping it.
 
 ## Key Rules
 
@@ -192,13 +192,15 @@ Assets downloaded via `make assets` target:
 | Lucide | `unpkg.com/lucide@latest` | `js/lucide.min.js` |
 | Font Awesome | `jsdelivr.net` | `fontawesome/css/`, `fontawesome/webfonts/` |
 | Dev Icons | `jsdelivr.net/gh/devicons/devicon@latest` | `css/devicon.min.css` |
-| Inter Font | `fonts.googleapis.com` | `css/inter.css`, `fonts/*.woff2` |
-| JetBrains Mono | `fonts.googleapis.com` | `css/jetbrains-mono.css`, `fonts/*.ttf` |
+| Inter Font (body/UI) | `fonts.googleapis.com` | `css/inter.css`, `fonts/*.woff2` |
+| JetBrains Mono Nerd Font (mono/code, glyphs) | `github.com/ryanoasis/nerd-fonts` | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | Marked.js | `jsdelivr.net` | `js/marked.min.js` |
 | Highlight.js | `jsdelivr.net/gh/highlightjs/cdn-release@latest` | `js/highlight.min.js` |
 | Highlight.js Theme | Same CDN, `styles/github-dark.min.css` | `css/github-dark.min.css` |
 | Chart.js | `jsdelivr.net` | `js/chart.umd.js` |
 | Mermaid.js | `jsdelivr.net` | `js/mermaid.min.js` |
+
+**Shared font set:** Inter + JetBrains Mono Nerd Font (woff2, self-hosted) are the same two fonts `node-frontend` vendors — keep them aligned across both frontends; only the static-root path differs (`internal/server/static/` here vs `public/` for Node).
 
 **Note:** Font Awesome CSS needs patching to fix webfont paths:
 ```bash

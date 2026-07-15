@@ -17,7 +17,7 @@ Use this skill when:
 
 ## Review Domains
 
-Reviews are organized into 5 domains, each with its own check tables:
+Reviews are organized into 6 domains, each with its own check tables:
 
 | Domain | Reference File | Categories | Skills |
 |--------|---------------|------------|--------|
@@ -26,6 +26,7 @@ Reviews are organized into 5 domains, each with its own check tables:
 | Go Backend & Frontend | `./references/review-domain-go-backend-frontend.md` | 8-9 (Architecture, Assets) | go-backend, go-frontend |
 | Go Concurrency | `./references/review-domain-go-concurrency.md` | 10-11 (Concurrency, Pipeline) | go-concurrency |
 | Infrastructure | `./references/review-domain-infra.md` | 12-15 (CI/CD, Chrome, README, Deps) | project-ci-cd, chrome-extension-basics, project-readme, go-foundations |
+| Node | `./references/review-domain-node.md` | 16-18 (Foundations, Backend, Frontend) | node-foundations, node-backend, node-frontend |
 
 > Reference paths in this skill are relative to this `SKILL.md`. Sibling skills (e.g. `go-cli`, `go-foundations`) live alongside this skill, so their files are at `../<skill-name>/SKILL.md` and `../<skill-name>/references/<file>.md`.
 
@@ -43,6 +44,7 @@ Inspect the current directory to determine what kind of project this is:
 | `go.mod` + `internal/server/static/`, no `utils/` | Go Web Only |
 | `go.mod` + `internal/server/static/` **and** `utils/` | Go CLI + Web (hybrid) |
 | `manifest.json` with `manifest_version` field | Chrome Extension |
+| `package.json` with `"type":"module"` + `public/` + `src/`, no `go.mod` | Node Web Only |
 | `go.mod` only (minimal) | Go Project (treat as CLI Only) |
 
 If no recognizable project structure is found, report that and stop.
@@ -66,6 +68,7 @@ If a target argument was provided:
 | `readme` | Infrastructure | README category only |
 | `deps`, `dependencies` | Infrastructure | Deps category only |
 | `infra`, `infrastructure` | Infrastructure | All categories |
+| `node`, `nodejs`, `esm`, `node-backend`, `node-frontend` | Node | All categories |
 
 If a keyword matches, go to **Step 3b** (Targeted Review) with the mapped domain and subset.
 
@@ -81,6 +84,7 @@ If the target contains `/`, treat it as a package path. Map to domain(s):
 | `internal/highway/**` or `internal/display/**` | Go Concurrency |
 | `utils/**` | Go Foundations |
 | `internal/**` (anything else) | Go Foundations + Go Backend & Frontend |
+| `src/**`, `public/**`, `test/**`, `package.json` | Node |
 | `.github/**`, `Makefile`, `Dockerfile`, `README.md` | Infrastructure |
 
 Go to **Step 3b** (Targeted Review) with the mapped domain(s).
@@ -107,6 +111,7 @@ Determine which domains apply based on project type:
 | Go Web Only | Go Foundations, Go CLI, Go Backend & Frontend, Infrastructure |
 | Go CLI + Web (hybrid) | Go Foundations, Go CLI, Go Backend & Frontend, Go Concurrency (conditional), Infrastructure |
 | Chrome Extension | Infrastructure |
+| Node Web Only | Node, Infrastructure |
 
 **If only one domain applies** (e.g., Chrome Extension), skip sub-agents and handle it directly — read the domain reference file, load its skills, run checks, and generate the report inline. Go to **Step 4**.
 
@@ -182,7 +187,7 @@ Present the final report in this format:
 ```
 ## Code Review Report: [Project Name]
 
-**Project type:** [CLI Only | Web Only | CLI + Web | Chrome Extension]
+**Project type:** [CLI Only | Web Only | CLI + Web | Chrome Extension | Node Web Only]
 **Review scope:** [Full | Targeted: domain-name | Targeted: package-path]
 **Skills checked against:** [list of loaded skills]
 

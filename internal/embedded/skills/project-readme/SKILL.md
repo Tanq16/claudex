@@ -22,6 +22,7 @@ Use this skill when:
 |--------------|--------------|
 | CLI Only (Command-Line Tools) | Header → Capabilities Table → Installation → Usage (by command) → Tips |
 | Web Only (Web Apps, Dashboards) | Header → Intro → Features → Screenshots → Install/Usage → Tips |
+| Node Web Only (Node server that serves a frontend) | Header → Intro → Features → Screenshots → Install/Usage (a process that serves) → config.json → Tips |
 | CLI + Web (CLI tool that also serves a web app) | CLI Only shape (Capabilities → Install → Usage) plus a Web UI section with screenshots |
 | Chrome Extension | Header → Intro → Features → Screenshots → Install → Permissions → Tips |
 
