@@ -85,6 +85,8 @@ The one command you run to start working. Rather than remembering which account 
 - **Flavor** — a system-prompt posture (see below).
 - **Resume** — when the current directory has recent sessions, jump back into one instead; it targets the right account automatically.
 
+Any step can be pre-supplied as a flag to skip just that prompt — `-A/--account`, `--mcp mcps|connectors|none`, `--flavor <name>` / `--no-flavor`, and `--new` or `--resume [id]` (bare `--resume` picks the latest when there's one session, else lists them). Supply them all for a fully non-interactive launch.
+
 Every launch loads the global plugin that `configure` built, so your global skills and output style are always there. (Launching before you've run `configure` still works — it lays down anything missing without touching what you've customized.)
 
 **Flavors** are reusable launch-time postures — one `.md` file per posture in `~/.config/claudex/flavors/`, where the whole file becomes the appended system prompt and the filename is its label. Keep a few modes around (terse, planning-first, review-only, whatever fits) and pick one at launch. `default.md` is not a master switch, just a convenient default:
@@ -102,15 +104,16 @@ Every launch loads the global plugin that `configure` built, so your global skil
 claudex launch
 claudex launch --plugins ~/my-plugin
 claudex launch --plugins https://github.com/user/some-plugin
+claudex launch -A ~/.claude2 --mcp none --new   # no prompts
 ```
 
 ### `switch`
 
-Started a conversation on the wrong account, or want to keep going on one with more capacity? `switch` moves a conversation from one account to another — it relocates the session's project directory and its history entries into the target account so you can pick the thread right back up there. Run it bare for an interactive picker, or pass `--id`/`--from`/`--to` to move a specific session non-interactively.
+Working in a project on the wrong account, or want to keep going on one with more capacity? `switch` works on the current directory's project: it figures out which account that project currently lives in (by its most-recent session) and moves the whole project — its session files and history entries — into another account, so you can pick the thread right back up there. Run it bare and it just switches when there's only one other account, or asks which when there are several. Pass `-A/--account` to name the target directly (a no-op if the project is already there).
 
 ```bash
 claudex switch
-claudex switch --id <session-uuid> --to ~/.claude2
+claudex switch -A ~/.claude2
 ```
 
 ### `oauth-token`
