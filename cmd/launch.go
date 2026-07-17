@@ -46,7 +46,7 @@ var launchCmd = &cobra.Command{
 }
 
 func init() {
-	launchCmd.Flags().StringSliceVar(&launchFlags.plugins, "plugins", nil,
+	launchCmd.Flags().StringSliceVarP(&launchFlags.plugins, "plugins", "P", nil,
 		"Local plugin directories or git repo URLs to load via --plugin-dir (repeatable or comma-separated)")
 	launchCmd.Flags().StringVarP(&launchFlags.account, "account", "A", "",
 		"Account to launch under (skips the account picker)")
