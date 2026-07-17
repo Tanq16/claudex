@@ -27,20 +27,19 @@ type sessionEntry struct {
 	configDir    string
 }
 
-const resumeNoID = "@"
-
 var launchFlags struct {
 	plugins    []string
 	account    string
 	mcp        string
 	newSession bool
-	resume     string
+	resume     bool
+	session    string
 	flavor     string
 	noFlavor   bool
 }
 
-// NoArgs matters here: --resume has a NoOptDefVal, so "--resume <id>" leaves the
-// id as a positional arg and silently resumes the wrong session. Reject it instead.
+// NoArgs so a stray positional (e.g. "--resume <id>" typed for "--session <id>")
+// errors instead of being silently ignored.
 var launchCmd = &cobra.Command{
 	Use:   "launch",
 	Short: "Launch a Claude Code session with interactive config selection",
@@ -57,10 +56,11 @@ func init() {
 		`MCP mode: "mcps", "connectors", or "none" (skips the MCP picker)`)
 	launchCmd.Flags().BoolVar(&launchFlags.newSession, "new", false,
 		"Start a new session (skip the new/resume prompt)")
-	launchCmd.Flags().StringVar(&launchFlags.resume, "resume", "",
-		"Resume a session: bare --resume for resume mode, or --resume=<id> to pick one directly")
-	launchCmd.Flags().Lookup("resume").NoOptDefVal = resumeNoID
-	launchCmd.MarkFlagsMutuallyExclusive("new", "resume")
+	launchCmd.Flags().BoolVar(&launchFlags.resume, "resume", false,
+		"Resume mode: pick the latest session, or list them when there's more than one")
+	launchCmd.Flags().StringVar(&launchFlags.session, "session", "",
+		"Resume a specific session by id (skips the new/resume prompt)")
+	launchCmd.MarkFlagsMutuallyExclusive("new", "resume", "session")
 	launchCmd.Flags().StringVar(&launchFlags.flavor, "flavor", "",
 		"Select a flavor by name (skips the flavor picker)")
 	launchCmd.Flags().BoolVar(&launchFlags.noFlavor, "no-flavor", false,
@@ -91,15 +91,10 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	sessions := discoverSessions(accounts, cwd)
 	multiAccount := len(accounts) > 1
 
-	resumeSet := cmd.Flags().Changed("resume")
-	var resumeID string
-	if resumeSet {
-		if len(sessions) == 0 {
-			u.PrintFatal("no sessions to resume for this project", nil)
-		}
-		if launchFlags.resume != resumeNoID {
-			resumeID = launchFlags.resume
-		}
+	resumeID := launchFlags.session
+	resumeSet := launchFlags.resume || resumeID != ""
+	if resumeSet && len(sessions) == 0 {
+		u.PrintFatal("no sessions to resume for this project", nil)
 	}
 
 	var resumeMode bool

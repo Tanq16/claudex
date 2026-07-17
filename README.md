@@ -132,7 +132,7 @@ Arrow keys and enter — that's the whole interface. A prompt only appears when 
 - **MCP + connectors** — MCPs only, MCPs plus claude.ai connectors (Gmail, Slack, …), or none.
 - **Which flavor?** — only when you have flavors to choose between.
 
-Each prompt has a flag that skips it, for scripting: `-A/--account`, `--mcp mcps|connectors|none`, `--flavor <name>` / `--no-flavor`, and `--new` or `--resume`. Bare `--resume` takes the latest when there's one session, else lists them; `--resume=<id>` picks one directly — note the `=`, since a space-separated id won't bind. Supply all of them for a launch that never prompts.
+Each prompt has a flag that skips it, for scripting: `-A/--account`, `--mcp mcps|connectors|none`, `--flavor <name>` / `--no-flavor`, and `--new`, `--resume`, or `--session <id>`. `--resume` takes the latest when there's one session, else lists them; `--session <id>` resumes one directly. Supply all of them for a launch that never prompts.
 
 The global plugin loads every launch, so your global skills and output style are always there. Launching before you've run `configure` works too — it lays down anything missing without touching what you've customized.
 
