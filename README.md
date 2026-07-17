@@ -39,7 +39,7 @@ Three steps — and after the first two, you only ever type `claudex launch`:
 
 ```mermaid
 %%{init: {'flowchart': {'wrappingWidth': 260}}}%%
-flowchart TB
+flowchart LR
     I["1 · grab the binary"]
     C["2 · claudex configure<br/>once, ever — sets up every account you have"]
     L["3 · cd myproject && claudex launch<br/>every session"]
@@ -47,6 +47,7 @@ flowchart TB
     I --> C --> L
 
     subgraph ASK ["claudex asks — a prompt appears only when there's a real choice"]
+    direction TB
         Q1["New session, or resume?<br/>skipped when this project has none"]
         Q2["Which account?<br/>skipped when you only have one"]
         Q3["MCPs · MCPs + connectors · none"]
