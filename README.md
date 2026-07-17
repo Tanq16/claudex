@@ -12,6 +12,8 @@ ClaudeX is a companion CLI for running Claude Code across more than one account.
 
 It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.claude2`, `~/.claude3`, …). Everything ClaudeX sets up for itself — a shared global plugin, your launch flavors, and any plugins it fetches — lives under `~/.config/claudex`. The whole workflow is two steps: run `configure` once to provision every account, then use `launch` every time you start working.
 
+This repo also doubles as a Claude Code plugin, `claudex-dev`, carrying ClaudeX's opinionated Go/Node development skills — load them into any session with `claudex launch -P https://github.com/tanq16/claudex`.
+
 ## Capabilities
 
 | Command | What it gives you |
@@ -21,7 +23,6 @@ It finds your accounts on its own: `~/.claude` and its numbered siblings (`~/.cl
 | `launch` | Guided start of a Claude Code session — right account, MCP mode, and flavor, with the global plugin always loaded |
 | `switch` | Move a conversation from one account to another and continue it there |
 | `oauth-token` | A Claude OAuth access token via the browser PKCE flow |
-| `apply-skills` | Drop ClaudeX's opinionated development skills into the current project |
 | `ai-docs` | Serve the ai-docs viewer for capturing durable HTML docs in the current project |
 
 ## Installation
@@ -98,11 +99,16 @@ Every launch loads the global plugin that `configure` built, so your global skil
 | `default.md` + others | pick one (`default` pre-selected) or None |
 | others, no `default.md` | pick one or None |
 
-**Extra plugins for a single session** go through `--plugins`, taking a local directory or a git URL. Git repos are cloned (or shallow-updated if already fetched) under `~/.config/claudex/plugins` and loaded alongside the global one. This is deliberately simpler than Claude Code's built-in plugin manager, which tends to leave orphaned versions behind — claudex just clones the repo to a fixed spot, pulls latest when it's already there, and loads it inline.
+**Extra plugins for a single session** go through `-P/--plugins`, taking a local directory or a git URL. Git repos are cloned (or shallow-updated if already fetched) under `~/.config/claudex/plugins` and loaded alongside the global one. This is deliberately simpler than Claude Code's built-in plugin manager, which tends to leave orphaned versions behind — claudex just clones the repo to a fixed spot, pulls latest when it's already there, and loads it inline.
+
+This repo is itself one of those plugins — **`claudex-dev`**, carrying ClaudeX's opinionated Go/Node development skills. Load it from the git URL, or `-P ~/repos/claudex` against a local checkout. It's how you load those skills now: rather than copying them into a project's `.claude/skills/`, they ride the plugin and load per session, and they're no longer tied to a claudex release — the plugin is whatever is at the tip of the repo. The same works for your own: point `-P` at any local directory or git repo. A plugin can carry skills, MCP servers, agents, or output styles — or just one of those, which is how you keep separately loadable sets around (an MCP-only plugin, say).
+
+The `--mcp` choice is session-wide and independent of any of this: `--mcp none` suppresses **every** MCP server for the session, including any that a loaded plugin declares.
 
 ```bash
 claudex launch
-claudex launch --plugins ~/my-plugin
+claudex launch -P ~/my-plugin
+claudex launch -P https://github.com/tanq16/claudex   # the claudex-dev skills
 claudex launch --plugins https://github.com/user/some-plugin
 claudex launch -A ~/.claude2 --mcp none --new   # no prompts
 ```
@@ -123,15 +129,6 @@ Obtain a Claude OAuth access token via the browser-based PKCE flow (valid one ho
 ```bash
 claudex oauth-token
 TOKEN=$(claudex oauth-token)
-```
-
-### `apply-skills`
-
-An author-opinionated set of development skills you can drop into a project's `.claude/skills/` — run it from a project root and it installs ClaudeX's embedded dev skills there, and only there. Point `--dir` at your own skill set instead, `--preserve-local` to add only what's missing, or `--full-wipe` to clear the project's ClaudeX skills and settings first for a clean slate. (These are per-project skills; the always-on `cross-ai` and `ai-docs` skills ride the global plugin instead.)
-
-```bash
-claudex apply-skills
-claudex apply-skills --dir ~/my-skills
 ```
 
 ### `ai-docs`
