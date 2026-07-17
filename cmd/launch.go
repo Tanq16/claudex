@@ -39,9 +39,12 @@ var launchFlags struct {
 	noFlavor   bool
 }
 
+// NoArgs matters here: --resume has a NoOptDefVal, so "--resume <id>" leaves the
+// id as a positional arg and silently resumes the wrong session. Reject it instead.
 var launchCmd = &cobra.Command{
 	Use:   "launch",
 	Short: "Launch a Claude Code session with interactive config selection",
+	Args:  cobra.NoArgs,
 	Run:   runLaunch,
 }
 
@@ -55,7 +58,7 @@ func init() {
 	launchCmd.Flags().BoolVar(&launchFlags.newSession, "new", false,
 		"Start a new session (skip the new/resume prompt)")
 	launchCmd.Flags().StringVar(&launchFlags.resume, "resume", "",
-		"Resume a session; give a session id to pick it directly, or bare --resume to resume mode")
+		"Resume a session: bare --resume for resume mode, or --resume=<id> to pick one directly")
 	launchCmd.Flags().Lookup("resume").NoOptDefVal = resumeNoID
 	launchCmd.MarkFlagsMutuallyExclusive("new", "resume")
 	launchCmd.Flags().StringVar(&launchFlags.flavor, "flavor", "",
@@ -182,25 +185,25 @@ func runLaunch(cmd *cobra.Command, args []string) {
 			account = accounts[0]
 		}
 		summary = append(summary, u.AbbreviatePath(account))
-
 		cliArgs = []string{"claude"}
-		mode := launchFlags.mcp
-		if mode == "" {
-			mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
-				"MCPs only",
-				"MCPs + Connectors",
-				"None",
-			})
-			if err != nil {
-				u.PrintFatal("TUI error", err)
-			}
-			if mcpIdx < 0 {
-				return
-			}
-			mode = []string{"mcps", "connectors", "none"}[mcpIdx]
-		}
-		cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 	}
+
+	mode := launchFlags.mcp
+	if mode == "" {
+		mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
+			"MCPs only",
+			"MCPs + Connectors",
+			"None",
+		})
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if mcpIdx < 0 {
+			return
+		}
+		mode = []string{"mcps", "connectors", "none"}[mcpIdx]
+	}
+	cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 
 	if !launchFlags.noFlavor {
 		if launchFlags.flavor != "" {
