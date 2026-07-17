@@ -54,8 +54,7 @@ func openBrowser(url string) error {
 	case "windows":
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
-		u.PrintWarn("Cannot auto-open browser. Open this URL manually:", nil)
-		u.PrintGeneric(url)
+		u.PrintWarn("Cannot auto-open browser. Open this URL manually: "+url, nil)
 		return nil
 	}
 	if err := cmd.Start(); err != nil {
