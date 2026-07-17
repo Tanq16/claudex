@@ -16,17 +16,13 @@ var (
 	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(11))
 )
 
-func emit(msg string) {
-	fmt.Fprintln(os.Stderr, msg)
-}
-
 func PrintInfo(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
-		emit("[INFO] " + msg)
+		fmt.Fprintln(os.Stderr, "[INFO] "+msg)
 	} else {
-		emit(infoStyle.Render("→ " + msg))
+		fmt.Fprintln(os.Stderr, infoStyle.Render("→ "+msg))
 	}
 }
 
@@ -34,9 +30,9 @@ func PrintSuccess(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
-		emit("[OK] " + msg)
+		fmt.Fprintln(os.Stderr, "[OK] "+msg)
 	} else {
-		emit(successStyle.Render("✓ " + msg))
+		fmt.Fprintln(os.Stderr, successStyle.Render("✓ "+msg))
 	}
 }
 
@@ -48,9 +44,9 @@ func PrintError(msg string, err error) {
 			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
-		emit("[ERROR] " + msg)
+		fmt.Fprintln(os.Stderr, "[ERROR] "+msg)
 	} else {
-		emit(errorStyle.Render("✗ " + msg))
+		fmt.Fprintln(os.Stderr, errorStyle.Render("✗ "+msg))
 	}
 }
 
@@ -62,9 +58,9 @@ func PrintFatal(msg string, err error) {
 			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
-		emit("[ERROR] " + msg)
+		fmt.Fprintln(os.Stderr, "[ERROR] "+msg)
 	} else {
-		emit(errorStyle.Render("✗ " + msg))
+		fmt.Fprintln(os.Stderr, errorStyle.Render("✗ "+msg))
 	}
 	os.Exit(1)
 }
@@ -77,9 +73,9 @@ func PrintWarn(msg string, err error) {
 			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
-		emit("[WARN] " + msg)
+		fmt.Fprintln(os.Stderr, "[WARN] "+msg)
 	} else {
-		emit(warnStyle.Render("! " + msg))
+		fmt.Fprintln(os.Stderr, warnStyle.Render("! "+msg))
 	}
 }
 
@@ -87,9 +83,9 @@ func PrintRunning(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
-		emit("[RUNNING] " + msg)
+		fmt.Fprintln(os.Stderr, "[RUNNING] "+msg)
 	} else {
-		emit(infoStyle.Render("↻ " + msg))
+		fmt.Fprintln(os.Stderr, infoStyle.Render("↻ "+msg))
 	}
 }
 
@@ -97,9 +93,9 @@ func PrintIndentedSuccess(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
-		emit("[OK] " + msg)
+		fmt.Fprintln(os.Stderr, "[OK] "+msg)
 	} else {
-		emit(successStyle.Render("  ✓ " + msg))
+		fmt.Fprintln(os.Stderr, successStyle.Render("  ✓ "+msg))
 	}
 }
 
@@ -111,9 +107,9 @@ func PrintIndentedError(msg string, err error) {
 			log.Error().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
-		emit("[ERROR] " + msg)
+		fmt.Fprintln(os.Stderr, "[ERROR] "+msg)
 	} else {
-		emit(errorStyle.Render("  ✗ " + msg))
+		fmt.Fprintln(os.Stderr, errorStyle.Render("  ✗ "+msg))
 	}
 }
 
@@ -125,9 +121,9 @@ func PrintIndentedWarn(msg string, err error) {
 			log.Warn().Msg(msg)
 		}
 	} else if GlobalForAIFlag {
-		emit("[WARN] " + msg)
+		fmt.Fprintln(os.Stderr, "[WARN] "+msg)
 	} else {
-		emit(warnStyle.Render("  ! " + msg))
+		fmt.Fprintln(os.Stderr, warnStyle.Render("  ! "+msg))
 	}
 }
 
@@ -135,9 +131,9 @@ func PrintIndentedRunning(msg string) {
 	if GlobalDebugFlag {
 		log.Info().Msg(msg)
 	} else if GlobalForAIFlag {
-		emit("[RUNNING] " + msg)
+		fmt.Fprintln(os.Stderr, "[RUNNING] "+msg)
 	} else {
-		emit(infoStyle.Render("  ↻ " + msg))
+		fmt.Fprintln(os.Stderr, infoStyle.Render("  ↻ "+msg))
 	}
 }
 
@@ -152,7 +148,7 @@ func PrintProgress(label string, percent int) {
 	}
 
 	if GlobalForAIFlag {
-		emit(fmt.Sprintf("[PROGRESS] %s: %d%%", label, percent))
+		fmt.Fprintf(os.Stderr, "[PROGRESS] %s: %d%%\n", label, percent)
 		return
 	}
 
@@ -161,7 +157,7 @@ func PrintProgress(label string, percent int) {
 	empty := barWidth - filled
 
 	bar := strings.Repeat("⣿", filled) + strings.Repeat("⣀", empty)
-	emit(infoStyle.Render(fmt.Sprintf("  ↻ %s: %s %d%%", label, bar, percent)))
+	fmt.Fprintln(os.Stderr, infoStyle.Render(fmt.Sprintf("  ↻ %s: %s %d%%", label, bar, percent)))
 }
 
 func ClearLines(n int) {
