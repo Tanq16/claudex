@@ -16,8 +16,6 @@ var (
 	warnStyle    = lipgloss.NewStyle().Foreground(lipgloss.ANSIColor(11))
 )
 
-// Status chrome goes to stderr so PrintGeneric output stays pipeable on stdout
-// (a token from oauth-token, JSON from status -j). ClearLines must follow it.
 func emit(msg string) {
 	fmt.Fprintln(os.Stderr, msg)
 }
