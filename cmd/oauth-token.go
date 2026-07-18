@@ -31,15 +31,11 @@ var oauthTokenCmd = &cobra.Command{
 			ExpiresIn: oauthTokenFlags.expiresIn,
 		}
 
-		u.PrintInfo(fmt.Sprintf("Starting OAuth flow on port %d (requested expiry: %ds)", cfg.Port, cfg.ExpiresIn))
-		u.PrintInfo("Opening browser for Claude authentication...")
-
 		token, err := oauth.RunFlow(ctx, cfg, openBrowser)
 		if err != nil {
 			u.PrintFatal("OAuth flow failed", err)
 		}
 
-		u.PrintSuccess("Authentication successful.")
 		u.PrintGeneric(token)
 	},
 }

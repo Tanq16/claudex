@@ -1,0 +1,5 @@
+{
+  "name": "claudex-dev",
+  "description": "claudex's opinionated Go/Node development skills, loaded on demand via claudex launch -P",
+  "version": "1.0.0"
+}

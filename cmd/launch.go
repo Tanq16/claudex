@@ -27,26 +27,28 @@ type sessionEntry struct {
 	configDir    string
 }
 
-const resumeNoID = "@"
-
 var launchFlags struct {
 	plugins    []string
 	account    string
 	mcp        string
 	newSession bool
-	resume     string
+	resume     bool
+	session    string
 	flavor     string
 	noFlavor   bool
 }
 
+// NoArgs so a stray positional (e.g. "--resume <id>" typed for "--session <id>")
+// errors instead of being silently ignored.
 var launchCmd = &cobra.Command{
 	Use:   "launch",
 	Short: "Launch a Claude Code session with interactive config selection",
+	Args:  cobra.NoArgs,
 	Run:   runLaunch,
 }
 
 func init() {
-	launchCmd.Flags().StringSliceVar(&launchFlags.plugins, "plugins", nil,
+	launchCmd.Flags().StringSliceVarP(&launchFlags.plugins, "plugins", "P", nil,
 		"Local plugin directories or git repo URLs to load via --plugin-dir (repeatable or comma-separated)")
 	launchCmd.Flags().StringVarP(&launchFlags.account, "account", "A", "",
 		"Account to launch under (skips the account picker)")
@@ -54,10 +56,11 @@ func init() {
 		`MCP mode: "mcps", "connectors", or "none" (skips the MCP picker)`)
 	launchCmd.Flags().BoolVar(&launchFlags.newSession, "new", false,
 		"Start a new session (skip the new/resume prompt)")
-	launchCmd.Flags().StringVar(&launchFlags.resume, "resume", "",
-		"Resume a session; give a session id to pick it directly, or bare --resume to resume mode")
-	launchCmd.Flags().Lookup("resume").NoOptDefVal = resumeNoID
-	launchCmd.MarkFlagsMutuallyExclusive("new", "resume")
+	launchCmd.Flags().BoolVar(&launchFlags.resume, "resume", false,
+		"Resume mode: pick the latest session, or list them when there's more than one")
+	launchCmd.Flags().StringVar(&launchFlags.session, "session", "",
+		"Resume a specific session by id (skips the new/resume prompt)")
+	launchCmd.MarkFlagsMutuallyExclusive("new", "resume", "session")
 	launchCmd.Flags().StringVar(&launchFlags.flavor, "flavor", "",
 		"Select a flavor by name (skips the flavor picker)")
 	launchCmd.Flags().BoolVar(&launchFlags.noFlavor, "no-flavor", false,
@@ -88,15 +91,10 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	sessions := discoverSessions(accounts, cwd)
 	multiAccount := len(accounts) > 1
 
-	resumeSet := cmd.Flags().Changed("resume")
-	var resumeID string
-	if resumeSet {
-		if len(sessions) == 0 {
-			u.PrintFatal("no sessions to resume for this project", nil)
-		}
-		if launchFlags.resume != resumeNoID {
-			resumeID = launchFlags.resume
-		}
+	resumeID := launchFlags.session
+	resumeSet := launchFlags.resume || resumeID != ""
+	if resumeSet && len(sessions) == 0 {
+		u.PrintFatal("no sessions to resume for this project", nil)
 	}
 
 	var resumeMode bool
@@ -182,25 +180,25 @@ func runLaunch(cmd *cobra.Command, args []string) {
 			account = accounts[0]
 		}
 		summary = append(summary, u.AbbreviatePath(account))
-
 		cliArgs = []string{"claude"}
-		mode := launchFlags.mcp
-		if mode == "" {
-			mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
-				"MCPs only",
-				"MCPs + Connectors",
-				"None",
-			})
-			if err != nil {
-				u.PrintFatal("TUI error", err)
-			}
-			if mcpIdx < 0 {
-				return
-			}
-			mode = []string{"mcps", "connectors", "none"}[mcpIdx]
-		}
-		cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 	}
+
+	mode := launchFlags.mcp
+	if mode == "" {
+		mcpIdx, err := u.PromptSelect("MCP + Connectors", []string{
+			"MCPs only",
+			"MCPs + Connectors",
+			"None",
+		})
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if mcpIdx < 0 {
+			return
+		}
+		mode = []string{"mcps", "connectors", "none"}[mcpIdx]
+	}
+	cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 
 	if !launchFlags.noFlavor {
 		if launchFlags.flavor != "" {
