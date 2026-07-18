@@ -31,15 +31,11 @@ var oauthTokenCmd = &cobra.Command{
 			ExpiresIn: oauthTokenFlags.expiresIn,
 		}
 
-		u.PrintInfo(fmt.Sprintf("Starting OAuth flow on port %d (requested expiry: %ds)", cfg.Port, cfg.ExpiresIn))
-		u.PrintInfo("Opening browser for Claude authentication...")
-
 		token, err := oauth.RunFlow(ctx, cfg, openBrowser)
 		if err != nil {
 			u.PrintFatal("OAuth flow failed", err)
 		}
 
-		u.PrintSuccess("Authentication successful.")
 		u.PrintGeneric(token)
 	},
 }
@@ -54,7 +50,8 @@ func openBrowser(url string) error {
 	case "windows":
 		cmd = exec.Command("rundll32", "url.dll,FileProtocolHandler", url)
 	default:
-		u.PrintWarn("Cannot auto-open browser. Open this URL manually: "+url, nil)
+		u.PrintWarn("Cannot auto-open browser. Open this URL manually:", nil)
+		u.PrintGeneric(url)
 		return nil
 	}
 	if err := cmd.Start(); err != nil {

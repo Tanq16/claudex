@@ -35,7 +35,7 @@ func Execute() {
 func setupLogs() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
 	output := zerolog.ConsoleWriter{
-		Out:        os.Stderr,
+		Out:        os.Stdout,
 		TimeFormat: time.DateTime,
 		NoColor:    false,
 	}
