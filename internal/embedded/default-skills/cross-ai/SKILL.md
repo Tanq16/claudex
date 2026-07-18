@@ -26,20 +26,22 @@ Run these verbatim, substituting `<TASK>` and `<FILE>`. Each is read-only — no
 
 | Agent | Command |
 |-------|---------|
-| `agy` | `agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions < /dev/null 2>&1` |
+| `agy` | `agy -p "<TASK> @<FILE>" --model gemini-3.1-pro-high --dangerously-skip-permissions < /dev/null 2>&1` |
 | `gemini` | `gemini -m gemini-3.1-pro-preview -p "<TASK> @<FILE>" --output-format json \| jq -r '.response'` |
 | `codex` | `codex exec -m gpt-5.5 --skip-git-repo-check "<TASK>" 2>/dev/null` |
-| `cursor` | `cursor-agent -p "<TASK>" --model gpt-5.5 --output-format json \| jq -r '.result'` |
+| `cursor` | `cursor-agent -p "<TASK>" --model gpt-5.5-high --trust --output-format json \| jq -r '.result'` |
 | `claude` | `claude -p "<TASK>" --model claude-opus-4-8 --output-format json --allowedTools "Read,Grep,Glob,Bash" \| jq -r '.result'` |
 
 `@<FILE>` injection is for `agy`/`gemini`. `codex`/`cursor`/`claude` read the current working directory themselves — reference paths in `<TASK>` and they will open them.
 
 `agy` truncation guard: if its output looks cut off or garbled (it misbehaves on a non-TTY pipe), rerun under a pty and strip ANSI. `script`'s flags differ by OS — claudex runs on both:
 
-- macOS (BSD `script`): `script -q /dev/null agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions`
-- Linux (GNU `script`): `script -qec 'agy -p "<TASK> @<FILE>" --model gemini-3.1-pro --dangerously-skip-permissions' /dev/null`
+- macOS (BSD `script`): `script -q /dev/null agy -p "<TASK> @<FILE>" --model gemini-3.1-pro-high --dangerously-skip-permissions`
+- Linux (GNU `script`): `script -qec 'agy -p "<TASK> @<FILE>" --model gemini-3.1-pro-high --dangerously-skip-permissions' /dev/null`
 
 Pipe either through `perl -pe 's/\e\[[0-9;]*[A-Za-z]//g'` to strip color codes (portable across macOS/Linux).
+
+`cursor` workspace trust: cursor-agent refuses to run in an untrusted directory (it blocks on a "Workspace Trust Required" prompt instead of answering). The `--trust` in its command grants directory trust so the headless run proceeds; it is NOT `--force`/`--yolo` and does not auto-approve edits or command execution, so the read-only posture holds.
 
 ## Execution recipe
 
@@ -54,16 +56,16 @@ Default to the flagship in the table. If the user names a model after the agent 
 
 | Agent | Flag | Flagship (default) | Other selectable |
 |-------|------|--------------------|------------------|
-| `agy` | `--model` | `gemini-3.1-pro` | `gemini-3.5-flash`, `claude-opus`, `claude-sonnet`, `gpt-oss-120b` |
+| `agy` | `--model` | `gemini-3.1-pro-high` | `gemini-3.5-flash-low`, `claude-opus-4-6-thinking`, `gpt-oss-120b-medium` |
 | `gemini` | `-m` | `gemini-3.1-pro-preview` | `gemini-3-pro-preview`, `gemini-2.5-pro`, `gemini-3-flash` |
 | `codex` | `-m` | `gpt-5.5` | `gpt-5.4`, `gpt-5.4-mini`, `gpt-5.3-codex-spark` |
-| `cursor` | `--model` | `gpt-5.5` | `gpt-5.5-fast`, `opus-4.8`, `sonnet`, `gemini-3.1-pro`, `grok-4.3`, `composer-2.5` |
+| `cursor` | `--model` | `gpt-5.5-high` | `gpt-5.5-high-fast`, `claude-opus-4-8-thinking-high`, `composer-2.5`, `cursor-grok-4.5-high`, `gpt-5.3-codex` |
 | `claude` | `--model` | `claude-opus-4-8` | `claude-sonnet-4-6`, `claude-opus-4-8[1m]` |
 
 ## Rules of engagement
 
 - **Just run it.** Assume the binary is installed and authenticated. Do NOT `which`, version-check, `--help`, or test-run first. Build the command and execute in one step.
 - **Read-only by default.** Never pass write/auto-approve flags (`--force`, `--yolo`, `--sandbox workspace-write`, `--permission-mode acceptEdits`) unless the user explicitly asks the external agent to modify files.
-- **Stale model id is the only thing to check.** If a run fails because a model id was rejected, that is the one time to look: run the tool's list (`agy models`, `gemini --list-models`, `cursor-agent --list-models`, or check `--help`), pick the current flagship, and rerun. Model ids drift; the table is a snapshot.
+- **Stale model id is the only thing to check.** If a run fails because a model id was rejected, that is the one time to look: run the tool's list (`agy models`, `gemini --list-models`, `cursor-agent --list-models`, or check `--help`), pick the current flagship, and rerun. Model ids drift; the table is a snapshot. `cursor-agent --list-models` prints real ids. But `agy models` prints *display names*, not ids — the id is a lowercased/hyphenated form with a tier suffix (`Gemini 3.1 Pro (High)` → `gemini-3.1-pro-high`), the mapping is inconsistent (not every displayed tier resolves, and the dotted vs dashed version separator varies by family), so confirm a specific agy id with a one-line `agy -p "OK" --model <id> --dangerously-skip-permissions` run before trusting it.
 - **Auth failure → report and stop.** If a run fails with an auth/login error, surface it verbatim and stop. Don't try to fix the other tool's credentials.
 - **Not for Claude sub-agents.** `claude` here is the headless CLI process. The native Task tool ("launch a sub-agent") is unrelated and not dispatched through this skill.
