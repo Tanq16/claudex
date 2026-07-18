@@ -325,9 +325,6 @@ func discoverSessions(accounts []string, cwd string) []sessionEntry {
 	return all
 }
 
-// shortSessionID returns the leading 8 characters of a session UUID for
-// display in the resume picker. Session IDs are ASCII UUIDs, so byte slicing
-// is safe; shorter ids (should not occur) are returned as-is.
 func shortSessionID(id string) string {
 	if len(id) > 8 {
 		return id[:8]
