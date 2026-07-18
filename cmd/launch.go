@@ -140,9 +140,10 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		default:
 			labels := make([]string, len(sessions))
 			for i, sess := range sessions {
+				id := shortSessionID(sess.sessionID)
 				msg := padRight(u.Truncate(strings.Join(strings.Fields(sess.firstMessage), " "), 60), 60)
 				t := time.UnixMilli(sess.lastActivity).Local().Format("Jan 02 3:04pm")
-				labels[i] = fmt.Sprintf("%s  %s", msg, t)
+				labels[i] = fmt.Sprintf("%s  %s  %s", id, msg, t)
 				if multiAccount {
 					labels[i] += "  " + u.AbbreviatePath(sess.configDir)
 				}
@@ -322,6 +323,16 @@ func discoverSessions(accounts []string, cwd string) []sessionEntry {
 		all = all[:10]
 	}
 	return all
+}
+
+// shortSessionID returns the leading 8 characters of a session UUID for
+// display in the resume picker. Session IDs are ASCII UUIDs, so byte slicing
+// is safe; shorter ids (should not occur) are returned as-is.
+func shortSessionID(id string) string {
+	if len(id) > 8 {
+		return id[:8]
+	}
+	return id
 }
 
 func padRight(s string, width int) string {
