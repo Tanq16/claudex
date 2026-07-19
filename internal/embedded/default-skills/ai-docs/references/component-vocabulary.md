@@ -142,6 +142,8 @@ Inline status tags.
 
 Plain markdown-style HTML (`<table>`, `<ul>`, `<ol>`, `<p>`, `<blockquote>`) is already styled. Use tables for comparisons, lists when there are more than two items, prose for everything else. A right-hand table of contents is generated automatically from `<h2>` and `<h3>` once a doc has 3+ of them — so lean on headings to make long docs navigable.
 
+Write a plain `<table>`: the viewer auto-wraps it in a scroll container so a wide table wraps its cells while there is room and scrolls horizontally inside its own box once columns hit their readable floor. Don't hand-wrap tables in a div and don't add wrapper classes.
+
 ## Copy buttons (automatic — author nothing)
 
 The viewer injects a hover copy control onto every code block and every diagram, so you never hand-author copy UI:

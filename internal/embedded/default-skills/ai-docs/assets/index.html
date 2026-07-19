@@ -4,6 +4,14 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AI-docs</title>
+<script>
+  // Runs in <head>, not with the rest of the JS at end of <body>, so a persisted rail never flashes open.
+  try {
+    const d = document.documentElement;
+    if (localStorage.getItem('docs-sidebar-collapsed-v1') === '1') d.classList.add('sidebar-collapsed');
+    if (localStorage.getItem('docs-toc-collapsed-v1') === '1') d.classList.add('toc-collapsed');
+  } catch {}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -39,7 +47,9 @@
   ::-webkit-scrollbar-corner { background: transparent; }
 
   /* sidebar */
-  aside.sidebar { background: var(--mantle); }
+  aside.sidebar { background: var(--mantle); transition: width 120ms ease, visibility 0s; }
+  /* width:0 alone would leave the collapsed tree focusable; the delay keeps visibility from cutting the width animation short. */
+  html.sidebar-collapsed aside.sidebar { width: 0; overflow: hidden; visibility: hidden; transition: width 120ms ease, visibility 0s linear 120ms; }
   .nav-folder { margin-top: 0.1rem; }
   .nav-folder + .nav-folder { margin-top: 0.4rem; }
   .nav-section { display: flex; align-items: center; gap: 0.35rem; width: 100%; text-align: left; background: transparent; border: 0; cursor: pointer; color: var(--overlay1); font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; padding: 0.55rem 0.85rem 0.35rem 0.7rem; font-weight: 500; font-family: inherit; }
@@ -55,6 +65,8 @@
 
   /* top bar */
   .top-bar { background: color-mix(in srgb, var(--base) 80%, transparent); backdrop-filter: blur(10px); }
+  #toc-toggle { display: none; }
+  html.has-toc #toc-toggle { display: flex; }
 
   /* prose */
   .prose { color: var(--text); max-width: 120ch; font-size: 0.95rem; line-height: 1.7; }
@@ -83,9 +95,12 @@
   .prose blockquote { background: var(--mantle); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; color: var(--subtext1); }
   .prose blockquote p { margin: 0.25rem 0; }
   .prose hr { border: none; height: 1px; background: var(--hair); margin: 2.25rem 0; }
-  .prose table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.88rem; background: var(--mantle); border-radius: 8px; overflow: hidden; }
+  .table-wrap { max-width: 100%; overflow-x: auto; margin: 1rem 0; background: var(--mantle); border-radius: 8px; transition: box-shadow 120ms ease; }
+  .table-wrap.scroll-cue { box-shadow: inset -2rem 0 1.5rem -1.5rem var(--crust); }
+  .prose table { --table-col-min: 7rem; width: 100%; border-collapse: collapse; margin: 0; font-size: 0.88rem; }
   .prose th { text-align: left; padding: 0.55rem 0.85rem; background: color-mix(in srgb, var(--surface0) 60%, var(--mantle)); color: var(--lavender); font-weight: 600; font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.05em; }
   .prose td { padding: 0.55rem 0.85rem; vertical-align: top; }
+  .prose th, .prose td { min-width: var(--table-col-min); overflow-wrap: anywhere; }
   .prose tbody tr + tr td { border-top: 1px solid var(--hair); }
   .prose img { max-width: 100%; border-radius: 8px; }
 
@@ -143,8 +158,9 @@
 
   /* note (no left border bar) */
   .note { background: var(--mantle); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: var(--subtext1); display: flex; gap: 0.55rem; align-items: flex-start; }
-  .note .note-icon { color: var(--overlay1); flex-shrink: 0; margin-top: 0.15rem; }
+  .note .note-icon { color: var(--overlay1); flex-shrink: 0; margin-top: calc((1lh - 1rem) / 2); }
   .note p { margin: 0.15rem 0; }
+  .note p:first-of-type { margin-top: 0; }
   .note-mauve .note-icon { color: var(--mauve); }
   .note-yellow .note-icon { color: var(--yellow); }
   .note-red .note-icon { color: var(--red); }
@@ -162,7 +178,7 @@
   .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 1rem 0; }
   .cols-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin: 1rem 0; }
   @media (max-width: 900px) { .cols-2, .cols-3 { grid-template-columns: 1fr; } }
-  .col { background: var(--mantle); border-radius: 8px; padding: 0.85rem 1rem; }
+  .col { background: var(--mantle); border-radius: 8px; padding: 0.85rem 1rem; min-width: 0; }
   .col h4 { margin-top: 0; }
 
   /* chips */
@@ -208,7 +224,8 @@
   .toc a.active { color: var(--lavender); background: var(--surface0); }
   .toc .toc-h3 a { padding-left: 1.6rem; font-size: 0.74rem; color: var(--overlay1); }
   .toc .toc-h3 a:hover, .toc .toc-h3 a.active { color: var(--subtext1); }
-  @media (max-width: 1320px) { .toc { display: none; } }
+  html.toc-collapsed .toc, html:not(.has-toc) .toc { display: none; }
+  @media (max-width: 1320px) { .toc { display: none; } html.has-toc #toc-toggle { display: none; } }
 </style>
 </head>
 <body class="flex h-screen overflow-hidden">
@@ -223,12 +240,22 @@
 
 <main class="flex-1 overflow-y-auto relative">
   <div class="top-bar no-print sticky top-0 z-20 flex items-center justify-between px-7 py-3">
-    <div id="breadcrumb" class="mono text-[11px]" style="color: var(--overlay0);"></div>
-    <div class="relative">
-      <button id="export-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium" style="background: var(--surface0); color: var(--text);">
-        <i data-lucide="printer" class="w-3.5 h-3.5"></i>
-        <span>PDF</span>
+    <div class="flex items-center gap-2.5">
+      <button id="sidebar-toggle" class="flex items-center px-2.5 py-1.5 rounded text-xs font-medium" style="background: var(--surface0); color: var(--text);" title="Toggle file tree">
+        <i data-lucide="panel-left" class="w-3.5 h-3.5"></i>
       </button>
+      <div id="breadcrumb" class="mono text-[11px]" style="color: var(--overlay0);"></div>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="toc-toggle" class="flex items-center px-2.5 py-1.5 rounded text-xs font-medium" style="background: var(--surface0); color: var(--text);" title="Toggle contents">
+        <i data-lucide="list" class="w-3.5 h-3.5"></i>
+      </button>
+      <div class="relative">
+        <button id="export-btn" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-xs font-medium" style="background: var(--surface0); color: var(--text);">
+          <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+          <span>PDF</span>
+        </button>
+      </div>
     </div>
   </div>
   <div class="content-wrap">
@@ -239,6 +266,7 @@
 
 <style>
   .content-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 200px; gap: 2.5rem; max-width: 1380px; margin: 0 auto; padding: 2rem 2.25rem 6rem; }
+  html.toc-collapsed .content-wrap, html:not(.has-toc) .content-wrap { grid-template-columns: minmax(0, 1fr); }
   @media (max-width: 1320px) { .content-wrap { grid-template-columns: minmax(0, 1fr); padding: 2rem 2.5rem 6rem; max-width: calc(120ch + 4.5rem); } }
 </style>
 
@@ -248,9 +276,12 @@
   const breadcrumb = document.getElementById('breadcrumb');
   const exportBtn = document.getElementById('export-btn');
   const tocEl = document.getElementById('toc');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const tocToggle = document.getElementById('toc-toggle');
 
   let currentDoc = null;
   let tocObserver = null;
+  let tableObserver = null;
 
   marked.setOptions({ gfm: true, breaks: false, headerIds: false, mangle: false });
 
@@ -264,6 +295,18 @@
   const getCollapsed = () => { try { return new Set(JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]')); } catch { return new Set(); } };
   const saveCollapsed = (s) => { try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...s])); } catch {} };
   const collapsed = getCollapsed();
+
+  const SIDEBAR_KEY = 'docs-sidebar-collapsed-v1';
+  const TOC_KEY = 'docs-toc-collapsed-v1';
+
+  function bindRailToggle(btn, cls, key) {
+    btn.addEventListener('click', () => {
+      const on = document.documentElement.classList.toggle(cls);
+      try { localStorage.setItem(key, on ? '1' : '0'); } catch {}
+    });
+  }
+  bindRailToggle(sidebarToggle, 'sidebar-collapsed', SIDEBAR_KEY);
+  bindRailToggle(tocToggle, 'toc-collapsed', TOC_KEY);
 
   const INDENT_STEP = 0.75;
   const BASE_PAD = 0.7;
@@ -339,7 +382,7 @@
     return item;
   }
 
-  async function loadDocs() {
+  async function loadDocs(opts) {
     const res = await fetch('/api/docs');
     const items = await res.json();
     treeEl.innerHTML = '';
@@ -348,7 +391,8 @@
 
     const hash = decodeURIComponent(location.hash.slice(1));
     const target = hash ? revealInTree(hash) : null;
-    (target || treeEl.querySelector('.nav-item'))?.click();
+    const el = target || treeEl.querySelector('.nav-item');
+    if (el) await loadDoc(el.dataset.path, el.dataset.type, opts);
   }
 
   function highlightCode() {
@@ -442,9 +486,30 @@
     });
   }
 
+  const updateScrollCue = (wrap) => wrap.classList.toggle('scroll-cue', wrap.scrollWidth - wrap.clientWidth - wrap.scrollLeft > 1);
+  const onTableScroll = (e) => updateScrollCue(e.currentTarget);
+
+  function wrapTables() {
+    if (tableObserver) { tableObserver.disconnect(); tableObserver = null; }
+    contentEl.querySelectorAll('table').forEach(table => {
+      if (table.closest('.table-wrap')) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'table-wrap';
+      table.parentNode.insertBefore(wrap, table);
+      wrap.appendChild(table);
+    });
+    tableObserver = new ResizeObserver(entries => entries.forEach(e => updateScrollCue(e.target)));
+    contentEl.querySelectorAll('.table-wrap').forEach(wrap => {
+      wrap.addEventListener('scroll', onTableScroll);
+      tableObserver.observe(wrap);
+      updateScrollCue(wrap);
+    });
+  }
+
   function buildToc() {
     if (tocObserver) { tocObserver.disconnect(); tocObserver = null; }
     const headings = [...contentEl.querySelectorAll('h2, h3')];
+    document.documentElement.classList.toggle('has-toc', headings.length >= 3);
     if (headings.length < 3) { tocEl.innerHTML = ''; return; }
 
     const seen = new Set();
@@ -474,7 +539,7 @@
     headings.forEach(h => tocObserver.observe(h));
   }
 
-  async function loadDoc(path, type) {
+  async function loadDoc(path, type, { preserveScroll = false } = {}) {
     currentDoc = { path, type };
     location.hash = encodeURIComponent(path);
     document.querySelectorAll('.nav-item').forEach(el => el.classList.toggle('active', el.dataset.path === path));
@@ -488,9 +553,10 @@
     }
     highlightCode();
     decorateCopyables();
+    wrapTables();
     buildToc();
     rebuildIcons();
-    document.querySelector('main').scrollTo({ top: 0, behavior: 'instant' });
+    if (!preserveScroll) document.querySelector('main').scrollTo({ top: 0, behavior: 'instant' });
   }
 
   exportBtn.addEventListener('click', () => {
@@ -515,7 +581,7 @@
     liveReloadTimer = setTimeout(async () => {
       const main = document.querySelector('main');
       const y = main ? main.scrollTop : 0;
-      await loadDocs();
+      await loadDocs({ preserveScroll: true });
       if (main) main.scrollTo({ top: y, behavior: 'instant' });
     }, 120);
   }
