@@ -48,7 +48,7 @@
 
   /* sidebar */
   aside.sidebar { background: var(--mantle); transition: width 120ms ease, visibility 0s; }
-  /* visibility (not just width:0) keeps the collapsed tree out of the tab order and a11y tree; delayed so it survives the width animation. */
+  /* width:0 alone would leave the collapsed tree focusable; the delay keeps visibility from cutting the width animation short. */
   html.sidebar-collapsed aside.sidebar { width: 0; overflow: hidden; visibility: hidden; transition: width 120ms ease, visibility 0s linear 120ms; }
   .nav-folder { margin-top: 0.1rem; }
   .nav-folder + .nav-folder { margin-top: 0.4rem; }
@@ -158,7 +158,6 @@
 
   /* note (no left border bar) */
   .note { background: var(--mantle); border-radius: 8px; padding: 0.7rem 1rem; margin: 1rem 0; font-size: 0.9rem; color: var(--subtext1); display: flex; gap: 0.55rem; align-items: flex-start; }
-  /* centers the 1rem icon on the first line box rather than on the text's ascender */
   .note .note-icon { color: var(--overlay1); flex-shrink: 0; margin-top: calc((1lh - 1rem) / 2); }
   .note p { margin: 0.15rem 0; }
   .note p:first-of-type { margin-top: 0; }
@@ -499,7 +498,6 @@
       table.parentNode.insertBefore(wrap, table);
       wrap.appendChild(table);
     });
-    // One observer catches every width change at once: window resize and either rail collapsing.
     tableObserver = new ResizeObserver(entries => entries.forEach(e => updateScrollCue(e.target)));
     contentEl.querySelectorAll('.table-wrap').forEach(wrap => {
       wrap.addEventListener('scroll', onTableScroll);
