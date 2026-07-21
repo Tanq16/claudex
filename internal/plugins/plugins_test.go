@@ -139,7 +139,7 @@ func testGlobalFS() (skills, styles fs.FS) {
 			"default-skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
 			"default-skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
 		}, fstest.MapFS{
-			"output-styles/caveman.md": {Data: []byte("caveman v1")},
+			"output-styles/claudex.md": {Data: []byte("claudex v1")},
 			"output-styles/robot.md":   {Data: []byte("robot v1")},
 		}
 }
@@ -176,8 +176,8 @@ func TestBuildGlobalPluginInstallsEverything(t *testing.T) {
 	if got := read(t, filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); got != "nested v1" {
 		t.Fatalf("ai-docs nested file = %q", got)
 	}
-	if got := read(t, filepath.Join(dir, "output-styles", "caveman.md")); got != "caveman v1" {
-		t.Fatalf("caveman = %q", got)
+	if got := read(t, filepath.Join(dir, "output-styles", "claudex.md")); got != "claudex v1" {
+		t.Fatalf("claudex = %q", got)
 	}
 	if got := read(t, filepath.Join(dir, "output-styles", "robot.md")); got != "robot v1" {
 		t.Fatalf("robot style = %q", got)
@@ -204,7 +204,7 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	}
 
 	skillFile := filepath.Join(dir, "skills", "cross-ai", "SKILL.md")
-	styleFile := filepath.Join(dir, "output-styles", "caveman.md")
+	styleFile := filepath.Join(dir, "output-styles", "claudex.md")
 	if err := os.WriteFile(skillFile, []byte("user edit"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -216,7 +216,7 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
 		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
 	}
-	newStyles := fstest.MapFS{"output-styles/caveman.md": {Data: []byte("caveman v2")}}
+	newStyles := fstest.MapFS{"output-styles/claudex.md": {Data: []byte("claudex v2")}}
 
 	if err := BuildGlobalPlugin(dir, newSkills, newStyles, false); err != nil {
 		t.Fatalf("write-if-missing build error = %v", err)
@@ -234,7 +234,7 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	if got := read(t, skillFile); got != "cross-ai v2" {
 		t.Fatalf("refresh did not replace the skill: %q", got)
 	}
-	if got := read(t, styleFile); got != "caveman v2" {
+	if got := read(t, styleFile); got != "claudex v2" {
 		t.Fatalf("refresh did not replace the style: %q", got)
 	}
 }
