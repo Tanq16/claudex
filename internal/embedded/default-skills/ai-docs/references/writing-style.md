@@ -25,7 +25,7 @@ If you would have written 6 paragraphs of markdown, write the conclusion + the 2
 
 ## Lean mode (opt-in)
 
-The rules above are the **default ("tight")** density. *Lean mode* is a further squeeze, applied **only when the user asks** ("make this lean", "terse it up", "lean docs") — never automatically. It is caveman-inspired information density, but the house styling and the nothing-dropped rule still hold: lean *ranks and compresses*, it never *deletes*.
+The rules above are the **default ("tight")** density. *Lean mode* is a further squeeze, applied **only when the user asks** ("make this lean", "terse it up", "lean docs") — never automatically. It is maximal information density, but the house styling and the nothing-dropped rule still hold: lean *ranks and compresses*, it never *deletes*.
 
 What changes in lean mode:
 

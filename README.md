@@ -100,7 +100,7 @@ No command needs a flag. Run `claudex configure` once, then `claudex launch` in 
 Run this once, right after installing. With no arguments it provisions **every account it discovers** in a single pass:
 
 - **Per account** — a statusline and a set of opinionated `settings.json` defaults. Your existing settings and env vars are preserved; only ClaudeX's keys are merged in.
-- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `caveman` output style, the `cross-ai` and `ai-docs` skills, and a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below). Anything you drop into its `skills/` or `output-styles/` rides along the same way.
+- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `ClaudeX` output style, the `cross-ai` and `ai-docs` skills, and a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below). Anything you drop into its `skills/` or `output-styles/` rides along the same way.
 - **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
 
 `-A <path>` targets a single account; `--label` names that account's statusline and only applies with `-A`.
