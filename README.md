@@ -100,7 +100,7 @@ No command needs a flag. Run `claudex configure` once, then `claudex launch` in 
 Run this once, right after installing. With no arguments it provisions **every account it discovers** in a single pass:
 
 - **Per account** — a statusline and a set of opinionated `settings.json` defaults. Your existing settings and env vars are preserved; only ClaudeX's keys are merged in.
-- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `caveman` output style plus the `cross-ai` and `ai-docs` skills. Anything you drop into its `skills/` or `output-styles/` rides along the same way.
+- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `caveman` output style, the `cross-ai` and `ai-docs` skills, and a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below). Anything you drop into its `skills/` or `output-styles/` rides along the same way.
 - **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
 
 `-A <path>` targets a single account; `--label` names that account's statusline and only applies with `-A`.
@@ -109,6 +109,16 @@ Run this once, right after installing. With no arguments it provisions **every a
 claudex configure
 claudex configure -A ~/.claude2 --label prod
 ```
+
+**Language servers ship on by default.** The global plugin's `.lsp.json` gives Claude go-to-definition, find-references, and type errors after every edit — no build step — in every session. You install the binaries yourself; a server whose binary is missing is skipped and the rest still start, so a partial install is fine, and `/plugin` (Errors tab) is where a missing one is reported.
+
+| Language | Binary | Install |
+|---|---|---|
+| Go | `gopls` | `go install golang.org/x/tools/gopls@latest` |
+| Python | `pyright-langserver` | `npm install -g pyright` |
+| TypeScript / JS | `typescript-language-server` | `npm install -g typescript-language-server typescript@5` |
+
+`typescript` is a second package, not a typo — the server drives `tsserver` and ships without it, resolving it from the project's `node_modules` first and falling back to the global install. The `@5` pin matters: `typescript@latest` is 7.x, which no longer ships a `tsserver` binary, and the language server refuses to start against it. Language servers are not MCP, so `--mcp none` leaves them running; `claude --bare` is what skips them.
 
 **Accounts are found, never created.** ClaudeX picks up `~/.claude` and any numbered sibling (`~/.claude2`, `~/.claude3`, …). To add one, point Claude Code at a fresh directory and log in there — `CLAUDE_CONFIG_DIR=~/.claude2 claude` — then run `configure` again.
 
@@ -145,18 +155,19 @@ The global plugin loads every launch, so your global skills and output style are
 | `default.md` + others | pick one (`default` pre-selected) or None |
 | others, no `default.md` | pick one or None |
 
-**Plugins are how you bring your own skills and MCP servers.** `-P/--plugins` takes a local directory or a git URL (repeatable). Git repos are shallow-cloned — or shallow-updated if already fetched — under `~/.config/claudex/plugins`, and loaded alongside the global one. No marketplace, no version pinning, no orphaned copies: you get whatever is at the tip. A plugin is just a directory:
+**Plugins are how you bring your own skills, MCP servers, and language servers.** `-P/--plugins` takes a local directory or a git URL (repeatable). Git repos are shallow-cloned — or shallow-updated if already fetched — under `~/.config/claudex/plugins`, and loaded alongside the global one. No marketplace, no version pinning, no orphaned copies: you get whatever is at the tip. A plugin is just a directory:
 
 ```
 my-plugin/
 ├── .claude-plugin/plugin.json     # {"name": "my-plugin", "version": "1.0.0"}
 ├── skills/<name>/SKILL.md         # skills
-└── .mcp.json                      # MCP servers, same schema as a project .mcp.json
+├── .mcp.json                      # MCP servers, same schema as a project .mcp.json
+└── .lsp.json                      # language servers, keyed by name
 ```
 
-Any subset works — skills only, MCPs only, both. Splitting them across plugins is how you keep separately loadable sets (an MCP-only plugin you pull in for one session, say). This repo is itself one: **`claudex-dev`**, carrying ClaudeX's opinionated Go/Node development skills.
+Any subset works — skills only, MCPs only, language servers only, or any mix. Splitting them across plugins is how you keep separately loadable sets (an MCP-only plugin you pull in for one session, say). This repo is itself one: **`claudex-dev`**, carrying ClaudeX's opinionated Go/Node development skills.
 
-`--mcp none` suppresses **every** MCP server for the session, including any a loaded plugin declares — so an MCP-carrying plugin still leaves you one flag away from a clean session.
+`--mcp none` suppresses **every** MCP server for the session, including any a loaded plugin declares — so an MCP-carrying plugin still leaves you one flag away from a clean session. It does not touch language servers, which are not MCP; `claude --bare` is what skips those. The global plugin already carries a `.lsp.json` for Go, Python, and TypeScript (see [`configure`](#configure)), so a `-P` plugin only needs its own for a language beyond those.
 
 ```bash
 claudex launch
