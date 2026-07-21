@@ -182,6 +182,18 @@ func TestBuildGlobalPluginInstallsEverything(t *testing.T) {
 	if got := read(t, filepath.Join(dir, "output-styles", "robot.md")); got != "robot v1" {
 		t.Fatalf("robot style = %q", got)
 	}
+
+	var lsp map[string]struct {
+		Command string `json:"command"`
+	}
+	if err := json.Unmarshal([]byte(read(t, filepath.Join(dir, ".lsp.json"))), &lsp); err != nil {
+		t.Fatalf(".lsp.json is not valid JSON: %v", err)
+	}
+	for name, want := range map[string]string{"go": "gopls", "python": "pyright-langserver", "typescript": "typescript-language-server"} {
+		if lsp[name].Command != want {
+			t.Fatalf(".lsp.json %s.command = %q, want %q", name, lsp[name].Command, want)
+		}
+	}
 }
 
 func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
@@ -224,6 +236,27 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	}
 	if got := read(t, styleFile); got != "caveman v2" {
 		t.Fatalf("refresh did not replace the style: %q", got)
+	}
+}
+
+func TestBuildGlobalPluginAlwaysRewritesLSP(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "global")
+	skills, styles := testGlobalFS()
+	if err := BuildGlobalPlugin(dir, skills, styles, false); err != nil {
+		t.Fatalf("initial build error = %v", err)
+	}
+
+	lspPath := filepath.Join(dir, ".lsp.json")
+	if err := os.WriteFile(lspPath, []byte("stale"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Unlike skills/styles, .lsp.json is rewritten even without refresh so a schema change reaches existing installs.
+	if err := BuildGlobalPlugin(dir, skills, styles, false); err != nil {
+		t.Fatalf("rebuild error = %v", err)
+	}
+	if got := read(t, lspPath); got == "stale" {
+		t.Fatal(".lsp.json was not rewritten on a no-refresh build")
 	}
 }
 

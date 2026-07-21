@@ -69,6 +69,9 @@ func BuildGlobalPlugin(dir string, skillsFS, outputStylesFS fs.FS, refresh bool)
 	if err := writeGlobalManifest(dir); err != nil {
 		return err
 	}
+	if err := writeGlobalLSP(dir); err != nil {
+		return err
+	}
 
 	skills, err := fs.ReadDir(skillsFS, "default-skills")
 	if err != nil {
@@ -109,7 +112,7 @@ func writeGlobalManifest(dir string) error {
 	}
 	data, err := json.MarshalIndent(map[string]any{
 		"name":        "claudex",
-		"description": "claudex's curated skills and output styles, auto-loaded across every account",
+		"description": "claudex's curated skills, output styles, and language servers, auto-loaded across every account",
 		"version":     "0.0.1",
 	}, "", "  ")
 	if err != nil {
@@ -117,6 +120,40 @@ func writeGlobalManifest(dir string) error {
 	}
 	data = append(data, '\n')
 	return writeFileAtomic(manifest, data, 0o644)
+}
+
+// Rewritten every build (not write-if-missing like skills/styles) so an added server or schema change reaches existing installs. A server whose binary is absent is skipped by Claude Code, so shipping all three by default is safe.
+func writeGlobalLSP(dir string) error {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(map[string]any{
+		"go": map[string]any{
+			"command":             "gopls",
+			"args":                []string{"serve"},
+			"extensionToLanguage": map[string]string{".go": "go"},
+		},
+		"python": map[string]any{
+			"command":             "pyright-langserver",
+			"args":                []string{"--stdio"},
+			"extensionToLanguage": map[string]string{".py": "python", ".pyi": "python"},
+		},
+		"typescript": map[string]any{
+			"command": "typescript-language-server",
+			"args":    []string{"--stdio"},
+			"extensionToLanguage": map[string]string{
+				".ts": "typescript", ".mts": "typescript", ".cts": "typescript",
+				".tsx": "typescriptreact",
+				".js":  "javascript", ".mjs": "javascript", ".cjs": "javascript",
+				".jsx": "javascriptreact",
+			},
+		},
+	}, "", "  ")
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	return writeFileAtomic(filepath.Join(dir, ".lsp.json"), data, 0o644)
 }
 
 func installTree(srcFS fs.FS, root, dest string, refresh bool) error {
