@@ -33,8 +33,6 @@ And the commands themselves:
 | `launch` | Guided start of a Claude Code session — right account, MCP mode, and flavor, with the global plugin always loaded |
 | `switch` | Move a conversation from one account to another and continue it there |
 | `oauth-token` | A Claude OAuth access token via the browser PKCE flow |
-| `ai-docs` | Serve the ai-docs viewer for capturing durable HTML docs in the current project |
-
 Three steps — and after the first two, you only ever type `claudex launch`:
 
 ```mermaid
@@ -100,7 +98,7 @@ No command needs a flag. Run `claudex configure` once, then `claudex launch` in 
 Run this once, right after installing. With no arguments it provisions **every account it discovers** in a single pass:
 
 - **Per account** — a statusline and a set of opinionated `settings.json` defaults. Your existing settings and env vars are preserved; only ClaudeX's keys are merged in.
-- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `ClaudeX` output style, the `cross-ai` and `ai-docs` skills, and a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below). Anything you drop into its `skills/` or `output-styles/` rides along the same way.
+- **The global plugin** — built at `~/.config/claudex/global` and shared by every account, so its content is in every session with no per-account setup: the `ClaudeX` output style, the `cross-ai` skill, and a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below). Anything you drop into its `skills/` or `output-styles/` rides along the same way.
 - **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
 
 `-A <path>` targets a single account; `--label` names that account's statusline and only applies with `-A`.
@@ -204,15 +202,6 @@ A Claude OAuth access token via the browser-based PKCE flow, valid one hour by d
 ```bash
 claudex oauth-token
 TOKEN=$(claudex oauth-token)
-```
-
-### `ai-docs`
-
-`ai-docs` is one of the global-plugin skills — it captures durable deliverables (architecture, design, research, analysis) as curated HTML you read through a small local viewer. This command is a thin launcher for it: it execs the skill's Node server and serves `./AI-docs` in the current project (created on first run) at `http://127.0.0.1:4321`. It needs Node.js on your PATH and the global plugin built (`claudex configure`). `--docs` serves a different directory; `--port` runs more than one viewer at once.
-
-```bash
-claudex ai-docs
-claudex ai-docs --docs security-docs --port 4322
 ```
 
 ### Global flags

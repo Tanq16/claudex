@@ -94,7 +94,6 @@ Escalate to `review-code` instead when: you are re-engaging a project you have n
 | Makefile, GitHub Actions, Docker, releases, versioning | `project-ci-cd` |
 | README | `project-readme` |
 | Chrome extension (manifest, popup, content/background scripts) | `chrome-extension-basics` |
-| Persisted HTML deliverable doc (architecture/design/research/analysis) | `ai-docs` |
 
 For which skills a whole project type typically pulls in, defer to the `go-foundations` taxonomy and layout — it is the source of truth for project structure.
 

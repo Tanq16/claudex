@@ -65,6 +65,5 @@ func init() {
 	rootCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(configureCmd)
-	rootCmd.AddCommand(aiDocsCmd)
 	rootCmd.AddCommand(initPluginCmd)
 }
