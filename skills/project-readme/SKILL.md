@@ -16,6 +16,13 @@ Use this skill when:
 - Adding badges, headers, or navigation links
 - Structuring documentation for CLI tools, web apps, or extensions
 
+## Start here — required reading
+
+Read this now, in full, before writing or updating a README — it carries the templates you'll copy from.
+
+**Always:**
+- `./references/readme-templates.md` — complete README templates for every project type
+
 ## README Types
 
 | Project Type | Key Sections |

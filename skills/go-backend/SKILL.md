@@ -22,6 +22,16 @@ Use this skill when:
 
 **Web Only constraint:** Internal packages in Web Only projects — and the server layer of CLI + Web hybrids — must NOT import `utils/`. Use `log.Printf` with manual level prefixes (e.g., `log.Printf("ERROR ...")`) and `log.Fatal()`/`log.Fatalf()` for fatal errors. Keep messages generic — no package-name prefix. (A hybrid's CLI-operation packages follow CLI Only conventions instead.)
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before building the server — it carries the canonical server structure you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/http-server-template.md` — the canonical embedded-static `net/http` server (full `server.go`, skeleton, middleware)
+
+**When adding OAuth authentication to a CLI client:**
+- `./references/auth-patterns.md` — complete `internal/auth/auth.go` + `cmd/login.go` templates
+
 ## Package Architecture
 
 ### By Domain/Feature (Default)

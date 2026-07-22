@@ -26,6 +26,16 @@ Use this skill when:
 
 Node Web Only is the only Node project type today. There is no Node "CLI Only", "CLI + Web", or "Library" type yet — those are out of scope.
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before building the page — it carries the boilerplate and theme you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/html-template.md` — full `index.html` boilerplate, Catppuccin palette, vendored-font `@font-face` wiring
+
+**When adding the realtime WebSocket client:**
+- `./references/websocket-client.md` — reconnecting client: backoff, `type`-keyed dispatch, queued send
+
 ## Directory Structure
 
 ```

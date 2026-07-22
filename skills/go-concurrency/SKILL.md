@@ -31,6 +31,18 @@ Use this skill when:
 
 ---
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before writing concurrent code — it carries the six primitive patterns you'll be held to. Read each **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/concurrency-patterns.md` — the six goroutine patterns + context cancellation (Part 1)
+
+**When building a resumable Highway job pipeline (Part 2):**
+- `./references/highway-template.md` — the full Highway engine + state save/load
+- `./references/job-examples.md` — example job types (simple and resumable)
+- `./references/display-template.md` — the terminal display manager (+ AI mode, web hook)
+
 # Part 1 — Concurrency Primitives
 
 **Vanilla concurrency for use inside jobs or standalone operations.**

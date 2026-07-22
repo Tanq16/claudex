@@ -24,6 +24,21 @@ Use this skill when:
 
 ---
 
+## Start here — required reading
+
+This skill branches by stack. Read the **Always** files for a Go/extension project before touching its CI/CD; for a Node Web Only project, read the Node files instead. A subagent may read any of these if you delegate that work.
+
+**Always (Go / Chrome extension):**
+- `./references/makefile-template.md` — the Makefile with asset management and build targets
+- `./references/release-workflow.md` — the GitHub Actions release automation
+
+**When adding a Dockerfile (Go):**
+- `./references/dockerfile-template.md` — two-stage Docker build
+
+**When the project is Node Web Only (read these instead of the Go files):**
+- `./references/node-makefile.md` — Node Makefile: vendor assets, build native addon, verify, assemble
+- `./references/node-release.md` — Node release: binary vs tarball, Bun/SEA, Debian-slim Docker, release matrix
+
 ## CI/CD Files Checklist
 
 ### Go CLI Only Projects

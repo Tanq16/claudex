@@ -20,6 +20,13 @@ Use this skill when:
 - `project-readme` - README templates (includes extension template with security disclaimer)
 - `project-ci-cd` - Makefile for building extension zip
 
+## Start here — required reading
+
+Read this now, in full, before building the extension popup — it carries the complete popup implementation.
+
+**Always:**
+- `./references/popup-template.md` — complete popup HTML/CSS/JS with the Catppuccin theme
+
 ## Project Layout
 
 ```

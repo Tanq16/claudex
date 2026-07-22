@@ -24,6 +24,18 @@ Activate this skill when the user wants something *captured* (not just discussed
 - The agent's reasoning, decisions, and back-and-forth → stay in chat. The user reads those there.
 - Don't pre-emptively dump intermediate notes into the docs directory. Capture when something is *ready*.
 
+## Start here — required reading
+
+Read the **Always** files now, in full, before writing any doc — they define the representation rules you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/writing-style.md` — prose + structure rules (representation, not substance)
+- `./references/document-template.md` — the default doc spine + worked example
+- `./references/component-vocabulary.md` — the only HTML classes/components the viewer supports
+
+**When the doc has any diagram, flow, or chart:**
+- `./references/diagrams.md` — the house SVG style + copyable worked example
+
 ## Core principle
 
 This skill changes **representation, not substance.** The information the agent would produce for a task is unchanged — it is reorganized into a light structure, phrased tighter, and rendered as HTML so it is easy to consume long-term. Nothing is dropped: depth and exhaust move into a collapsible `Raw material` section, they are not deleted. See `./references/writing-style.md`.

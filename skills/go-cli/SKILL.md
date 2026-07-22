@@ -20,6 +20,16 @@ Use this skill when:
 
 **Requires:** `go-foundations` for project layout and utils package.
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before writing command output — it carries the output-lifecycle rules you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/output-lifecycle-patterns.md` — phase/single-op/check/progress patterns every command follows
+
+**When scaffolding `main.go`, `cmd/root.go`, a command, a subcommand package, or `cmd/login.go`:**
+- `./references/command-templates.md` — full code for those files plus the lipgloss color palette
+
 ## Project Type Context
 
 CLI Only and Web Only projects have different root command setups (CLI + Web hybrids use the CLI Only setup, plus a `serve` command):

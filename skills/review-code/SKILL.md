@@ -15,6 +15,17 @@ Use this skill when:
 - Checking a specific package or domain against best practices
 - Running a full multi-agent code review
 
+## Start here — required reading
+
+Every domain in scope must have its `review-domain-*.md` read before that domain is reviewed — by you for a targeted review, or by the domain's subagent for a full review (the subagent prompt in the Workflow already requires it). Never review a domain without its file. Read only the file(s) for the domain(s) that apply to the detected project type.
+
+- `./references/review-domain-go-foundations.md` — reviewing Go Foundations (layout, principles, modern Go, logging, utils)
+- `./references/review-domain-go-cli.md` — reviewing Go CLI (Cobra, commands, output lifecycle, TUI)
+- `./references/review-domain-go-backend-frontend.md` — reviewing Go backend/frontend (architecture, assets)
+- `./references/review-domain-go-concurrency.md` — reviewing Go concurrency (primitives, Highway pipeline)
+- `./references/review-domain-infra.md` — reviewing infrastructure (CI/CD, Chrome, README, deps)
+- `./references/review-domain-node.md` — reviewing Node (foundations, backend, frontend)
+
 ## Review Domains
 
 Reviews are organized into 6 domains, each with its own check tables:

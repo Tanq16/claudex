@@ -22,6 +22,18 @@ Use this skill when:
 
 **Requires:** `go-foundations` for project layout.
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before building the page — it carries the boilerplate and theme rules you'll be held to. Read each **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/html-template.md` — full `index.html` boilerplate, Catppuccin palette, font wiring, PWA files
+
+**When the sub-task calls for it:**
+- `./references/markdown-rendering.md` — when rendering Markdown to styled HTML
+- `./references/mermaid-config.md` — when adding Mermaid diagrams
+- `../go-backend/references/http-server-template.md` — when wiring the `embed.FS` server that serves `static/`
+
 ## Directory Structure
 
 ```
