@@ -22,6 +22,16 @@ This skill is the *reference* for how Go projects should look. The `develop` ski
 - `project-readme` - README structure and templates
 - `project-ci-cd` - Makefile, GitHub Actions, releases
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before writing any Go — it carries the idioms you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/modern-go.md` — curated modern Go 1.26+ idioms applied throughout
+
+**When building or changing the `utils/` package:**
+- `./references/utils-templates.md` — complete printer/input/table/config implementations
+
 ## Project Taxonomy
 
 This is the **canonical project taxonomy** for all Go work. Other skills (`go-cli`, `go-backend`, `go-frontend`, `develop`, `review-code`) refer back to these type names rather than redefining them.

@@ -24,6 +24,16 @@ This skill is the *reference* for how Node projects should look. The `develop` s
 - `project-readme` - README structure and templates
 - `project-ci-cd` - Makefile, GitHub Actions, releases (Node artifact/toolchain layer)
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before writing any Node — it carries the idioms you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/modern-node.md` — curated modern Node idioms (ESM, `node:` builtins, `node:test`) applied throughout
+
+**When scaffolding a new project or its config loader:**
+- `./references/project-templates.md` — `package.json`, deep-merge config loader, `state.json` writer, `bin/` launcher
+
 ## Project Taxonomy
 
 This is the **canonical project taxonomy** for all Node work. Other skills (`node-backend`, `node-frontend`, `develop`, `review-code`) refer back to this type name rather than redefining it.

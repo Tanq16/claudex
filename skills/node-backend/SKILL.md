@@ -22,6 +22,16 @@ Use this skill when:
 
 **Web Only constraint:** Node Web Only is the *only* Node project type today — a process that is invoked and serves (HTTP + WebSocket) a vendored single-page frontend. There is no CLI Only, CLI + Web, or Library Node type yet; those are future/out-of-scope. The backend uses builtins first (`node:http`, `node:crypto`, `node:fs`, `node:path`, `node:url`) and adds a dependency only when a builtin genuinely cannot cover the need. Logging is `console.*` with manual level prefixes (`INFO`/`ERROR`/`DEBUG`), timestamped and sequential — no logging-framework dependency, no color. This mirrors the Go Web Only `log`-package discipline.
 
+## Start here — required reading
+
+Read the **Always** file now, in full, before building the server — it carries the canonical server structure you'll be held to. Read the **When** file before the sub-task it names; a subagent may read it if you delegate that work.
+
+**Always:**
+- `./references/http-ws-server.md` — the canonical `node:http` + `ws` server: routing, static serving, upgrade, broadcast, shutdown
+
+**When adding password + session authentication:**
+- `./references/auth-patterns.md` — scrypt hash/verify, signed-cookie sessions, `users.json`/`state.json` persistence
+
 ## Package/Module Architecture
 
 Backend code lives under `src/`, organized by feature — not by technical layer:

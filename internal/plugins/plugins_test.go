@@ -135,9 +135,9 @@ func TestGitAuth(t *testing.T) {
 
 func testGlobalFS() (skills, styles fs.FS) {
 	return fstest.MapFS{
-			"default-skills/cross-ai/SKILL.md":    {Data: []byte("cross-ai v1")},
-			"default-skills/ai-docs/SKILL.md":     {Data: []byte("ai-docs v1")},
-			"default-skills/ai-docs/refs/note.md": {Data: []byte("nested v1")},
+			"default-skills/cross-ai/SKILL.md":         {Data: []byte("cross-ai v1")},
+			"default-skills/nested-skill/SKILL.md":     {Data: []byte("nested-skill v1")},
+			"default-skills/nested-skill/refs/note.md": {Data: []byte("nested v1")},
 		}, fstest.MapFS{
 			"output-styles/claudex.md": {Data: []byte("claudex v1")},
 			"output-styles/robot.md":   {Data: []byte("robot v1")},
@@ -173,8 +173,8 @@ func TestBuildGlobalPluginInstallsEverything(t *testing.T) {
 	if got := read(t, filepath.Join(dir, "skills", "cross-ai", "SKILL.md")); got != "cross-ai v1" {
 		t.Fatalf("cross-ai skill = %q", got)
 	}
-	if got := read(t, filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); got != "nested v1" {
-		t.Fatalf("ai-docs nested file = %q", got)
+	if got := read(t, filepath.Join(dir, "skills", "nested-skill", "refs", "note.md")); got != "nested v1" {
+		t.Fatalf("nested-skill nested file = %q", got)
 	}
 	if got := read(t, filepath.Join(dir, "output-styles", "claudex.md")); got != "claudex v1" {
 		t.Fatalf("claudex = %q", got)
@@ -213,8 +213,8 @@ func TestBuildGlobalPluginRefreshVsWriteIfMissing(t *testing.T) {
 	}
 
 	newSkills := fstest.MapFS{
-		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
-		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+		"default-skills/cross-ai/SKILL.md":     {Data: []byte("cross-ai v2")},
+		"default-skills/nested-skill/SKILL.md": {Data: []byte("nested-skill v2")},
 	}
 	newStyles := fstest.MapFS{"output-styles/claudex.md": {Data: []byte("claudex v2")}}
 
@@ -268,14 +268,14 @@ func TestBuildGlobalPluginRefreshIsCleanSwap(t *testing.T) {
 	}
 
 	newSkills := fstest.MapFS{
-		"default-skills/cross-ai/SKILL.md": {Data: []byte("cross-ai v2")},
-		"default-skills/ai-docs/SKILL.md":  {Data: []byte("ai-docs v2")},
+		"default-skills/cross-ai/SKILL.md":     {Data: []byte("cross-ai v2")},
+		"default-skills/nested-skill/SKILL.md": {Data: []byte("nested-skill v2")},
 	}
 	if err := BuildGlobalPlugin(dir, newSkills, styles, true); err != nil {
 		t.Fatalf("refresh build error = %v", err)
 	}
 
-	if _, err := os.Stat(filepath.Join(dir, "skills", "ai-docs", "refs", "note.md")); err == nil {
+	if _, err := os.Stat(filepath.Join(dir, "skills", "nested-skill", "refs", "note.md")); err == nil {
 		t.Fatal("refresh left a file the new source dropped; the tree was not replaced wholesale")
 	}
 	assertNoResidue(t, dir)

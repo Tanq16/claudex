@@ -24,6 +24,14 @@ Run it *before* writing code — its whole job is to make sure the governing ski
 - A pure question with no code change.
 - A deliberate, thorough re-audit of an existing codebase — use `review-code` (heavyweight, multi-agent). `develop` only self-reviews the diff you just wrote; see "Relationship to review-code" below.
 
+## Start here — required reading
+
+`develop` has no references of its own — it routes you to the skills that do. Before writing any code:
+
+- Read `go-foundations` (`../go-foundations/SKILL.md`) in full for any Go work, or `node-foundations` (`../node-foundations/SKILL.md`) for any Node work — always in scope.
+- Read, in full, the `SKILL.md` of every domain skill you select in Step 2 (Skill Map) — and honor each one's own **Start here** gate (its Always-tier references). Naming a skill is not reading it.
+- Delegating a sub-task? Brief the subagent with the same skills and their required references so it inherits the constraints.
+
 ## Workflow
 
 ### Step 1: Frame the task
@@ -86,7 +94,6 @@ Escalate to `review-code` instead when: you are re-engaging a project you have n
 | Makefile, GitHub Actions, Docker, releases, versioning | `project-ci-cd` |
 | README | `project-readme` |
 | Chrome extension (manifest, popup, content/background scripts) | `chrome-extension-basics` |
-| Persisted HTML deliverable doc (architecture/design/research/analysis) | `ai-docs` |
 
 For which skills a whole project type typically pulls in, defer to the `go-foundations` taxonomy and layout — it is the source of truth for project structure.
 
