@@ -135,7 +135,7 @@ func runLaunch(cmd *cobra.Command, args []string) {
 			if !found {
 				u.PrintFatal("session not found: "+resumeID, nil)
 			}
-		case resumeSet && len(sessions) == 1:
+		case len(sessions) == 1:
 			s = sessions[0]
 		default:
 			labels := make([]string, len(sessions))

@@ -135,7 +135,7 @@ The one command you run to start working. Run it in your project and it asks onl
 
 Arrow keys and enter — that's the whole interface. A prompt only appears when there's a real choice to make, so with one account, no prior sessions here, and no flavors yet, the one above is all you see. In order, launch asks:
 
-- **New session, or resume?** — only when this project already has sessions. Resuming lists recent ones across *every* account and targets the right one for you.
+- **New session, or resume?** — only when this project already has sessions. Resuming lists recent ones across *every* account and targets the right one for you; with a single session it skips the list and resumes it directly.
 - **Which account?** — only when you have more than one.
 - **MCP + connectors** — MCPs only, MCPs plus claude.ai connectors (Gmail, Slack, …), or none.
 - **Which flavor?** — only when you have flavors to choose between.
