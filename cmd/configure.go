@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +21,7 @@ var configureFlags struct {
 
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Provision all accounts (settings + statusline) and lay down the global default plugin and flavors",
+	Short: "Provision all accounts (settings + statusline) and lay down the global defaults: language servers, skills, presets, and flavors",
 	Run:   runConfigure,
 }
 
@@ -104,16 +105,36 @@ func configureAccount(accountDir, label string) error {
 
 func applyGlobalDefaults() {
 	globalDir := u.GlobalPluginDir()
-	if err := plugins.BuildGlobalPlugin(globalDir, embedded.DefaultSkillsFS, embedded.OutputStylesFS, true); err != nil {
+	if err := plugins.BuildGlobalPlugin(globalDir); err != nil {
 		u.PrintFatal("failed to build the global plugin", err)
 	}
+	pruneGlobalPlugin(globalDir)
+
+	presets := presetsDir()
 	flavorsDir := u.FlavorsDir()
 	if err := os.MkdirAll(flavorsDir, 0o755); err != nil {
 		u.PrintFatal("failed to create the flavors directory", err)
 	}
+
 	u.PrintSuccess("Refreshed global defaults")
-	u.PrintGeneric("  plugin:  " + u.AbbreviatePath(globalDir))
+	u.PrintGeneric("  plugin:  " + u.AbbreviatePath(globalDir) + " (language servers)")
+	u.PrintGeneric("  presets: " + u.AbbreviatePath(presets))
 	u.PrintGeneric("  flavors: " + u.AbbreviatePath(flavorsDir))
+}
+
+// Earlier versions installed skills and an output style here, and everything in this directory loads into every session; `apply` delivers them per project now.
+func pruneGlobalPlugin(dir string) {
+	os.Remove(filepath.Join(dir, "output-styles", "claudex.md"))
+	os.Remove(filepath.Join(dir, "output-styles"))
+
+	entries, err := fs.ReadDir(embedded.DefaultSkillsFS, "default-skills")
+	if err != nil {
+		return
+	}
+	for _, e := range entries {
+		os.RemoveAll(filepath.Join(dir, "skills", e.Name()))
+	}
+	os.Remove(filepath.Join(dir, "skills"))
 }
 
 func applyPreferredSettings(settings map[string]any) {
