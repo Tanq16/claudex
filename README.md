@@ -139,6 +139,8 @@ CLAUDE.md      -> AGENTS.md
 .claude/skills -> ../.agents/skills
 ```
 
+The base set is three skills you invoke by name: **`cross-ai`** hands the current task to another CLI agent (Codex, Cursor, Gemini, …) and relays what it said, **`skill-creator`** writes a new skill in the Agent Skills format and sized to the context budget, and **`session-summary`** pauses a session into `.agents/session-resume/resume.md` and resumes from it later. Everything beyond those comes from a preset.
+
 `AGENTS.md` sits where every other tool already looks for it, and `CLAUDE.md` is a symlink to it because Claude Code reads that name instead. Skills work the same way round: `.agents/skills/` is the [Agent Skills](https://agentskills.io) convention Cursor and Codex scan on their own, and `.claude/skills` points at it for Claude Code. Both symlinks exist only for Claude; everything else finds the real files without help.
 
 **It leaves no diff in someone else's repo.** The four paths go into `.git/info/exclude`, which is local to your clone and never pushed — not into a tracked `.gitignore`. Outside a git repository the step is skipped silently, and a later `git init` starts with a fresh exclude file, so re-run `apply` there.
