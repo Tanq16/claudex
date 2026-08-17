@@ -20,12 +20,7 @@ The argument is the subject. Everything else — the name, the structure, the si
 
 ## Where the skill goes
 
-| Destination | Path | When |
-|---|---|---|
-| This project only | `.agents/skills/<name>/` | A skill that makes sense only here |
-| A preset | `~/.config/claudex/presets/<preset>/skills/<name>/` | A skill you want in every project that applies that preset |
-
-Ask which one when the request doesn't say, because the two have different lifetimes: `claudex clean-cwd` deletes `.agents/` outright, so a skill written there is gone with it, while a preset skill survives and reaches every project through `claudex apply-preset`. `claudex create-preset <name>` scaffolds a new preset when none of the existing ones fit.
+`.agents/skills/<name>/` in the current directory, always. Create the directories if they are missing.
 
 ## Workflow
 
@@ -105,7 +100,7 @@ Close by reporting the path written, the token or character count, and the refer
 
 ## Worked example
 
-A request for a skill covering the project's database migration process, destined for the `backend` preset:
+A request for a skill covering the project's database migration process:
 
 ```markdown
 ---
@@ -130,4 +125,4 @@ because a rollback of a single deploy must not lose data that the previous versi
 ...
 ```
 
-Written to `~/.config/claudex/presets/backend/skills/db-migrations/SKILL.md`, 2,100 characters, no references needed.
+Written to `.agents/skills/db-migrations/SKILL.md`, 2,100 characters, no references needed.
