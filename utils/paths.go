@@ -92,6 +92,6 @@ func FlavorsDir() string {
 	return filepath.Join(ClaudexConfigDir(), "flavors")
 }
 
-func PluginsDir() string {
-	return filepath.Join(ClaudexConfigDir(), "plugins")
+func PresetsDir() string {
+	return filepath.Join(ClaudexConfigDir(), "presets")
 }

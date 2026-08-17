@@ -65,5 +65,8 @@ func init() {
 	rootCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(configureCmd)
-	rootCmd.AddCommand(initPluginCmd)
+	rootCmd.AddCommand(applyCmd)
+	rootCmd.AddCommand(applyPresetCmd)
+	rootCmd.AddCommand(createPresetCmd)
+	rootCmd.AddCommand(cleanCwdCmd)
 }

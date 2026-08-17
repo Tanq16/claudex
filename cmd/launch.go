@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claudex/internal/embedded"
 	"github.com/tanq16/claudex/internal/flavors"
 	"github.com/tanq16/claudex/internal/parser"
 	"github.com/tanq16/claudex/internal/plugins"
@@ -28,7 +27,6 @@ type sessionEntry struct {
 }
 
 var launchFlags struct {
-	plugins    []string
 	account    string
 	mcp        string
 	newSession bool
@@ -48,8 +46,6 @@ var launchCmd = &cobra.Command{
 }
 
 func init() {
-	launchCmd.Flags().StringSliceVarP(&launchFlags.plugins, "plugins", "P", nil,
-		"Local plugin directories or git repo URLs to load via --plugin-dir (repeatable or comma-separated)")
 	launchCmd.Flags().StringVarP(&launchFlags.account, "account", "A", "",
 		"Account to launch under (skips the account picker)")
 	launchCmd.Flags().StringVar(&launchFlags.mcp, "mcp", "",
@@ -222,11 +218,8 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	for _, dir := range resolvePluginDirs() {
+	if dir := globalPluginDir(); dir != "" {
 		cliArgs = append(cliArgs, "--plugin-dir", dir)
-	}
-	if len(launchFlags.plugins) > 0 {
-		summary = append(summary, fmt.Sprintf("plugins: %d", len(launchFlags.plugins)))
 	}
 
 	cliArgs = append(cliArgs, "--dangerously-skip-permissions")
@@ -372,34 +365,11 @@ func selectFlavor() (*flavors.Flavor, bool) {
 	return &opts.Choices[idx], true
 }
 
-func resolvePluginDirs() []string {
-	var dirs []string
-
-	globalDir := u.GlobalPluginDir()
-	if err := plugins.BuildGlobalPlugin(globalDir, embedded.DefaultSkillsFS, embedded.OutputStylesFS, false); err != nil {
+func globalPluginDir() string {
+	dir := u.GlobalPluginDir()
+	if err := plugins.BuildGlobalPlugin(dir); err != nil {
 		u.PrintWarn("could not prepare the global plugin", err)
-	} else {
-		dirs = append(dirs, globalDir)
+		return ""
 	}
-
-	for _, spec := range launchFlags.plugins {
-		src := plugins.Classify(spec)
-		if !src.IsLocal {
-			u.PrintRunning("Fetching plugin " + src.Name)
-		}
-		dir, err := plugins.Fetch(src, u.PluginsDir())
-		if !src.IsLocal {
-			u.ClearLines(1)
-		}
-		if err != nil {
-			u.PrintWarn("Plugin "+spec+" skipped", err)
-			continue
-		}
-		if !src.IsLocal {
-			u.PrintSuccess("Plugin ready: " + src.Name)
-		}
-		dirs = append(dirs, dir)
-	}
-
-	return dirs
+	return dir
 }

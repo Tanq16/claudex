@@ -17,7 +17,7 @@ var (
 
 var skillRoots = []string{
 	filepath.Join("internal", "embedded", "default-skills"),
-	"skills",
+	filepath.Join("internal", "embedded", "presets", "development", "skills"),
 }
 
 func TestSkillReferenceGates(t *testing.T) {
