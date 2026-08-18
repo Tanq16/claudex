@@ -1,6 +1,8 @@
 ## Development Principles
 
-- Default to zero comments, because a comment that restates the code is one more thing that has to be kept true. Only a documented edge case, an unexpected decision, or design-level logic that is genuinely hard to follow earns a comment, capped at two lines. Comments explain why, never what. If the code already says it, delete it.
+- Default to zero comments, because a comment that restates the code is one more thing that has to be kept true. Only a documented edge case, an unexpected decision, or design-level logic that is genuinely hard to follow earns a comment. Comments explain why, never what. If the code already says it, delete it.
+- A doc comment is not exempt from any of this. Opening with the symbol name ("parseConfig returns the parsed config") writes a what by construction, so an unexported symbol earns one only when it carries a why its body does not. Exported API that a consumer outside the package reads is the exception.
+- A comment that earns its place is one line. Two is a ceiling reached only when the why genuinely does not fit in one, not a budget to spend.
 - When told to cut comments, delete them. Collapsing a block onto one line is not a reduction.
 - Never add a comment to code you did not write, and never remove a comment that was already there unless the request names it.
 - Never write a comment that records change history, an alternative that was considered and dropped, or a review thread, because those belong in the commit message or the pull request.

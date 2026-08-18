@@ -4,30 +4,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/convo"
-	"github.com/tanq16/claudex/internal/parser"
 	u "github.com/tanq16/claudex/utils"
 )
 
 var switchFlags struct {
 	account string
+	session string
 }
 
+// NoArgs so a mistyped "switch <id>" errors instead of silently moving every session.
 var switchCmd = &cobra.Command{
 	Use:   "switch",
 	Short: "Move the current project's sessions to another account",
+	Args:  cobra.NoArgs,
 	Run:   runSwitch,
-}
-
-type projectSession struct {
-	sessionID    string
-	project      string
-	lastActivity int64
-	configDir    string
-	projectPath  string
 }
 
 func runSwitch(cmd *cobra.Command, args []string) {
@@ -41,29 +35,69 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		u.PrintFatal("switch needs at least two accounts; only one was found", nil)
 	}
 
-	sessions := gatherProjectSessions(accounts, cwd)
+	sessions := discoverSessions(accounts, cwd)
 	if len(sessions) == 0 {
 		u.PrintFatal("no sessions for this project were found in any account", nil)
 	}
 
-	current := sessions[0].configDir
-
 	var target string
 	if switchFlags.account != "" {
 		target = resolveTargetAccount(switchFlags.account, accounts)
-		if target == current {
-			u.PrintSuccess(fmt.Sprintf("Project already in %s; nothing to switch", u.AbbreviatePath(current)))
+		if len(sessionsIn(sessions, target)) == len(sessions) {
+			u.PrintSuccess(fmt.Sprintf("Project already in %s; nothing to switch", u.AbbreviatePath(target)))
 			return
 		}
 	} else if u.GlobalForAIFlag {
 		u.PrintFatal("switch needs -A/--account in --for-ai mode", nil)
-	} else {
-		var others []string
-		for _, a := range accounts {
-			if a != current {
-				others = append(others, a)
-			}
+	}
+
+	source := sessions[0].configDir
+	inSource := sessionsIn(sessions, source)
+
+	var moving []sessionEntry
+	singleSession := false
+	switch {
+	case switchFlags.session != "":
+		idx := slices.IndexFunc(sessions, func(s sessionEntry) bool { return s.sessionID == switchFlags.session })
+		if idx < 0 {
+			u.PrintFatal("session not found: "+switchFlags.session, nil)
 		}
+		moving = []sessionEntry{sessions[idx]}
+		singleSession = true
+	case u.GlobalForAIFlag || len(sessions) == 1:
+		moving = inSource
+	default:
+		labels := make([]string, 0, len(sessions)+1)
+		offset := 0
+		if len(inSource) > 1 {
+			labels = append(labels, fmt.Sprintf("All %d sessions in %s", len(inSource), u.AbbreviatePath(source)))
+			offset = 1
+		}
+		for _, s := range sessions {
+			labels = append(labels, sessionLabel(s, true))
+		}
+		idx, err := u.PromptSelect("Move Sessions", labels)
+		if err != nil {
+			u.PrintFatal("TUI error", err)
+		}
+		if idx < 0 {
+			return
+		}
+		if idx < offset {
+			moving = inSource
+		} else {
+			moving = []sessionEntry{sessions[idx-offset]}
+			singleSession = true
+		}
+	}
+
+	current := moving[0].configDir
+	if target == current {
+		u.PrintSuccess(fmt.Sprintf("Already in %s; nothing to switch", u.AbbreviatePath(current)))
+		return
+	}
+	if target == "" {
+		others := slices.DeleteFunc(slices.Clone(accounts), func(a string) bool { return a == current })
 		if len(others) == 0 {
 			u.PrintFatal("no other account to switch this project into", nil)
 		}
@@ -85,19 +119,12 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	var ids []string
-	projectPath := ""
-	for _, s := range sessions {
-		if s.configDir == current {
-			ids = append(ids, s.sessionID)
-			projectPath = s.projectPath
-		}
-	}
-
-	srcDir := convo.ProjectDir(current, projectPath)
-	dstDir := convo.ProjectDir(target, projectPath)
-	for _, id := range ids {
-		if err := convo.MoveSession(id, srcDir, dstDir); err != nil {
+	ids := make([]string, len(moving))
+	for i, s := range moving {
+		ids[i] = s.sessionID
+		srcDir := convo.ProjectDir(s.configDir, s.projectPath)
+		dstDir := convo.ProjectDir(target, s.projectPath)
+		if err := convo.MoveSession(s.sessionID, srcDir, dstDir); err != nil {
 			u.PrintFatal("Failed to move session files", err)
 		}
 	}
@@ -122,35 +149,12 @@ func runSwitch(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	u.PrintSuccess(fmt.Sprintf("Switched project %s (%d session(s)) from %s to %s",
-		sessions[0].project, len(ids), u.AbbreviatePath(current), u.AbbreviatePath(target)))
-}
-
-func gatherProjectSessions(accounts []string, cwd string) []projectSession {
-	target := filepath.Clean(cwd)
-	var all []projectSession
-	for _, configDir := range accounts {
-		convos, err := parser.ParseConversations(configDir)
-		if err != nil {
-			continue
-		}
-		for _, c := range convos {
-			if filepath.Clean(c.ProjectPath) != target {
-				continue
-			}
-			all = append(all, projectSession{
-				sessionID:    c.SessionID,
-				project:      c.Project,
-				lastActivity: c.LastActivity,
-				configDir:    configDir,
-				projectPath:  c.ProjectPath,
-			})
-		}
+	moved := fmt.Sprintf("project %s (%d session(s))", moving[0].project, len(ids))
+	if singleSession {
+		moved = fmt.Sprintf("session %s in %s", moving[0].sessionID, moving[0].project)
 	}
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].lastActivity > all[j].lastActivity
-	})
-	return all
+	u.PrintSuccess(fmt.Sprintf("Switched %s from %s to %s",
+		moved, u.AbbreviatePath(current), u.AbbreviatePath(target)))
 }
 
 func resolveTargetAccount(flag string, accounts []string) string {
@@ -168,4 +172,6 @@ func resolveTargetAccount(flag string, accounts []string) string {
 func init() {
 	switchCmd.Flags().StringVarP(&switchFlags.account, "account", "A", "",
 		"Account to switch this project into (source is auto-detected from the current directory)")
+	switchCmd.Flags().StringVar(&switchFlags.session, "session", "",
+		"Move only this session by id (skips the session picker)")
 }

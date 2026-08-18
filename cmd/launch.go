@@ -2,28 +2,18 @@ package cmd
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"syscall"
-	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claudex/internal/parser"
 	"github.com/tanq16/claudex/internal/plugins"
 	u "github.com/tanq16/claudex/utils"
 )
 
-type sessionEntry struct {
-	sessionID    string
-	project      string
-	firstMessage string
-	lastActivity int64
-	configDir    string
-}
+const resumeListLimit = 10
 
 var launchFlags struct {
 	account    string
@@ -77,6 +67,9 @@ func runLaunch(cmd *cobra.Command, args []string) {
 
 	accounts := u.DiscoverAccountPaths()
 	sessions := discoverSessions(accounts, cwd)
+	if len(sessions) > resumeListLimit {
+		sessions = sessions[:resumeListLimit]
+	}
 	multiAccount := len(accounts) > 1
 
 	resumeID := launchFlags.session
@@ -128,13 +121,7 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		default:
 			labels := make([]string, len(sessions))
 			for i, sess := range sessions {
-				id := shortSessionID(sess.sessionID)
-				msg := padRight(u.Truncate(strings.Join(strings.Fields(sess.firstMessage), " "), 60), 60)
-				t := time.UnixMilli(sess.lastActivity).Local().Format("Jan 02 3:04pm")
-				labels[i] = fmt.Sprintf("%s  %s  %s", id, msg, t)
-				if multiAccount {
-					labels[i] += "  " + u.AbbreviatePath(sess.configDir)
-				}
+				labels[i] = sessionLabel(sess, multiAccount)
 			}
 			idx, err := u.PromptSelect("Resume Session", labels)
 			if err != nil {
@@ -245,51 +232,6 @@ func resolveAccountFlag(flag string, accounts []string) string {
 	}
 	u.PrintFatal("account not found: "+flag, nil)
 	return ""
-}
-
-func discoverSessions(accounts []string, cwd string) []sessionEntry {
-	target := filepath.Clean(cwd)
-	var all []sessionEntry
-	for _, configDir := range accounts {
-		convos, err := parser.ParseConversations(configDir)
-		if err != nil {
-			continue
-		}
-		for _, c := range convos {
-			if filepath.Clean(c.ProjectPath) != target {
-				continue
-			}
-			all = append(all, sessionEntry{
-				sessionID:    c.SessionID,
-				project:      c.Project,
-				firstMessage: c.FirstMessage,
-				lastActivity: c.LastActivity,
-				configDir:    configDir,
-			})
-		}
-	}
-	sort.Slice(all, func(i, j int) bool {
-		return all[i].lastActivity > all[j].lastActivity
-	})
-	if len(all) > 10 {
-		all = all[:10]
-	}
-	return all
-}
-
-func shortSessionID(id string) string {
-	if len(id) > 8 {
-		return id[:8]
-	}
-	return id
-}
-
-func padRight(s string, width int) string {
-	runes := []rune(s)
-	if len(runes) >= width {
-		return s
-	}
-	return s + strings.Repeat(" ", width-len(runes))
 }
 
 func globalPluginDir() string {

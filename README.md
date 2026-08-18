@@ -142,6 +142,8 @@ Per account, the 5h session window and the 7d windows as bars with their reset t
 
 Moves the current project's session files and history entries out of the account holding them and into another. It needs at least two accounts, and `-A/--account` is required under `--for-ai`.
 
+The picker lists this project's sessions from every account, under a row that takes all the ones in the account holding the newest. Picking a single session moves only that session, out of whichever account holds it. `--session <id>` names one directly and skips the picker, and `--for-ai` has no picker, so it moves the whole account unless `--session` narrows it.
+
 ### oauth-token
 
 Runs the OAuth PKCE flow in a browser and prints an access token to stdout. `-p/--port` sets the local callback port and `-e/--expires-in` the requested expiry in seconds, which the server may override.
