@@ -40,15 +40,13 @@ The draft is what makes the release atomic. Publishing first and uploading after
 
 ## Actions
 
-Actions are pinned to a major tag, verified against the action's own releases rather than written from memory. `upload-artifact` and `download-artifact` are on different majors, which is a common source of a workflow that resolves but does not run.
+Actions are pinned to a major tag, verified against the action's own releases rather than written from memory.
 
 | Action | Pin |
 |---|---|
 | `actions/checkout` | `v7` |
 | `actions/setup-go` | `v7` |
 | `actions/setup-node` | `v7` |
-| `actions/upload-artifact` | `v7` |
-| `actions/download-artifact` | `v8` |
 | `docker/login-action` | `v4` |
 
 ## Secrets
