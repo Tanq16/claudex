@@ -146,6 +146,14 @@ The base set is two skills you invoke by name. `skill-creator` writes a new skil
 
 **It leaves no diff in someone else's repo.** The four paths go into `.git/info/exclude`, which is local to your clone and never pushed, rather than into a tracked `.gitignore`. Outside a git repository that step is skipped silently and everything else still happens, so run `apply` again after a later `git init`.
 
+**Their agent files are the other half, and git handles that one.** `.git/info/exclude` only ever affects untracked files, so it cannot keep a `GEMINI.md` or a `.cursor/rules/` that the repo tracks out of your clone. Sparse-checkout can, on a fresh clone or one you already have:
+
+```bash
+git sparse-checkout set --no-cone '/*' '!/GEMINI.md' '!/.cursor/' '!/.github/copilot-instructions.md'
+```
+
+Those paths stop being written to your working tree, `git pull` still updates everything else, `git status` stays clean with the ClaudeX layout in place, and `git sparse-checkout disable` puts them back. Non-cone mode is deprecated by git and is also the only mode that can exclude a single file. What it cannot cover is a path the repo tracks that ClaudeX also writes: git clears the skip bit the moment a file reappears there, so a repo shipping its own `AGENTS.md` reports it modified after `apply`.
+
 ClaudeX's part of `AGENTS.md` sits between `<!-- claudex:base -->` markers, so a re-apply refreshes it and leaves anything you wrote around it alone. Re-running `apply` also refreshes the base skills from the binary, which is how an upgrade reaches a project. Removal is never automatic; `clean-cwd` is the one command that takes any of this back out.
 
 ```bash
