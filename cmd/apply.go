@@ -19,6 +19,9 @@ var applyCmd = &cobra.Command{
 
 func runApply(cmd *cobra.Command, args []string) {
 	root := currentDir()
+	if conflicts := workspace.PreflightBase(root); len(conflicts) > 0 {
+		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
+	}
 
 	names, err := workspace.ApplyBase(root, embedded.AgentsBase, embedded.DefaultSkillsFS, "default-skills")
 	if err != nil {
@@ -48,6 +51,16 @@ func currentDir() string {
 		u.PrintFatal("failed to resolve current directory", err)
 	}
 	return cwd
+}
+
+// Every conflict is reported at once, because clearing them one refusal at a time is one run per path.
+func refuse(msg string, conflicts []workspace.Conflict) {
+	u.PrintError(msg+"; nothing was written", nil)
+	for _, c := range conflicts {
+		u.PrintIndentedError(c.Path+": "+c.Why, nil)
+	}
+	u.PrintGeneric("  move each one aside, then run the command again")
+	os.Exit(1)
 }
 
 // The printers only surface the error argument under --debug, and these are the failures the user has to act on.

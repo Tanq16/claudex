@@ -142,6 +142,8 @@ The base set is two skills you invoke by name. `skill-creator` writes a new skil
 
 `AGENTS.md` sits where every other tool already looks for it, and `CLAUDE.md` symlinks to it because Claude Code reads that name instead. Skills work the same way round: `.agents/skills/` is the [Agent Skills](https://agentskills.io) convention Cursor and Codex scan on their own, and `.claude/skills` points at it for Claude Code. Both symlinks exist only for Claude, and everything else finds the real files without help.
 
+**It checks before it writes.** A path already holding something else, a real `CLAUDE.md` or a `.claude/skills` directory of your own, stops the run with the full list of what to move aside, and nothing at all is written. `apply-preset` checks the skills it would link the same way.
+
 **It leaves no diff in someone else's repo.** The four paths go into `.git/info/exclude`, which is local to your clone and never pushed, rather than into a tracked `.gitignore`. Outside a git repository that step is skipped silently and everything else still happens, so run `apply` again after a later `git init`.
 
 ClaudeX's part of `AGENTS.md` sits between `<!-- claudex:base -->` markers, so a re-apply refreshes it and leaves anything you wrote around it alone. Re-running `apply` also refreshes the base skills from the binary, which is how an upgrade reaches a project. Removal is never automatic; `clean-cwd` is the one command that takes any of this back out.

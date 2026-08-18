@@ -35,11 +35,21 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 		}
 	}
 
+	presets := make([]*workspace.Preset, 0, len(selected))
+	var conflicts []workspace.Conflict
 	for _, name := range selected {
 		p, err := workspace.FindPreset(dir, name)
 		if err != nil {
 			fatal("preset not found: "+name, err)
 		}
+		presets = append(presets, p)
+		conflicts = append(conflicts, workspace.PreflightPreset(root, p.Skills)...)
+	}
+	if len(conflicts) > 0 {
+		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
+	}
+
+	for _, p := range presets {
 		if err := workspace.LinkSkills(root, p.SkillsDir(), p.Skills); err != nil {
 			fatal("failed to link the skills of preset "+p.Name, err)
 		}
