@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/tanq16/claudex/internal/flavors"
 	"github.com/tanq16/claudex/internal/parser"
 	"github.com/tanq16/claudex/internal/plugins"
 	u "github.com/tanq16/claudex/utils"
@@ -32,8 +31,6 @@ var launchFlags struct {
 	newSession bool
 	resume     bool
 	session    string
-	flavor     string
-	noFlavor   bool
 }
 
 // NoArgs so a stray positional (e.g. "--resume <id>" typed for "--session <id>")
@@ -57,11 +54,6 @@ func init() {
 	launchCmd.Flags().StringVar(&launchFlags.session, "session", "",
 		"Resume a specific session by id (skips the new/resume prompt)")
 	launchCmd.MarkFlagsMutuallyExclusive("new", "resume", "session")
-	launchCmd.Flags().StringVar(&launchFlags.flavor, "flavor", "",
-		"Select a flavor by name (skips the flavor picker)")
-	launchCmd.Flags().BoolVar(&launchFlags.noFlavor, "no-flavor", false,
-		"Do not apply any flavor (skips the flavor picker)")
-	launchCmd.MarkFlagsMutuallyExclusive("flavor", "no-flavor")
 }
 
 func runLaunch(cmd *cobra.Command, args []string) {
@@ -197,27 +189,6 @@ func runLaunch(cmd *cobra.Command, args []string) {
 	}
 	cliArgs, summary = applyMCPMode(mode, cliArgs, summary)
 
-	if !launchFlags.noFlavor {
-		if launchFlags.flavor != "" {
-			opts, err := flavors.Load(u.FlavorsDir())
-			if err != nil {
-				u.PrintFatal("could not read flavors", err)
-			}
-			flavor := findFlavor(opts, launchFlags.flavor)
-			if flavor == nil {
-				u.PrintFatal("flavor not found: "+launchFlags.flavor, nil)
-			}
-			cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
-			summary = append(summary, "flavor: "+flavor.Name)
-		} else if flavor, ok := selectFlavor(); ok {
-			if flavor == nil {
-				return
-			}
-			cliArgs = append(cliArgs, "--append-system-prompt", flavor.Body)
-			summary = append(summary, "flavor: "+flavor.Name)
-		}
-	}
-
 	if dir := globalPluginDir(); dir != "" {
 		cliArgs = append(cliArgs, "--plugin-dir", dir)
 	}
@@ -276,18 +247,6 @@ func resolveAccountFlag(flag string, accounts []string) string {
 	return ""
 }
 
-func findFlavor(opts *flavors.Options, name string) *flavors.Flavor {
-	if opts.Auto != nil && opts.Auto.Name == name {
-		return opts.Auto
-	}
-	for i := range opts.Choices {
-		if opts.Choices[i].Name == name {
-			return &opts.Choices[i]
-		}
-	}
-	return nil
-}
-
 func discoverSessions(accounts []string, cwd string) []sessionEntry {
 	target := filepath.Clean(cwd)
 	var all []sessionEntry
@@ -331,38 +290,6 @@ func padRight(s string, width int) string {
 		return s
 	}
 	return s + strings.Repeat(" ", width-len(runes))
-}
-
-func selectFlavor() (*flavors.Flavor, bool) {
-	opts, err := flavors.Load(u.FlavorsDir())
-	if err != nil {
-		u.PrintWarn("could not read flavors", err)
-		return nil, false
-	}
-	if opts.Auto != nil {
-		return opts.Auto, true
-	}
-	if len(opts.Choices) == 0 {
-		return nil, false
-	}
-
-	labels := make([]string, len(opts.Choices)+1)
-	for i, f := range opts.Choices {
-		labels[i] = f.Name
-	}
-	labels[len(opts.Choices)] = "None"
-
-	idx, err := u.PromptSelect("Flavor", labels)
-	if err != nil {
-		u.PrintFatal("TUI error", err)
-	}
-	if idx < 0 {
-		return nil, true
-	}
-	if idx == len(opts.Choices) {
-		return nil, false
-	}
-	return &opts.Choices[idx], true
 }
 
 func globalPluginDir() string {

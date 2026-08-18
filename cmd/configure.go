@@ -21,7 +21,7 @@ var configureFlags struct {
 
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Provision all accounts (settings + statusline) and lay down the global defaults: language servers, skills, presets, and flavors",
+	Short: "Provision all accounts (settings + statusline) and lay down the global defaults: language servers and presets",
 	Run:   runConfigure,
 }
 
@@ -110,16 +110,9 @@ func applyGlobalDefaults() {
 	}
 	pruneGlobalPlugin(globalDir)
 
-	presets := presetsDir()
-	flavorsDir := u.FlavorsDir()
-	if err := os.MkdirAll(flavorsDir, 0o755); err != nil {
-		u.PrintFatal("failed to create the flavors directory", err)
-	}
-
 	u.PrintSuccess("Refreshed global defaults")
 	u.PrintGeneric("  plugin:  " + u.AbbreviatePath(globalDir) + " (language servers)")
-	u.PrintGeneric("  presets: " + u.AbbreviatePath(presets))
-	u.PrintGeneric("  flavors: " + u.AbbreviatePath(flavorsDir))
+	u.PrintGeneric("  presets: " + u.AbbreviatePath(presetsDir()))
 }
 
 // Earlier versions installed skills and an output style here, and everything in this directory loads into every session; `apply` delivers them per project now.
