@@ -1,15 +1,15 @@
 #!/bin/bash
 
-ROSEWATER='\033[38;5;217m'
-PINK='\033[38;5;175m'
-SKY='\033[38;5;117m'
-LAVENDER='\033[38;5;147m'
-RED='\033[38;5;203m'
-YELLOW='\033[38;5;221m'
-GREEN='\033[38;5;120m'
-TEXT='\033[38;5;188m'
-SUBTEXT='\033[38;5;145m'
-SURFACE='\033[38;5;240m'
+# ANSI indices 0-15 only, so the user's terminal theme decides the actual colors.
+MAGENTA='\033[95m'
+CYAN='\033[96m'
+BLUE='\033[94m'
+RED='\033[91m'
+YELLOW='\033[93m'
+GREEN='\033[92m'
+FG='\033[97m'
+MUTED='\033[37m'
+CHROME='\033[90m'
 BOLD='\033[1m'
 NC='\033[0m'
 FIRE="🔥"
@@ -157,25 +157,25 @@ if git -C "$original_cwd" rev-parse --git-dir > /dev/null 2>&1; then
     git_branch=$(git -C "$original_cwd" branch --show-current 2>/dev/null)
 fi
 
-DOT=" ${SURFACE}·${NC} "
+DOT=" ${CHROME}·${NC} "
 
-out="${ROSEWATER}${BOLD}${ACCT_LABEL}${NC}"
-out+="${DOT}${SKY}${BOLD}${model_short}${NC}"
-out+="${DOT}${TEXT}${cwd}${NC}"
+out="${MAGENTA}${BOLD}${ACCT_LABEL}${NC}"
+out+="${DOT}${CYAN}${BOLD}${model_short}${NC}"
+out+="${DOT}${FG}${cwd}${NC}"
 
 if [[ -n "$git_branch" ]]; then
-    out+="${DOT}${PINK}${git_branch}${NC}"
+    out+="${DOT}${BLUE}${git_branch}${NC}"
 fi
 
 if [[ -n "$session_used_pct" ]]; then
     sess_pct=$(printf "%.0f" "$session_used_pct")
-    out+="${DOT}${LAVENDER}${sess_pct}% used${NC}"
+    out+="${DOT}${MAGENTA}${sess_pct}% used${NC}"
 fi
 
 if [[ -n "$five_h" ]]; then
     out+="${DOT}5h $(colorize_pct "$five_h" "true")"
     if [[ -n "$reset_time" ]]; then
-        out+=" ${SUBTEXT}resets ${reset_time}${NC}"
+        out+=" ${MUTED}resets ${reset_time}${NC}"
     fi
 fi
 
