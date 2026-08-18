@@ -4,8 +4,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func TestUpsert(t *testing.T) {
@@ -55,6 +57,114 @@ func TestStripSections(t *testing.T) {
 	}
 	if got := strings.TrimSpace(stripSections(baseOpen + "\n\nbase\n\n" + baseClose + "\n")); got != "" {
 		t.Fatalf("stripSections() left %q for a file claudex wrote entirely", got)
+	}
+}
+
+func TestPreflightBase(t *testing.T) {
+	claudeSkills := filepath.Join(ClaudeDir, SkillsDir)
+
+	tests := []struct {
+		name  string
+		setup func(t *testing.T, root string)
+		want  []string
+	}{
+		{"an empty directory takes the whole layout", func(*testing.T, string) {}, nil},
+		{"prose already in AGENTS.md", func(t *testing.T, root string) {
+			mustWrite(t, filepath.Join(root, AgentsFile), "my rules\n")
+		}, nil},
+		{"a hand-written CLAUDE.md", func(t *testing.T, root string) {
+			mustWrite(t, filepath.Join(root, ClaudeFile), "my rules\n")
+		}, []string{ClaudeFile}},
+		{"an AGENTS.md symlink of the user's own", func(t *testing.T, root string) {
+			mustWrite(t, filepath.Join(root, "shared.md"), "shared\n")
+			mustLink(t, filepath.Join(root, AgentsFile), "shared.md")
+		}, []string{AgentsFile}},
+		{"a real .claude/skills directory", func(t *testing.T, root string) {
+			mustDir(t, filepath.Join(root, claudeSkills))
+		}, []string{claudeSkills}},
+		{".claude/skills pointing somewhere else", func(t *testing.T, root string) {
+			mustLink(t, filepath.Join(root, claudeSkills), "/elsewhere")
+		}, []string{claudeSkills}},
+		{".agents taken by a regular file", func(t *testing.T, root string) {
+			mustWrite(t, filepath.Join(root, AgentsDir), "not a directory\n")
+		}, []string{AgentsDir}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			root := t.TempDir()
+			tt.setup(t, root)
+
+			var paths []string
+			for _, c := range PreflightBase(root) {
+				paths = append(paths, c.Path)
+			}
+			if !slices.Equal(paths, tt.want) {
+				t.Fatalf("PreflightBase() = %v, want %v", paths, tt.want)
+			}
+		})
+	}
+}
+
+func TestPreflightBaseRefusesWhatApplyBaseCannotFinish(t *testing.T) {
+	root := t.TempDir()
+	mustWrite(t, filepath.Join(root, ClaudeFile), "my rules\n")
+
+	conflicts := PreflightBase(root)
+	if len(conflicts) != 1 || conflicts[0].Path != ClaudeFile {
+		t.Fatalf("PreflightBase() = %v, want the CLAUDE.md conflict alone", conflicts)
+	}
+	if _, err := ApplyBase(root, []byte("base"), demoSkills(), "src"); err == nil {
+		t.Fatal("ApplyBase() succeeded where preflight found a conflict")
+	}
+}
+
+func TestPreflightBaseAcceptsAnAlreadyAppliedDirectory(t *testing.T) {
+	root := t.TempDir()
+	if _, err := ApplyBase(root, []byte("base"), demoSkills(), "src"); err != nil {
+		t.Fatalf("ApplyBase() error = %v", err)
+	}
+	if got := PreflightBase(root); got != nil {
+		t.Fatalf("PreflightBase() after apply = %v, want none", got)
+	}
+}
+
+func TestPreflightPreset(t *testing.T) {
+	root := t.TempDir()
+	mustDir(t, SkillsPath(root))
+	mustLink(t, filepath.Join(SkillsPath(root), "stale"), "/gone/stale")
+	mustDir(t, filepath.Join(SkillsPath(root), "handwritten"))
+
+	got := PreflightPresetSkills(root, []string{"absent", "stale", "handwritten"})
+	want := filepath.Join(AgentsDir, SkillsDir, "handwritten")
+	if len(got) != 1 || got[0].Path != want {
+		t.Fatalf("PreflightPresetSkills() = %v, want %s alone", got, want)
+	}
+}
+
+func demoSkills() fstest.MapFS {
+	return fstest.MapFS{"src/demo/SKILL.md": &fstest.MapFile{Data: []byte("demo\n")}}
+}
+
+func mustDir(t *testing.T, path string) {
+	t.Helper()
+	if err := os.MkdirAll(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustWrite(t *testing.T, path, body string) {
+	t.Helper()
+	mustDir(t, filepath.Dir(path))
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func mustLink(t *testing.T, path, target string) {
+	t.Helper()
+	mustDir(t, filepath.Dir(path))
+	if err := os.Symlink(target, path); err != nil {
+		t.Fatal(err)
 	}
 }
 
