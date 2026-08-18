@@ -16,8 +16,7 @@ var switchFlags struct {
 	session string
 }
 
-// NoArgs so "switch <id>" typed for "switch --session <id>" errors instead of
-// silently moving every session.
+// NoArgs so a mistyped "switch <id>" errors instead of silently moving every session.
 var switchCmd = &cobra.Command{
 	Use:   "switch",
 	Short: "Move the current project's sessions to another account",
