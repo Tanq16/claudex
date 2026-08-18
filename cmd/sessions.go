@@ -21,7 +21,6 @@ type sessionEntry struct {
 	projectPath  string
 }
 
-// discoverSessions returns every session of the project at cwd, across all accounts, newest first.
 func discoverSessions(accounts []string, cwd string) []sessionEntry {
 	target := filepath.Clean(cwd)
 	var all []sessionEntry
