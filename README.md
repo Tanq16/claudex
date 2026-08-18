@@ -10,6 +10,10 @@
 
 ClaudeX is a companion CLI for Claude Code. It sets every account up identically, lays your instructions and skills into a project in the format each coding agent already reads, and composes each session for you, so starting work is one command and a couple of arrow keys.
 
+Two things decide what a coding agent does. An `AGENTS.md` carries the instructions it has to follow, and skills carry how the work is actually done. Everything layered on top of those, under whatever name a given tool gives it, is one more instruction slotting into the same context at a slightly different point.
+
+That context belongs to a repository, not to a machine. Instructions and skills installed globally reach every project at once, so an agent ends up reading rules written for a codebase it is not in, with no way to tell which ones apply here. ClaudeX puts them in the project instead, where what loads is what belongs.
+
 It is built for juggling several Claude subscriptions. Everything except the account picker works the same on one.
 
 ## Capabilities
