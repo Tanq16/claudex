@@ -138,7 +138,7 @@ CLAUDE.md      -> AGENTS.md
 .claude/skills -> ../.agents/skills
 ```
 
-The base set is two skills you invoke by name. `skill-creator` writes a new skill in the Agent Skills format and sized to the context budget. `session-summary` pauses a session into `.agents/session-resume/resume.md` and resumes from it later. Everything beyond those comes from a preset.
+The base set is three skills. `skill-creator` writes a new skill in the Agent Skills format and sized to the context budget. `session-summary` pauses a session into `.agents/session-resume/resume.md` and resumes from it later. Both are invoked by name. `write-document` settles who a document is for and what shape that consumer needs before it is written, handing the format to a more specific document skill when the project has one; call it by name, or let it apply on its own whenever a standalone document is the deliverable. Everything beyond those comes from a preset.
 
 `AGENTS.md` sits where every other tool already looks for it, and `CLAUDE.md` symlinks to it because Claude Code reads that name instead. Skills work the same way round: `.agents/skills/` is the [Agent Skills](https://agentskills.io) convention Cursor and Codex scan on their own, and `.claude/skills` points at it for Claude Code. Both symlinks exist only for Claude, and everything else finds the real files without help.
 
