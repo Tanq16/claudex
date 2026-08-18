@@ -63,6 +63,10 @@ Write rules as descriptive statements about how the work is done, not as command
 
 One worked example per rule is enough, and it should be the positive case. Describing what success looks like beats enumerating failure, and a prohibition against a mistake the model was not going to make can anchor it toward that mistake.
 
+An example anchors format and never scope. A template, a file shape, or a sample of the output the rule produces is what an example is for; a list of the cases the rule covers is a boundary rather than an example, and it silently becomes the whole of the rule. State the rule as the test it applies, then let the example show what the answer looks like.
+
+Separate facts from rules. A closed set the machine already has, such as the installed language servers or the environment paths, is a fact and belongs in a table where it can be checked and corrected. A criterion is a rule and is written as the test it applies, because an inventory standing in for a criterion becomes the scope of that rule.
+
 Write a prohibition only for a failure that has actually been observed. Rules invented in anticipation of a failure are the ones that get ignored, and they cost budget that a real rule needs.
 
 Leave `MUST`, `CRITICAL`, ALL-CAPS and `!!` out of the body. Emphasis belongs in the `description`, where it does routing work; in the body, emphasis without an adjacent reason reads as anxiety, and an anxious prompt produces a hedging agent.

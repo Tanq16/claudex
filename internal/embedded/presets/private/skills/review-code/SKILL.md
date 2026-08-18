@@ -187,6 +187,10 @@ Work through the categories in order when the answer is yes.
 
 Be specific enough to act on. "Missing `PrintFatal` in `utils/printer.go`" is a finding; "the utils package is incomplete" is a complaint.
 
+Every finding carries `file:line`, a severity, and what to do about it. A finding without a location is a complaint, and one without a disposition leaves the reader to redo the analysis that produced it.
+
+A finding changes behavior, breaks a build, or opens a hole. Severity is `high` when it breaks a build or opens a hole, `medium` when behavior is wrong in a case a user can reach, and `low` when a loaded skill's rule is broken with no behavioral consequence yet. Style preferences, naming, and hypotheticals are not findings at any severity, because a report padded with them trains the reader to skim past the two that matter.
+
 Every expected value and every suggested fix comes from a loaded skill rather than from general practice, because a review that invents standards produces work nobody agreed to.
 
 Detect before diving. Check whether a pattern is even used before reviewing it in depth, so a project with no goroutines gets a skip rather than a paragraph.

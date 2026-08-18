@@ -87,7 +87,8 @@ All checks passed.
 
 ### [ISSUES] Category Name
 
-1. **[Issue title]** (skill-name: section)
+1. **[Issue title]** [severity] (skill-name: section)
+   - **Where:** file:line
    - **Current:** [what the code does now]
    - **Expected:** [what the cited skill section says]
    - **Fix:** [the specific action]
