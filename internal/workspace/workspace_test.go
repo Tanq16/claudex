@@ -134,10 +134,10 @@ func TestPreflightPreset(t *testing.T) {
 	mustLink(t, filepath.Join(SkillsPath(root), "stale"), "/gone/stale")
 	mustDir(t, filepath.Join(SkillsPath(root), "handwritten"))
 
-	got := PreflightPreset(root, []string{"absent", "stale", "handwritten"})
+	got := PreflightPresetSkills(root, []string{"absent", "stale", "handwritten"})
 	want := filepath.Join(AgentsDir, SkillsDir, "handwritten")
 	if len(got) != 1 || got[0].Path != want {
-		t.Fatalf("PreflightPreset() = %v, want %s alone", got, want)
+		t.Fatalf("PreflightPresetSkills() = %v, want %s alone", got, want)
 	}
 }
 

@@ -23,15 +23,21 @@ func PreflightBase(root string) []Conflict {
 	return c.found
 }
 
-// The same check for what LinkSkills and a preset's AGENTS.md section write.
-func PreflightPreset(root string, names []string) []Conflict {
+// The same check for the skills LinkSkills would put in place.
+func PreflightPresetSkills(root string, names []string) []Conflict {
 	c := check{root: root}
 	c.dir(AgentsDir)
 	c.dir(filepath.Join(AgentsDir, SkillsDir))
-	c.file(AgentsFile)
 	for _, name := range names {
 		c.ownedLink(filepath.Join(AgentsDir, SkillsDir, name))
 	}
+	return c.found
+}
+
+// The same check for the one file every AGENTS.md section is written to.
+func PreflightAgentsFile(root string) []Conflict {
+	c := check{root: root}
+	c.file(AgentsFile)
 	return c.found
 }
 

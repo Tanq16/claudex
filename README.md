@@ -159,7 +159,11 @@ A preset is a bundle of skills plus a section it adds to `AGENTS.md`. Run it aft
 ```bash
 claudex apply-preset                 # pick from the list, space to toggle
 claudex apply-preset private         # or name them directly
+claudex apply-preset private -s      # --skills: link the skills, leave AGENTS.md alone
+claudex apply-preset private -a      # --agents: write the AGENTS.md section, link no skills
 ```
+
+Neither flag applies both halves, which is what you want almost every time. Either one narrows the run to that half and the other half is left exactly as it was, down to the preflight check: `--agents` never reports a skill link it was not going to write.
 
 **`private`** ships in the binary and is laid down in `~/.config/claudex/presets/` by `configure`. It is the author's own working set rather than a neutral default: 30 skills covering Go and Node project layout, idioms, CLI surface, servers, auth, frontends, concurrency, Makefiles, containers, releases, README, and unit testing, plus the `develop` entry point and the `review-code` audit. Its `AGENTS.md` section adds development, pull request, and operating principles, and the operating half names one particular machine's paths. Everything portable is in the base `apply` instead, so build your own preset rather than adopting this one.
 
