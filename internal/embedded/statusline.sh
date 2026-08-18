@@ -20,7 +20,7 @@ WARN="⚠️"
 # account), falling back to this script's own directory. This matters in $HOME,
 # where the project-scope .claude/ is the first account's config dir, so Claude
 # Code may run the first account's statusline.sh even when another account is
-# active — but CLAUDE_CONFIG_DIR still names the real account.
+# active, but CLAUDE_CONFIG_DIR still names the real account.
 if [[ -n "$CLAUDE_CONFIG_DIR" ]]; then
     CONFIG_DIR_NAME="$(basename "$CLAUDE_CONFIG_DIR")"
 else

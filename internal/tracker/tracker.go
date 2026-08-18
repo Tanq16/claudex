@@ -119,7 +119,7 @@ func parseTime(s string) time.Time {
 	return t
 }
 
-// claudeCredentials matches the OAuth blob Claude Code stores — the macOS Keychain value and the Linux/Windows .credentials.json file share this shape.
+// claudeCredentials matches the OAuth blob Claude Code stores. The macOS Keychain value and the Linux/Windows .credentials.json file share this shape.
 type claudeCredentials struct {
 	ClaudeAiOauth struct {
 		AccessToken string `json:"accessToken"`

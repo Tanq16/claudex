@@ -12,7 +12,7 @@ import (
 
 var applyCmd = &cobra.Command{
 	Use:   "apply",
-	Short: "Write the base layout — AGENTS.md and the base skills — into the current directory",
+	Short: "Write the base layout of AGENTS.md and the base skills into the current directory",
 	Args:  cobra.NoArgs,
 	Run:   runApply,
 }

@@ -6,7 +6,7 @@ user-invocable: true
 
 # Develop
 
-**Work out what the task is, load the skills that govern it, follow them while coding, then check that you did.**
+**Work out what the task is, load the skills that govern it, follow them while coding, check that you did, then run it once.**
 
 The other skills carry the conventions and only help when the right ones are in context before the first line is written and still honored after the last. This makes that deterministic rather than incidental.
 
@@ -44,9 +44,10 @@ Rules in effect (CLI Only, new command):
 - Tables via utils.PrintTable, honoring the --for-ai markdown path
 - New command file under cmd/, registered in root.go init()
 - Flags grouped in a per-command struct, registered in init()
+- Scope: only the files this task names; nothing leaves the working directory
 ```
 
-The cross-cutting rules go on the list every time, comment discipline first among them. Being cross-cutting rather than task-specific, they are the first to fall off the list and the first to decay mid-session, and the written checklist is the defense against that.
+The cross-cutting rules go on the list every time, comment discipline first among them, and with them the ones that reach past the diff: which files may be touched, what may not leave the working directory without being asked for, and what has to run before the work is called done. Being cross-cutting rather than task-specific, they are the first to fall off the list and the first to decay mid-session, and the written checklist is the defense against that.
 
 ## Step 4: Do the work
 
@@ -56,7 +57,15 @@ Implement, holding to the Step 3 checklist. When a task spans several skills, ke
 
 Pass over what you changed this session and check it against the Step 3 checklist. Fix small deviations directly and call out anything larger that needs a decision.
 
+Fixing in place is the carve-out for the diff you just wrote. Code that was already there is reported rather than fixed, even when it breaks the same rule, because an unrequested change sitting inside a requested one is the hardest kind for a reviewer to spot.
+
 Scope it to the files you touched, check the checklist rather than every rule in every skill, and keep it quick. This catches the drift that creeps in mid-session, which is most of what a review of fresh work finds.
+
+## Step 6: Run it once
+
+Run the real artifact before calling the work done, and say what was run. A build that compiles and a suite that passes show the code is well-formed, not that the feature works, and anything with visible output is rendered and looked at rather than reasoned about.
+
+Scope the run to what changed: a command that was touched gets invoked, a page that was edited gets loaded, and a package with no entry point of its own is exercised through its caller.
 
 ## Skill Map
 
