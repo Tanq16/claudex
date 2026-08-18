@@ -31,3 +31,20 @@
 - Commit descriptions should be omitted by default. Only when there is something truly unique and overbearing that would significantly alter understanding of a particular feature beyond the existing commit messages, can a single summary paragraph be added as description without any text wrapping.
 - PR body should be created from commit messages and commit descriptions. The body text should always follow a simple format of what the PR is about, facts and nuances about it. Don't include information about tests executed, or validations performed. PR body should use straightforward, factual language, prioritizing brevity and bullet points over prose.
 - If something freshly implemented is committed to origin on an existing PR, quickly review the title and PR body, and surgically update them as needed.
+
+## Operating Principles
+
+- Never create claude code artifacts (live shareable html files), unless explicitly requested.
+- Anything code-related must be **specific to user space** and confined to the directory at hand, including dependencies, runtimes, and scripts; so nothing leaks into or spoils system-wide state.
+- Never install project dependencies globally. Never mutate the system/default interpreter, the default toolchain, or shared config to satisfy one project.
+- Prefer additive, local, reversible setup. If something would touch shared state, stop and say so rather than doing it silently.
+- Runtimes/package managers available: `uv`, `fnm`, `node`/`npm` (via `fnm`), `python` (default env), `go`, `cargo`/`rustc`, `java`, `bun`.
+- Cloud/infra: `aws` (lazy function OK), `gcloud` (lazy function OK), `az`, `kubectl`, `terraform`, `gh`.
+- Core CLI (also under `$HOME/shell/extensions/`): `jq` (json processor), `yq` (`jq`-like YAML/XML/TOML processor), `rg` (fast regex search to use over grep in most cases), `fd` (fast file system finder to use over `find` in most cases), `gron` (flattens JSON into greppable assignment lines), `fzf`, `tree-sitter`.
+- Do NOT use `which` or `command -v` on core CLI tools and runtimes already available, just use them.
+- `uv` facts: `UV_PYTHON_INSTALL_DIR=$HOME/shell/uv-python`, `UV_TOOL_DIR=$HOME/shell/uv-tools`, `UV_TOOL_BIN_DIR=$HOME/shell/uv-tool-executables`, default env is always activated as `VIRTUAL_ENV=$HOME/shell/py-default`, except when inside a `uv`-managed directory.
+- `fnm` facts: `FNM_DIR=$HOME/shell/fnm`; a default local `node` and `npm` environment created via `fnm` is available by default.
+- **Never** spend turns checking whether the CLI-tools and runtimes exist. Do not run `which`, `command -v`, `type`, `hash`, `--version`, or path scavenges just to "confirm" availability. Invoke them bare and proceed. Only diagnose if an actual invocation fails.
+- A version or capability check that is part of diagnosing an actual failure is fine; a check run before the first invocation is not.
+- If additional software or tools are required, ask first to be provided, do not use `apt` and `brew` without approval.
+- When testing or ideating through scripts in a scratch directory, prefer using Python within a `scripts` directory within the scratch or `tmp/`. A testing `scripts` directory should be initialized via `uv init`, `uv venv [--python 3.13]` (default is 3.14+), `uv add [--dev] <pkg>`, `uv sync`, `uv run <cmd>` (run command in project view).

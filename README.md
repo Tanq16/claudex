@@ -106,7 +106,7 @@ Run this once, right after installing. With no arguments it provisions **every a
 
 - **Per account** — a statusline and a set of opinionated `settings.json` defaults. Your existing settings and env vars are preserved; only ClaudeX's keys are merged in.
 - **The global plugin** — built at `~/.config/claudex/global` and shared by every account. It carries a `.lsp.json` that wires up Go, Python, and TypeScript language servers (see below) and nothing else, because everything in it loads into **every** session; skills reach a project through [`apply`](#apply) instead, so a project you haven't applied to gets none.
-- **Presets** — `~/.config/claudex/presets/`, where the built-in `development` preset is laid down from the binary and refreshed on every run. Presets of your own live here too and are never touched. The base skills need no directory here: they come straight out of the binary when you run [`apply`](#apply).
+- **Presets** — `~/.config/claudex/presets/`, where the built-in `private` preset is laid down from the binary and refreshed on every run. Presets of your own live here too and are never touched. The base skills need no directory here: they come straight out of the binary when you run [`apply`](#apply).
 - **Flavors** — creates `~/.config/claudex/flavors/` for your launch-time system-prompt postures (see [`launch`](#launch)).
 
 `-A <path>` targets a single account; `--label` names that account's statusline and only applies with `-A`.
@@ -157,10 +157,10 @@ A preset is a bundle of extra skills plus a section it adds to `AGENTS.md`. Run 
 
 ```bash
 claudex apply-preset                 # pick from the list, space to toggle
-claudex apply-preset development     # or name them directly
+claudex apply-preset private         # or name them directly
 ```
 
-**`development`** ships in the binary and is laid down in `~/.config/claudex/presets/` by `configure`: the Go and Node conventions — project layout, modern idioms, testing, CLI, backend, frontend, concurrency, CI/CD, README — plus the `develop` entry point and the `review-code` audit.
+**`private`** ships in the binary and is laid down in `~/.config/claudex/presets/` by `configure`. It is the author's own working set rather than a neutral default: the Go and Node conventions — project layout, modern idioms, testing, CLI, backend, frontend, concurrency, CI/CD, README — plus pull request handling, the host environment of one particular machine, the `develop` entry point and the `review-code` audit. Everything portable lives in the base [`apply`](#apply) instead, so build your own preset rather than adopting this one.
 
 Preset skills are symlinked from that directory into `.agents/skills/`, one link per skill, so editing a preset reaches every project using it. Each preset's contribution to `AGENTS.md` is wrapped in `<!-- claudex:preset:<name> -->` markers and replaced in place, so applying twice changes nothing the second time.
 
@@ -175,7 +175,7 @@ Scaffolds a preset of your own at `~/.config/claudex/presets/<name>/`. Yours and
 └── skills/<skill>/         # the skills it brings
 ```
 
-`preset.yaml` may list `skills:` explicitly; left out, every skill under `skills/` is included. Keep `AGENTS.partial.md` short — a handful of task-specific rules, since the assembled `AGENTS.md` is what has to stay readable. Tracking the directory in git is up to you.
+`preset.yaml` may list `skills:` explicitly; left out, every skill under `skills/` is included. Tracking the directory in git is up to you.
 
 ```bash
 claudex create-preset go-web
