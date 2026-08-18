@@ -20,7 +20,6 @@ What you get over plain `claude`:
 |---|---|---|
 | Accounts | one `CLAUDE_CONFIG_DIR`, swapped by hand | all of them found on their own, picked at launch |
 | Resuming | only the account you are already in | recent sessions from every account, in one list |
-| System prompt | retyped, or kept in a file somewhere | flavors, picked at launch |
 | Skills | marketplace installs, pinned versions, orphans left behind | `claudex apply` puts them in the project, read by Claude Code and by every agent following the Agent Skills layout |
 | Instructions | one `CLAUDE.md` per tool, copied around | one `AGENTS.md`, symlinked to whatever each tool looks for |
 | Usage limits | a dashboard in the browser | `claudex status`, all accounts at once |
@@ -34,7 +33,7 @@ The commands:
 | `apply-preset` | Adds a named bundle of skills and its own `AGENTS.md` section on top of `apply` |
 | `create-preset` | Scaffolds a preset of your own, discovered exactly like the built-in one |
 | `clean-cwd` | Takes the layout back out of a project |
-| `launch` | Starts a Claude Code session with the right account, MCP mode, and flavor |
+| `launch` | Starts a Claude Code session with the right account and MCP mode |
 | `status` | Usage across all accounts: the 5-hour session window, the weekly overall window, and the weekly per-model windows, each with a reset countdown |
 | `switch` | Moves a conversation to another account and continues it there |
 | `oauth-token` | Prints a Claude OAuth access token from the browser PKCE flow |
@@ -56,12 +55,11 @@ flowchart LR
         Q1["New session, or resume?<br/>skipped when this project has none"]
         Q2["Which account?<br/>skipped when you only have one"]
         Q3["MCPs · MCPs + connectors · none"]
-        Q4["Which flavor?<br/>skipped when you have none"]
-        Q1 --> Q2 --> Q3 --> Q4
+        Q1 --> Q2 --> Q3
     end
 
     L --> Q1
-    Q4 --> OUT(["claude · right account, flavor applied,<br/>this project's skills in place"])
+    Q3 --> OUT(["claude · right account,<br/>this project's skills in place"])
 
     P["want more skills here?<br/>claudex apply-preset<br/>stacks on top, one bundle at a time"]
     P --> A
@@ -101,7 +99,6 @@ Run this once, right after installing. With no arguments it provisions every acc
 - **Per account**: a statusline and a set of opinionated `settings.json` defaults. Existing settings and env vars are preserved and only ClaudeX's keys are merged in.
 - **The global plugin**: built at `~/.config/claudex/global` and shared by every account. It carries a `.lsp.json` wiring up the Go, Python, and TypeScript language servers, and nothing else, because everything in that directory loads into every session.
 - **Presets**: `~/.config/claudex/presets/`, where the built-in `private` preset is laid down from the binary and refreshed on every run. Presets of your own live here too and are never touched.
-- **Flavors**: creates `~/.config/claudex/flavors/` for launch-time system prompts.
 
 The base skills need no directory here. They come straight out of the binary when you run `apply`.
 
@@ -202,31 +199,21 @@ The one command you run to start working. Run it in your project and it asks onl
   enter select · esc cancel
 ```
 
-Arrow keys and enter are the whole interface. A prompt appears only when there is a real choice to make, so with one account, no prior sessions here, and no flavors yet, the one above is all you see. In order, launch asks:
+Arrow keys and enter are the whole interface. A prompt appears only when there is a real choice to make, so with one account and no prior sessions here, the one above is all you see. In order, launch asks:
 
 - **New session, or resume?** Only when this project already has sessions. Resuming lists recent ones across every account and targets the right one for you, and with a single session it skips the list and resumes it directly.
 - **Which account?** Only when you have more than one.
 - **MCP + connectors.** MCPs only, MCPs plus claude.ai connectors such as Gmail and Slack, or none.
-- **Which flavor?** Only when you have flavors to choose between.
 
-Each prompt has a flag that skips it: `-A/--account`, `--mcp mcps|connectors|none`, `--flavor <name>` or `--no-flavor`, and `--new`, `--resume`, or `--session <id>`. `--resume` takes the latest when there is one session and lists them otherwise. `--session <id>` resumes one directly. Supply all of them for a launch that never prompts.
+Each prompt has a flag that skips it: `-A/--account`, `--mcp mcps|connectors|none`, and `--new`, `--resume`, or `--session <id>`. `--resume` takes the latest when there is one session and lists them otherwise. `--session <id>` resumes one directly. Supply all of them for a launch that never prompts.
 
 The global plugin loads every launch, so language servers are always there. Launching before you have run `configure` works too and lays down anything missing without touching what you have customized. Skills are not part of it: they come from `claudex apply` in the project you launch from.
-
-**Flavors** are reusable launch-time system prompts, one `.md` file per posture in `~/.config/claudex/flavors/`. The whole file becomes the appended system prompt and the filename is its label. `default.md` is a convenience, not a master switch:
-
-| `flavors/` contains | Behavior at launch |
-|---|---|
-| nothing | nothing applied, no prompt |
-| only `default.md` | applied silently, no prompt |
-| `default.md` plus others | pick one (`default` pre-selected) or None |
-| others, no `default.md` | pick one or None |
 
 `--mcp none` suppresses every MCP server for the session. It does not touch language servers, which are not MCP.
 
 ```bash
 claudex launch
-claudex launch -A ~/.claude2 --mcp none --new --no-flavor   # never prompts
+claudex launch -A ~/.claude2 --mcp none --new   # never prompts
 ```
 
 ### `status`
