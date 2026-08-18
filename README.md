@@ -1,5 +1,5 @@
 <div align="center">
-  <img src=".github/assets/logo.svg" alt="Claudex Logo" width="200">
+  <img src=".github/assets/logo.svg" alt="ClaudeX Logo" width="200">
   <h1>ClaudeX</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
@@ -8,37 +8,22 @@
 
 ---
 
-ClaudeX is a companion CLI for Claude Code that sets every account up identically, lays your instructions and skills into a project in the format each coding agent already reads, and starts a session with the right account in one command.
+ClaudeX is a companion CLI for Claude Code that finds every Claude account on the machine and configures them identically, writes an `AGENTS.md` and skills layout into a project, and launches a session under the account you pick.
 
-It exists because instructions installed globally reach every project at once, so an agent ends up reading rules written for a codebase it is not in. It is not a replacement for `claude`, which it execs straight into, and it is not a skills marketplace.
+It exists for juggling several Claude subscriptions, and everything except the account picker works the same with one. It does not replace `claude`, which `launch` execs.
 
 ## Capabilities
 
-What you get over plain `claude`:
-
-| | plain `claude` | ClaudeX |
-|---|---|---|
-| Accounts | one `CLAUDE_CONFIG_DIR`, swapped by hand | all of them found on their own, picked at launch |
-| Resuming | only the account you are already in | recent sessions from every account, in one list |
-| Skills | marketplace installs, pinned versions, orphans left behind | `claudex apply` puts them in the project, read by Claude Code and by every agent following the Agent Skills layout |
-| Instructions | one `CLAUDE.md` per tool, copied around | one `AGENTS.md`, symlinked to whatever each tool looks for |
-| Usage limits | a dashboard in the browser | `claudex status`, all accounts at once |
-
-It is built for juggling several Claude subscriptions, and everything except the account picker works the same on one.
-
-| Category | Commands | What they do |
-|---|---|---|
-| Setup | `configure` | Every account and the shared defaults, once after installing |
-| Project | `apply`, `apply-preset`, `create-preset` | The `AGENTS.md` and skills layout, and the preset bundles that stack on top of it |
-| Sessions | `launch`, `switch` | Start a session with the right account, or move a project to another one |
-| Accounts | `status`, `oauth-token` | Usage windows across every account, and a raw OAuth token |
-| Removal | `clean-cwd` | Takes the layout back out of a project |
-
-Run `configure` once, `apply` once per project, then `launch` every time you start work.
+| Category | Commands | Description |
+|----------|----------|-------------|
+| Accounts | `configure`, `status`, `switch`, `oauth-token` | Provision every account, read its usage, move a project between accounts |
+| Sessions | `launch` | Pick the account and the session, then exec `claude` |
+| Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
+| Presets | `create-preset` | Scaffold your own bundle of skills and rules |
 
 ## Install
 
-Download from [releases](https://github.com/tanq16/claudex/releases):
+### Release binary
 
 ```bash
 # Linux/macOS
@@ -47,162 +32,124 @@ chmod +x claudex
 sudo mv claudex /usr/local/bin/
 ```
 
-Building from source needs Go:
+Each release carries `claudex-linux-amd64`, `claudex-linux-arm64`, `claudex-darwin-amd64`, and `claudex-darwin-arm64`.
+
+### From source
+
+Needs Go 1.26.
 
 ```bash
-git clone https://github.com/tanq16/claudex
+git clone https://github.com/tanq16/claudex.git
 cd claudex
 make build
 ```
 
+`make build-all` produces all four platform binaries instead.
+
 ## Usage
 
-No command needs a flag. Every prompt has a flag that skips it, so supplying all of them gives a run that never prompts. `--debug` turns on structured zerolog output and `--for-ai` switches to plain prefixed text that reads prompt answers from stdin, for driving ClaudeX from a script or an agent. The two are mutually exclusive, and `launch` refuses `--for-ai` since it execs into an interactive `claude`.
+`--debug` and `--for-ai` are on every command and are mutually exclusive: the first adds log lines, the second drops color and symbols. `-A/--account` takes an account config directory path, and on `launch` and `switch` it also matches on just the directory name. Global state lives under `~/.config/claudex/`, holding the plugin in `global/` and presets in `presets/`.
 
-### `configure`
+### configure
 
-Run this once, right after installing. With no arguments it provisions every account it discovers in a single pass:
+Provisions every discovered account, then lays down the global defaults once.
 
-- **Per account**: a statusline and a set of opinionated `settings.json` defaults. Existing settings and env vars are preserved and only ClaudeX's keys are merged in.
-- **The global plugin**: built at `~/.config/claudex/global` and shared by every account. It carries a `.lsp.json` wiring up the Go, Python, and TypeScript language servers, and nothing else, because everything in that directory loads into every session.
-- **Presets**: `~/.config/claudex/presets/`, where the built-in `private` preset is laid down from the binary and refreshed on every run. Presets of your own live here too and are never touched.
+Per account it writes `statusline.sh` into the account directory and points `settings.json` at it. The statusline shows the account label, the model, the working directory, the git branch, context used, and the 5h and 7d rate-limit percentages. It also merges these keys into the existing `settings.json`, leaving every other key alone:
 
-The base skills need no directory here. They come straight out of the binary when you run `apply`.
+| Key | Value |
+|-----|-------|
+| `attribution.commit` | `""` |
+| `effortLevel` | `xhigh` |
+| `tui` | `fullscreen` |
+| `autoMemoryEnabled` | `false` |
+| `skipDangerousModePermissionPrompt` | `true` |
+| `env.DISABLE_AUTOUPDATER` | `1` |
+| `env.ENABLE_CLAUDEAI_MCP_SERVERS` | `false` |
 
-`-A <path>` targets a single account. `--label` names that account's statusline and only applies with `-A`.
+An account whose `settings.json` is not valid JSON is skipped rather than overwritten.
+
+The global defaults are a Claude Code plugin at `~/.config/claudex/global/`, carrying an `.lsp.json` that wires `gopls`, `pyright-langserver`, and `typescript-language-server`, plus the built-in presets extracted into `~/.config/claudex/presets/`.
+
+`-A` configures one account instead of all of them. `-l/--label` overrides the account label in the statusline and requires `-A`; without it the label comes from the directory name, where `.claude` is `first`, `.claude2` is `second`, `.claude3` is `third`, and anything else uses the numeric suffix.
+
+### apply
+
+Writes the layout into the current directory:
+
+```
+AGENTS.md          base instruction block, between <!-- claudex:base --> markers
+CLAUDE.md          -> AGENTS.md
+.agents/skills/    session-summary, skill-creator, write-document
+.claude/skills     -> ../.agents/skills
+```
+
+`AGENTS.md` and `.agents/skills/` are the real files, following the [Agent Skills](https://agentskills.io) layout that Cursor and Codex read on their own, and the two symlinks exist because Claude Code looks for the other names.
+
+An existing `AGENTS.md` keeps everything outside the markers: the base block is inserted or replaced in place. The same four paths also go into `.git/info/exclude`, which is local to your clone, so the layout never appears in `git status` and never gets pushed.
+
+Nothing is written when any of those paths already holds something ClaudeX did not put there. Every conflict is reported at once so you can clear them in one pass rather than one run per path.
+
+### apply-preset
+
+A preset is a directory under `~/.config/claudex/presets/` holding a `preset.yaml`, an optional `AGENTS.partial.md`, and a `skills/` directory. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, keyed by preset name, so re-applying replaces that section instead of appending a second copy. It needs `claudex apply` to have run first.
 
 ```bash
-claudex configure
-claudex configure -A ~/.claude2 --label prod
+claudex apply-preset            # multi-select picker
+claudex apply-preset private    # by name; several names apply in order
 ```
 
-Language servers ship on by default and you install the binaries yourself, which [docs/language-servers.md](docs/language-servers.md) covers.
+`-s/--skills` links only the skills and leaves `AGENTS.md` alone. `-a/--agents` writes only the section and links no skills. Neither flag applies the whole preset; passing one narrows the run to that half.
 
-### `apply`
+One preset ships in the binary. `private` carries 30 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
 
-Run this once in a project. It writes the layout every coding agent reads, and commits nothing to the repo:
+The manifest keys:
 
-```
-AGENTS.md                   # the real file, your instructions
-CLAUDE.md      -> AGENTS.md
-.agents/skills/<skill>      # the base skills, straight from the binary
-.claude/skills -> ../.agents/skills
-```
+| Key | Default | Description |
+|-----|---------|-------------|
+| `name` | the directory name | Shown in the picker and used as the `AGENTS.md` section key |
+| `description` | empty | One line shown beside the name in the picker |
+| `skills` | every directory under `skills/` holding a `SKILL.md` | Which skills to link |
 
-The base set is three skills. `skill-creator` writes a new skill in the Agent Skills format and sized to the context budget. `session-summary` pauses a session into `.agents/session-resume/resume.md` and resumes from it later. `write-document` settles who a document is for and what shape that consumer needs before it is written. Everything beyond those comes from a preset.
+### create-preset
 
-It checks before it writes. A path already holding something else, a real `CLAUDE.md` or a `.claude/skills` directory of your own, stops the run with the full list of what to move aside, and nothing at all is written. `apply-preset` checks the skills it would link the same way.
+Scaffolds `~/.config/claudex/presets/<name>/` with a `preset.yaml`, an `AGENTS.partial.md`, and an empty `skills/`. Names take lowercase letters, digits, and single hyphens.
 
-The four paths go into `.git/info/exclude`, which is local to your clone and never pushed, so nothing shows up as a diff in someone else's repo. Outside a git repository that step is skipped silently and everything else still happens, so run `apply` again after a later `git init`. Keeping a repo's own `GEMINI.md` or `.cursor/rules/` out of your clone needs more than that, which [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers.
+### clean-cwd
 
-ClaudeX's part of `AGENTS.md` sits between `<!-- claudex:base -->` markers, so a re-apply refreshes it and leaves anything you wrote around it alone. Re-running `apply` also refreshes the base skills from the binary, which is how an upgrade reaches a project.
+Removes what `apply` and `apply-preset` wrote: `.agents/`, both symlinks, the ClaudeX sections of `AGENTS.md`, and the `.git/info/exclude` block.
 
-```bash
-claudex apply
-```
+### launch
 
-### `apply-preset`
+Prompts for new or resume, for the account, and for MCP mode, then execs `claude` with `--dangerously-skip-permissions`, a `--plugin-dir` pointing at the global plugin, and `CLAUDE_CONFIG_DIR` set to the account you picked. Any inherited `CLAUDE_CONFIG_DIR` is stripped first so it cannot override that choice. The plugin is rebuilt on every launch, so language servers work without running `configure`.
 
-A preset is a bundle of skills plus a section it adds to `AGENTS.md`. Run it after `apply`. Presets stack, so you can apply several.
+The new-or-resume prompt only appears when this project has sessions, and the account prompt only when there is more than one account. Resume lists this project's 10 most recent sessions across every account, and picking one launches under the account that holds it.
 
-```bash
-claudex apply-preset                 # pick from the list, space to toggle
-claudex apply-preset private         # or name them directly
-claudex apply-preset private -s      # --skills: link the skills, leave AGENTS.md alone
-claudex apply-preset private -a      # --agents: write the AGENTS.md section, link no skills
-```
+| Flag | Effect |
+|------|--------|
+| `-A/--account` | Skip the account picker |
+| `--new` | Start a new session |
+| `--resume` | Resume: the latest session, or a list when there is more than one |
+| `--session <id>` | Resume that session by id |
+| `--mcp mcps\|connectors\|none` | Skip the MCP picker |
 
-Neither flag applies both halves, which is what you want almost every time. Either one narrows the run to that half and leaves the other exactly as it was, down to the preflight check: `--agents` never reports a skill link it was not going to write.
+`--new`, `--resume`, and `--session` are mutually exclusive. The MCP modes are `mcps` for MCP servers on, `connectors` to add Claude.ai connectors on top, and `none` for `--strict-mcp-config`. Launch needs an interactive terminal, so `--for-ai` errors.
 
-**`private`** ships in the binary and is the author's own working set rather than a neutral default: 30 skills covering Go and Node project layout, idioms, CLI surface, servers, auth, frontends, concurrency, Makefiles, containers, releases, README, and unit testing, plus the `develop` entry point and the `review-code` audit. Its `AGENTS.md` section adds development, pull request, and operating principles, and the operating half names one particular machine's paths. Everything portable is in the base `apply` instead, so build your own preset rather than adopting this one.
+### status
 
-Preset skills are symlinked from `~/.config/claudex/presets/` into `.agents/skills/`, one link per skill, so editing a preset reaches every project using it. Each preset's contribution to `AGENTS.md` is wrapped in `<!-- claudex:preset:<name> -->` markers and replaced in place, so applying twice changes nothing the second time.
+Per account, the 5h session window and the 7d windows as bars with their reset times. It reads the account's OAuth token from the macOS Keychain or from `.credentials.json` and queries Anthropic's usage endpoint, so an expired token shows as a prompt to open Claude Code on that account. `-j/--json` prints the raw numbers, `-A` limits it to one account.
 
-### `create-preset`
+### switch
 
-Scaffolds a preset of your own at `~/.config/claudex/presets/<name>/`. Yours and the built-in one are discovered the same way, with no registration step:
+Moves the current project's session files and history entries out of the account holding them and into another. It needs at least two accounts, and `-A/--account` is required under `--for-ai`.
 
-```
-~/.config/claudex/presets/<name>/
-├── preset.yaml             # name and the description shown in the picker
-├── AGENTS.partial.md       # the section this preset adds to AGENTS.md
-└── skills/<skill>/         # the skills it brings
-```
+### oauth-token
 
-`preset.yaml` may list `skills:` explicitly. Left out, every skill under `skills/` is included. Tracking the directory in git is up to you.
-
-```bash
-claudex create-preset go-web
-```
-
-### `clean-cwd`
-
-Removes what `apply` wrote here: `.agents/`, the `CLAUDE.md` and `.claude/skills` symlinks, ClaudeX's marked sections of `AGENTS.md`, and the `.git/info/exclude` block. Prose you wrote around those markers stays, `AGENTS.md` is deleted only when nothing of yours is left in it, and your own `.claude/settings.json` is untouched.
-
-This is the only command that removes anything, which is why `apply` has no wipe-and-rebuild flag.
-
-```bash
-claudex clean-cwd
-```
-
-### `launch`
-
-The one command you run to start working. Run it in your project and it asks only what it needs to, then execs straight into `claude`:
-
-```
-  MCP + Connectors
-  › MCPs only
-    MCPs + Connectors
-    None
-
-  enter select · esc cancel
-```
-
-Arrow keys and enter are the whole interface, and a prompt appears only when there is a real choice to make. In order, launch asks:
-
-- **New session, or resume?** Only when this project already has sessions. Resuming lists recent ones across every account, and with a single session it skips the list and resumes it directly.
-- **Which account?** Only when you have more than one.
-- **MCP + connectors.** MCPs only, MCPs plus claude.ai connectors such as Gmail and Slack, or none.
-
-The flags that skip them are `-A/--account`, `--mcp mcps|connectors|none`, and `--new`, `--resume`, or `--session <id>`. `--resume` takes the latest when there is one session and lists them otherwise.
-
-```bash
-claudex launch
-claudex launch -A ~/.claude2 --mcp none --new   # never prompts
-```
-
-### `status`
-
-Usage for every account at once: the 5-hour session window, the weekly overall window, and the weekly per-model windows (currently Fable), each with a reset countdown. One glance tells you which account has room and which is about to hit a limit.
-
-Numbers come from Anthropic's OAuth usage API, the same source as the official dashboard. Tokens are read from the macOS Keychain, or from each account's `.credentials.json` on Linux and Windows, and refresh on their own while Claude Code is running. If one shows as expired, launch Claude Code on that account to refresh it.
-
-```bash
-claudex status
-claudex status -A ~/.claude2
-claudex status -j          # json
-```
-
-### `switch`
-
-Moves the current directory's project to another account so you can pick the thread back up there. It works out which account the project lives in from its most-recent session, then moves that account's sessions for it, files and history entries both. Run bare, it switches silently when there is only one other account and asks which when there are several, and `-A/--account` names the target directly.
-
-```bash
-claudex switch
-claudex switch -A ~/.claude2
-```
-
-### `oauth-token`
-
-A Claude OAuth access token from the browser-based PKCE flow, valid one hour by default. It opens your browser to authenticate and prints the token, and only the token, to stdout, so `TOKEN=$(claudex oauth-token)` works. `--expires-in` and `--port` are there if you need them.
-
-```bash
-claudex oauth-token
-```
+Runs the OAuth PKCE flow in a browser and prints an access token to stdout. `-p/--port` sets the local callback port and `-e/--expires-in` the requested expiry in seconds, which the server may override.
 
 ## Notes
 
-- **Accounts are found, never created.** ClaudeX picks up `~/.claude` and any numbered sibling (`~/.claude2`, `~/.claude3`, and so on). To add one, point Claude Code at a fresh directory and log in there with `CLAUDE_CONFIG_DIR=~/.claude2 claude`, then run `configure` again.
-- **The file names are what each tool already looks for.** `AGENTS.md` sits where every other tool expects it and `CLAUDE.md` symlinks to it because Claude Code reads that name instead. Skills work the same way round: `.agents/skills/` is the [Agent Skills](https://agentskills.io) convention Cursor and Codex scan on their own, and `.claude/skills` points at it for Claude Code.
-- **Language servers are not MCP.** `--mcp none` suppresses every MCP server for the session and leaves the language servers running.
-- **The global plugin loads every launch.** Launching before you have run `configure` works too and lays down anything missing without touching what you have customized. Skills are not part of it, and come from `claudex apply` in the project you launch from.
+- **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
+- **Preset skills are symlinks.** They point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The three base skills from `apply` are real copies extracted from the binary, so re-running `apply` is what updates them.
+- **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
+- **Language server binaries are yours to install.** ClaudeX writes the `.lsp.json`, and a server whose binary is missing is skipped while the rest still start. Install commands and the `typescript@5` pin are in [docs/language-servers.md](docs/language-servers.md).
+- **Another repo's agent files.** `.git/info/exclude` only reaches untracked files, so a `GEMINI.md` or `.cursor/` that the repository itself tracks stays in your working tree. [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers the sparse-checkout that removes them.
