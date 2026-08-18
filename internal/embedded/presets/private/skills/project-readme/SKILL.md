@@ -1,110 +1,120 @@
 ---
 name: project-readme
-description: Use when creating README files for any project type - covers header patterns, badges, structure templates for CLI tools, web apps, and Chrome extensions
+description: README structure for every project type - the centered header, badges, and the section order each kind of project uses. Use when creating a README, restructuring one, adding badges or navigation links, or documenting installation, configuration, and container behavior. Triggers on README.md, shields.io badges, .github/assets/logo.png, a capabilities table, an install section, and documenting the user a container runs as.
 user-invocable: false
 ---
 
 # Project README
 
-**Standardized README patterns for all project types.**
+**A centered header with a logo, badges, and jump links, then the section order for whichever kind of project this is.**
 
-## When to Use
+Match a project's existing README style when it already has one. Restructuring a working README to match a template is churn the reader has to re-read to discover nothing changed.
 
-Use this skill when:
-- Creating a README for a new project
-- Updating an existing README to follow conventions
-- Adding badges, headers, or navigation links
-- Structuring documentation for CLI tools, web apps, or extensions
-
-## Start here — required reading
-
-Read this now, in full, before writing or updating a README — it carries the templates you'll copy from.
-
-**Always:**
-- `./references/readme-templates.md` — complete README templates for every project type
-
-## README Types
-
-| Project Type | Key Sections |
-|--------------|--------------|
-| CLI Only (Command-Line Tools) | Header → Capabilities Table → Installation → Usage (by command) → Tips |
-| Web Only (Web Apps, Dashboards) | Header → Intro → Features → Screenshots → Install/Usage → Tips |
-| Node Web Only (Node server that serves a frontend) | Header → Intro → Features → Screenshots → Install/Usage (a process that serves) → config.json → Tips |
-| CLI + Web (CLI tool that also serves a web app) | CLI Only shape (Capabilities → Install → Usage) plus a Web UI section with screenshots |
-| Chrome Extension | Header → Intro → Features → Screenshots → Install → Permissions → Tips |
-
-Project type names match the canonical taxonomy in `go-foundations` (Project Taxonomy). A Headless API Service uses the CLI Only README shape (no screenshots); a Library / Module uses an API/usage README focused on `go get` and exported functions.
-
-## Common Header
-
-Default to a centered header pattern with logo and badges (match the project's existing README style if it already has one):
+## Header
 
 ```markdown
 <div align="center">
-  <img src=".github/assets/logo.png" alt="PROJECT_NAME Logo" width="200">
-  <h1>PROJECT_NAME</h1>
+  <img src=".github/assets/logo.png" alt="[PROJECT_NAME] Logo" width="200">
+  <h1>[PROJECT_NAME]</h1>
 
-  <a href="https://github.com/[GITHUB_USER]/REPO_NAME/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/[GITHUB_USER]/REPO_NAME/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/[GITHUB_USER]/REPO_NAME/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/[GITHUB_USER]/REPO_NAME"></a><br><br>
+  <a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/[GITHUB_USER]/[REPO_NAME]"></a><br><br>
   <a href="#section1">Section1</a> &bull; <a href="#section2">Section2</a> &bull; <a href="#tips-and-notes">Tips & Notes</a>
 </div>
 
 ---
 ```
 
-Replace the bracketed placeholders (`PROJECT_NAME`, `REPO_NAME`, `[GITHUB_USER]`) with the project's actual name, repo, and GitHub org/user — never hardcode a specific account.
+Placeholders are replaced with the project's real name, repository, and owner. A hardcoded account in a template is a broken badge in every project that copies it.
 
-### Badge Options
+The logo lives at `.github/assets/logo.png`, or at the frontend's own static path when the app already embeds one, so the README does not carry a second copy of the same image.
 
-| Badge | When to Include |
-|-------|-----------------|
-| Build Status | Recommended (if using GitHub Actions) |
-| Docker Pulls | If publishing Docker images |
-| GitHub Release | Recommended (for versioned releases) |
+| Badge | Include when |
+|---|---|
+| Build status | the project has a release workflow |
+| GitHub release | the project publishes versioned releases |
+| Docker pulls | the project publishes a container image |
 
-### Logo Location
+Navigation links point at sections that exist. A jump link to a heading that was renamed scrolls nowhere and is invisible in review.
 
-- Primary: `.github/assets/logo.png` or `.github/assets/logo.svg`
-- Alternative: Reference frontend static path if logo is embedded in app
+## Section Order
 
-## Workflow
+| Project type | Sections after the header |
+|---|---|
+| CLI Only | Capabilities table, Installation, Usage by command, Tips and Notes |
+| Web Only | Intro, Features, Screenshots, Installation and Usage, Tips and Notes |
+| Node Web Only | Intro, Features, Screenshots, Installation and Usage, Configuration, Tips and Notes |
+| CLI + Web | the CLI Only shape, plus a Web UI section with screenshots |
+| Headless API Service | the CLI Only shape without screenshots |
+| Library / Module | Intro, Installation via `go get`, API and usage, Tips and Notes |
+| Chrome Extension | Intro, Features, Screenshots, Installation, Permissions, Tips and Notes |
 
-### Step 1: Identify Project Type
+A CLI tool leads with a capabilities table because a reader is deciding whether the tool does the thing they need. A web app leads with screenshots because a reader is deciding whether they want to look at it.
 
-| If Project Has... | Type |
-|-------------------|------|
-| CLI commands, terminal tool | CLI Only |
-| Web UI, server, dashboard (no real CLI) | Web Only |
-| Both a web UI and real CLI commands | CLI + Web |
-| manifest.json, browser extension | Chrome Extension |
+## Capabilities Table
 
-### Step 2: Generate README
-
-Use `./references/readme-templates.md` to copy the appropriate template.
-
-**Customize:**
-- Replace `[PROJECT_NAME]` and `[REPO_NAME]` placeholders
-- Adjust navigation links to match actual sections
-- Add/remove badges based on what's applicable
-
-### Step 3: Add Security Disclaimer (Extensions Only)
-
-For Chrome extensions that handle sensitive data (cookies, traffic, credentials), add this note immediately after the introduction:
+The CLI Only opener, grouping commands so the surface is readable before any of it is explained.
 
 ```markdown
-> **Note:** This extension is intended for developers and security professionals. 
+## Capabilities
+
+| Category | Commands | Description |
+|----------|----------|-------------|
+| Files | `rename`, `bulk-rename`, `duplicates` | File management utilities |
+| Network | `tunnel`, `http-server` | Network tools |
+| Crypto | `encrypt`, `decrypt`, `keygen` | Cryptographic operations |
+```
+
+Each command then gets its own subsection under Usage: what it does, its invocation, its flags with defaults, and at least one worked example.
+
+## Installation
+
+Every install path the project actually publishes is listed, and none that it does not. Ordering is by what most readers will use.
+
+A binary release names the platform matrix. A container run shows the port and volume mapping. Building from source states the toolchain version it needs.
+
+## Configuration
+
+A project that reads a config file documents the keys as a table with defaults, and says that omitted keys fall back to those defaults.
+
+```markdown
+| Key | Description | Default |
+|-----|-------------|---------|
+| `port` | Port the server listens on | `8080` |
+| `host` | Bind address | `127.0.0.1` |
+```
+
+## Containers
+
+A project that ships a container image documents the user and group it runs as, and what that means for a mounted volume. A reader who mounts a host directory and gets permission errors has no way to find the UID otherwise, since it is a number inside a Dockerfile they never opened.
+
+```markdown
+The container runs as UID/GID `10001:10001`, not root. A mounted volume needs to be
+writable by that user:
+
+    mkdir -p ./data && sudo chown 10001:10001 ./data
+```
+
+## Screenshots
+
+Screenshots go inside a `<details>` block, so a long README stays scannable and a reader on a slow connection is not paying for images they did not open.
+
+```markdown
+<details>
+<summary>Click to expand screenshots</summary>
+
+![Screenshot 1](.github/assets/screenshot1.png)
+*Caption for screenshot 1*
+
+</details>
+```
+
+## Extension Security Disclaimer
+
+A Chrome extension that handles sensitive data carries this note immediately after the introduction, because a reader deciding whether to install it needs the scope before the feature list.
+
+```markdown
+> **Note:** This extension is intended for developers and security professionals.
 > Misuse for unauthorized access or data collection is not intended.
 ```
 
-Only include this for extensions that:
-- Extract or modify cookies
-- Monitor network traffic
-- Access authentication tokens
-- Capture sensitive form data
-
-## References
-
-| File | Purpose |
-|------|---------|
-| `./references/readme-templates.md` | Complete templates for all project types |
-
-See `./references/readme-templates.md` for full copy-paste templates.
+It applies to an extension that extracts or modifies cookies, monitors network traffic, reads authentication tokens, or captures form data. An extension that does none of those omits it, since a disclaimer on everything is a disclaimer on nothing.

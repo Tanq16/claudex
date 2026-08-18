@@ -1,67 +1,27 @@
 ---
 name: go-concurrency
-description: Use when running concurrent work or orchestrating multi-job pipelines in Go - covers goroutine patterns (WaitGroup, errgroup, semaphores, fan-out/fan-in), error handling, cancellation, and the Highway pattern for progress tracking and resume
+description: Goroutine patterns for Go - WaitGroup, errgroup, bounded concurrency, fan-out/fan-in, and context cancellation. Use when running work concurrently, limiting how much runs at once, collecting results or errors from parallel operations, or making a long operation cancellable. Triggers on go func, sync.WaitGroup, wg.Go, errgroup, SetLimit, buffered channel semaphores, ctx.Done, and worker pools.
 user-invocable: false
 ---
 
 # Go Concurrency
 
-**Concurrency primitives and the Highway job-pipeline pattern for Go execution.**
-
-This skill has two layers:
-
-- **Part 1 — Concurrency primitives:** vanilla goroutine patterns for work inside a job's `Run()` method or simple standalone operations.
-- **Part 2 — Highway pattern:** job orchestration on top of those primitives, adding progress tracking, a UI-agnostic display, and Ctrl+C resume.
-
-Reach for Part 1 when you just need to parallelize work. Reach for Part 2 when a CLI tool runs many items through a unified pipeline that needs progress reporting and resumability.
-
-## When to Use
-
-Use this skill when:
-- Running multiple operations concurrently with error handling or bounded concurrency
-- Parallelizing work inside a job's `Run()` method or a standalone function
-- Needing graceful cancellation on error or Ctrl+C
-- Building CLI tools that process many items (downloads, scans, migrations) through one pipeline
-- Needing progress tracking that can hook to any UI (terminal, web) plus resume capability
-
-**Requires:** `go-foundations` for project layout, modern Go idioms, and (for the Highway) the `utils/` package and `--for-ai` flag — load it alongside this skill.
-
-**Related skills:**
-- `go-cli` - Cobra setup, flags, and the sequential output-lifecycle patterns (the simple, non-concurrent counterpart to the Highway display)
-
----
-
-## Start here — required reading
-
-Read the **Always** file now, in full, before writing concurrent code — it carries the six primitive patterns you'll be held to. Read each **When** file before the sub-task it names; a subagent may read it if you delegate that work.
-
-**Always:**
-- `./references/concurrency-patterns.md` — the six goroutine patterns + context cancellation (Part 1)
-
-**When building a resumable Highway job pipeline (Part 2):**
-- `./references/highway-template.md` — the full Highway engine + state save/load
-- `./references/job-examples.md` — example job types (simple and resumable)
-- `./references/display-template.md` — the terminal display manager (+ AI mode, web hook)
-
-# Part 1 — Concurrency Primitives
-
-**Vanilla concurrency for use inside jobs or standalone operations.**
+**Pick the smallest primitive that carries the error semantics you need, and let the standard library handle the bookkeeping.**
 
 ## Pattern Selection
 
 | Need | Pattern |
-|------|---------|
-| Run N things concurrently, wait for all | WaitGroup (`wg.Go`) |
-| Run N things, stop all on first error | errgroup |
-| Limit concurrent operations to M | errgroup `SetLimit` or buffered-channel semaphore |
-| Fan-out work, fan-in results | Fan-out/Fan-in |
+|---|---|
+| Run N things, wait for all | `sync.WaitGroup` via `wg.Go` |
+| Run N things, stop all on the first error | `errgroup` |
+| Limit to M concurrent operations | `errgroup.SetLimit`, or a buffered-channel semaphore |
+| Distribute a stream to workers and merge results | fan-out/fan-in |
 
-**Default choice:** use `errgroup` whenever operations can fail; add `g.SetLimit(N)` for bounded concurrency. Drop to a raw `sync.WaitGroup` (via `wg.Go`) only when errors are genuinely fire-and-forget.
+`errgroup` is the default whenever an operation can fail, with `g.SetLimit(N)` added for bounded concurrency. Drop to a raw `sync.WaitGroup` only when errors are genuinely fire-and-forget, because a WaitGroup gives you no way to learn that half the work failed.
 
 ```go
 import "golang.org/x/sync/errgroup"
 
-// The default: bounded concurrency with first-error cancellation.
 g, ctx := errgroup.WithContext(ctx)
 g.SetLimit(10)
 for _, item := range items {
@@ -69,235 +29,193 @@ for _, item := range items {
         return process(ctx, item)
     })
 }
-return g.Wait() // first error, or nil
+return g.Wait() // the first error, or nil
 ```
 
-Full code for all six patterns (WaitGroup fire-and-forget, errgroup, errgroup+limit, buffered-channel semaphore, result collection, fan-out/fan-in) plus context-cancellation snippets lives in `./references/concurrency-patterns.md`.
+Go 1.22 and later scope loop variables per iteration, so the old `item := item` capture before a goroutine is unnecessary on this baseline.
 
-## Quick Reference
+## WaitGroup, Fire and Forget
 
-| Pattern | Import | When to Use |
-|---------|--------|-------------|
-| `sync.WaitGroup` (`wg.Go`) | `sync` | Fire N, wait, ignore errors |
-| `errgroup.Group` | `golang.org/x/sync/errgroup` | Fire N, stop on first error |
-| `errgroup.SetLimit(M)` | `golang.org/x/sync/errgroup` | Bounded concurrency + errors |
-| Buffered chan semaphore | builtin | Bounded concurrency without errgroup |
-| Fan-out/Fan-in | builtin | Stream processing with workers |
+Errors are logged and dropped. Use it when a failure genuinely should not stop the rest.
+
+```go
+func processAll(ctx context.Context, items []Item) {
+    var wg sync.WaitGroup
+    for _, item := range items {
+        wg.Go(func() {
+            select {
+            case <-ctx.Done():
+                return
+            default:
+            }
+            if err := process(item); err != nil {
+                log.Error().Err(err).Str("item", item.ID).Msg("error processing item")
+            }
+        })
+    }
+    wg.Wait()
+}
+```
+
+`wg.Go` spawns the goroutine and pairs `Add` with `Done` itself, which removes the failure mode where an early return skips the `Done`.
+
+The logging call follows the project's own convention: zerolog for CLI Only, `log.Printf("ERROR ...")` for Web Only and a hybrid's server layer.
+
+## errgroup, Stop on First Error
+
+```go
+func processAll(ctx context.Context, items []Item) error {
+    g, ctx := errgroup.WithContext(ctx)
+    for _, item := range items {
+        g.Go(func() error {
+            return process(ctx, item)
+        })
+    }
+    return g.Wait()
+}
+```
+
+`errgroup.WithContext` returns a context that is cancelled as soon as any goroutine returns an error, so the rest stop instead of finishing work whose result is already being discarded.
+
+## errgroup with a Limit
+
+```go
+g, ctx := errgroup.WithContext(ctx)
+g.SetLimit(10)
+```
+
+`SetLimit` blocks `g.Go` until a slot frees, which bounds concurrency without a second synchronization primitive to keep in step with the group.
+
+## Buffered-Channel Semaphore
+
+For bounded concurrency when first-error cancellation is not wanted.
+
+```go
+func processAll(ctx context.Context, items []Item) {
+    sem := make(chan struct{}, 10)
+    var wg sync.WaitGroup
+
+    for _, item := range items {
+        sem <- struct{}{} // acquire, blocks once 10 are running
+        wg.Go(func() {
+            defer func() { <-sem }() // release
+            process(ctx, item)
+        })
+    }
+    wg.Wait()
+}
+```
+
+The acquire happens before `wg.Go`, not inside the goroutine. Acquiring inside means every goroutine is spawned immediately and then blocks, which bounds the work but not the goroutine count.
+
+## Collecting Results
+
+```go
+func gather(ctx context.Context, items []Item) ([]Result, error) {
+    g, ctx := errgroup.WithContext(ctx)
+    results := make([]Result, len(items))
+
+    for i, item := range items {
+        g.Go(func() error {
+            result, err := process(ctx, item)
+            if err != nil {
+                return err
+            }
+            results[i] = result
+            return nil
+        })
+    }
+    if err := g.Wait(); err != nil {
+        return nil, err
+    }
+    return results, nil
+}
+```
+
+Writing to a preallocated slice at a unique index needs no mutex, since no two goroutines touch the same element and the slice header itself never changes.
+
+## Fan-Out / Fan-In
+
+For a stream of items through a fixed pool. It is more machinery than `errgroup`, so reach for it only when you specifically need the channel-based pool.
+
+```go
+func fanOut(ctx context.Context, items []Item, workers int) []Result {
+    jobs := make(chan Item)
+    results := make(chan Result)
+
+    var wg sync.WaitGroup
+    for range workers {
+        wg.Go(func() {
+            for item := range jobs {
+                select {
+                case <-ctx.Done():
+                    return
+                case results <- process(ctx, item):
+                }
+            }
+        })
+    }
+
+    go func() {
+        wg.Wait()
+        close(results)
+    }()
+
+    go func() {
+        defer close(jobs)
+        for _, item := range items {
+            select {
+            case <-ctx.Done():
+                return
+            case jobs <- item:
+            }
+        }
+    }()
+
+    var all []Result
+    for result := range results {
+        all = append(all, result)
+    }
+    return all
+}
+```
+
+Each channel is closed by its own sender: the feeder closes `jobs`, and the goroutine that waits on the workers closes `results`. Closing from the receiving side panics as soon as a sender writes again.
+
+## Context Cancellation
+
+Long-running work checks the context before starting and inside loops, because a cancelled context that nothing reads is a cancellation that never happens.
+
+```go
+select {
+case <-ctx.Done():
+    return ctx.Err()
+default:
+}
+
+for _, item := range items {
+    select {
+    case <-ctx.Done():
+        return ctx.Err()
+    default:
+    }
+    process(item)
+}
+```
+
+Any call that accepts a context receives it, rather than `context.Background()` or `context.TODO()`:
+
+```go
+req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+```
+
+When the reason for a cancellation matters downstream, `context.WithCancelCause` carries it and `context.Cause(ctx)` reads it back, which turns a bare "context canceled" into the failure that actually triggered it.
 
 ## Common Mistakes
 
-| Mistake | Problem | Fix |
-|---------|---------|-----|
-| Manual `wg.Add(1)` + `go func` + `defer wg.Done()` | Verbose, easy to mis-pair | Use `wg.Go(fn)` — it handles Add/Done |
-| Not checking `ctx.Done()` | Can't cancel | Check in loops and before work |
-| Closing channel from receiver | Panic | Only the sender closes |
-| Acquiring a semaphore inside the goroutine | Spawns unbounded goroutines | Acquire before `wg.Go`, release with `defer` inside |
-
-**Note:** Go 1.22+ scopes loop variables per-iteration, so the old `item := item` capture trick before goroutines is unnecessary on the 1.26+ baseline.
-
----
-
-# Part 2 — Highway Job Pipeline Pattern (CLI Only)
-
-**Unified job execution with progress tracking and state persistence.**
-
-**Applies to CLI Only projects and the CLI surface of CLI + Web hybrids.** The highway/display pattern assumes the `utils/` package and `--for-ai` flag exist (see `go-foundations` and `go-cli`). Web Only projects do not use it.
-
-## When to Use the Highway
-
-Use the Highway pattern when:
-- Building CLI tools that process multiple items (downloads, scans, migrations)
-- Need configurable concurrency (1 worker or N workers)
-- Want progress tracking that can hook to any UI (terminal, web)
-- Need Ctrl+C graceful shutdown with resume capability
-- Multiple entry points should use the same execution pipeline
-
-The Highway is built on the Part 1 primitives — workers are goroutines pulling from a channel, exactly the fan-out pattern, wrapped with state tracking and a progress display.
-
-## The Highway Pattern
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                        CLI Entry                            │
-│   cmd/download.go, cmd/scan.go, cmd/batch.go                │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      Job Creation                           │
-│   Parse flags/config → Create []Job                         │
-│   Each job knows its type, payload, and how to run          │
-└─────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─────────────────────────────────────────────────────────────┐
-│                        HIGHWAY                              │
-│   Worker 1 / Worker 2 / Worker N (lanes)                    │
-│   • Pull jobs from queue                                    │
-│   • Execute job.Run(ctx, progress)                          │
-│   • Track completion in state                               │
-│   • Persist state on Ctrl+C                                 │
-└─────────────────────────────────────────────────────────────┘
-                              │
-              ┌───────────────┴───────────────┐
-              ▼                               ▼
-   Progress Channel (UI agnostic)   State Persistence (.toolname-state)
-   Terminal, Web, or nothing        Resume from where you left off
-```
-
-## Core Components
-
-### Job Interface
-
-```go
-type Job interface {
-    ID() string    // Unique identifier for tracking
-    Type() string  // Job type for unmarshaling on resume
-    Run(ctx context.Context, progress chan<- Progress) error
-    Marshal() ([]byte, error) // For state persistence
-}
-
-// For resuming - registered per job type
-type JobUnmarshaler func(data []byte) (Job, error)
-```
-
-### Progress Struct
-
-Jobs send progress updates through a channel. Two update kinds:
-- **Progress** (`ProgressTypeProgress`): known total → renders a progress bar
-- **SubStatus** (`ProgressTypeSubStatus`): unknown total → renders substatus text
-
-| Field | Purpose |
-|-------|---------|
-| `JobID` | Which job this is from |
-| `Type` | `ProgressTypeProgress` or `ProgressTypeSubStatus` |
-| `Message` | Short status shown next to job ID (e.g., "Downloading") |
-| `SubStatus` | Detailed substatus text (SubStatus type) |
-| `Current` / `Total` | Progress numerator / denominator |
-| `Extra` | Extra info after percentage (e.g., "125MB/1GB") |
-| `Done` | True when job complete |
-| `Error` | Non-nil if job failed |
-
-### Highway API Surface
-
-```go
-func New(workers int, statePath string) *Highway
-func (h *Highway) RegisterType(jobType string, unmarshal JobUnmarshaler)
-func (h *Highway) Submit(jobs ...Job)
-func (h *Highway) Run(ctx context.Context) error
-func (h *Highway) Progress() <-chan Progress
-func (h *Highway) LoadState() error
-```
-
-The complete Highway implementation (struct, worker loop, `Run`, state save/load) is in `./references/highway-template.md`.
-
-## Directory Structure
-
-```
-cmd/
-├── root.go              # Root command, global flags
-├── download.go          # Creates download jobs → submits to highway
-├── scan.go              # Creates scan jobs → submits to highway
-└── resume.go            # Loads state file → submits pending jobs
-
-internal/
-├── highway/             # The execution engine (highway.go, state.go, progress.go)
-├── display/             # Terminal UI for job progress (display.go)
-├── jobs/                # Concrete job types (http_download.go, s3_scan.go, ...)
-└── aws/                 # Shared helpers (optional)
-```
-
-## Implementing Concrete Jobs
-
-Each job type is a struct that implements the `Job` interface. See `./references/job-examples.md` for complete examples — a simple config-only job (`S3PublicAccessJob`) and a resumable job with partial progress (`HTTPDownloadJob` that tracks `CompletedParts` and skips them on resume).
-
-Shape of a job's `Run`: do work, emit `Progress` updates through the channel, and send a final `Progress{JobID: j.ID(), Done: true}` (or return an error) when finished.
-
-## State Persistence
-
-State file: `.toolname-resume-state.json` in the working directory. It records `completed` job IDs and `pending` jobs (id, type, and marshaled data) so a resume can deserialize pending jobs via registered unmarshalers.
-
-```json
-{
-  "completed": ["job-1", "job-2"],
-  "pending": [
-    {
-      "id": "http-bigfile.zip",
-      "type": "http-download",
-      "data": { "url": "https://example.com/bigfile.zip", "completedParts": [0, 1, 2] }
-    }
-  ]
-}
-```
-
-The Highway saves state on Ctrl+C (`ctx.Done()`), deletes it on clean completion, and rebuilds pending jobs in `LoadState()`. Full save/load code is in `./references/highway-template.md`.
-
-## CLI Usage Pattern
-
-A command creates the Highway, registers job types for resume, submits jobs, starts the display, and runs until done or Ctrl+C:
-
-```go
-func runDownload(cmd *cobra.Command, args []string) error {
-    ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
-    defer cancel()
-
-    hw := highway.New(workers, ".downloader-state.json")
-    hw.RegisterType("http-download", jobs.UnmarshalHTTPDownload)
-
-    disp := display.New(display.DefaultConfig())
-    for _, url := range urls {
-        job := jobs.NewHTTPDownload(url, outputDir)
-        disp.RegisterJob(job.ID())
-        hw.Submit(job)
-    }
-
-    disp.Start(hw.Progress()) // consume progress channel
-    err := hw.Run(ctx)
-    disp.Stop()               // show final summary
-    return err
-}
-```
-
-A `resume` command does the same but calls `hw.LoadState()` instead of submitting fresh jobs. Full command and resume examples are in `./references/highway-template.md`.
-
-## Progress Display
-
-The display manager aggregates job states and renders an inline terminal UI that updates every 200ms. In AI mode (`--for-ai`), it skips the interactive TUI and prints sequential plain-text lines instead:
-
-```
-[INFO] http-bigfile.zip: Downloading 62% (485MB/782MB)
-[OK] http-bigfile.zip: Done
-[ERROR] s3-scan: timeout connecting to server
-```
-
-Each running job renders in two lines (job line + progress bar OR substatus, never both). The same `Progress` channel can also feed a websocket for a web UI. Full display implementation — terminal layout, progress-bar format, AI-mode branch, web hook — is in `./references/display-template.md`.
-
-## Key Design Decisions
-
-| Decision | Rationale |
-|----------|-----------|
-| Job owns its output | Jobs write their own results; highway doesn't care |
-| Job owns its state | Each job type marshals whatever it needs for resume |
-| Progress is a struct | Simple data, no behavior; any UI can consume |
-| Highway is type-agnostic | Only knows the Job interface; doesn't care what's inside Run() |
-| State file in working dir | `.toolname-state.json` — simple, discoverable |
-| Continue on error | Mark failed, skip on resume (don't retry automatically) |
-
-## When NOT to Use the Highway
-
-Use the Part 1 primitives directly when:
-- Work is one-shot (no resume needed)
-- No progress tracking required
-- Independent tasks with no coordination
-- Quick script, not a polished CLI tool
-
----
-
-## References
-
-| File | Purpose |
-|------|---------|
-| `./references/concurrency-patterns.md` | Full code for the six Part 1 concurrency patterns + context cancellation |
-| `./references/highway-template.md` | Complete Highway implementation (engine, state save/load, CLI + resume usage) |
-| `./references/job-examples.md` | Example job types (simple and resumable) |
-| `./references/display-template.md` | Terminal UI display manager (+ AI mode, web hook) |
+| Mistake | What goes wrong | Instead |
+|---|---|---|
+| `wg.Add(1)` plus `go func` plus `defer wg.Done()` | the pair drifts apart after an early return | `wg.Go(fn)` |
+| Never checking `ctx.Done()` | the operation cannot be cancelled | check before the work and inside loops |
+| Closing a channel from the receiver | a later send panics | only the sender closes |
+| Acquiring the semaphore inside the goroutine | goroutines are unbounded, only the work is bounded | acquire before `wg.Go`, release with `defer` inside |

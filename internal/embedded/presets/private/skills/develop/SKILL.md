@@ -1,115 +1,98 @@
 ---
 name: develop
-description: Entry point for ANY coding work in a project that has these skills installed — implementing a feature, changing or refactoring code, fixing a bug, writing tests, scaffolding something new, or touching build/CI. Selects and loads the development skills that govern the task up front, holds the work to them while coding, and ends with a quick self-review that the skills were actually followed. Use this whenever you are about to develop anything.
+description: The entry point for any coding work in a project that has these skills installed - implementing a feature, changing or refactoring code, fixing a bug, writing tests, scaffolding something new, or touching build and CI. Selects and loads the skills that govern the task before any code is written, holds the work to them while coding, and ends with a self-review of the diff against them. Use this first whenever you are about to develop anything. Not for a pure question with no code change, and not for a full audit of an existing codebase.
 user-invocable: true
 ---
 
 # Develop
 
-**The front door for development work: figure out the task, load the skills that govern it, follow them while coding, then verify you did.**
+**Work out what the task is, load the skills that govern it, follow them while coding, then check that you did.**
 
-The other skills carry the conventions; they only help if the right ones are in context *before* you write code and are still honored *after*. This skill makes that deterministic — it is a pre-step you run first, and a quick self-check you run last.
+The other skills carry the conventions and only help when the right ones are in context before the first line is written and still honored after the last. This makes that deterministic rather than incidental.
 
 ## When to Use
 
-Use this skill **as the first step** of any coding task in a project that has these skills installed:
+Run this as the first step of any coding task: a feature, a refactor, a bug fix, new or changed tests, a new project, a build or CI change, a README.
 
-- A new feature, a refactor, a bug fix, new or changed tests
-- A new project or a new component scaffolded from scratch
-- A build, CI/CD, Makefile, README, or config change
+Skip it for a question with no code change. A deliberate re-audit of an existing codebase is a different job with its own multi-agent orchestration, and this only reviews the diff you just wrote.
 
-Run it *before* writing code — its whole job is to make sure the governing skills are loaded and applied, not to fix things afterward.
+## Step 1: Frame the task
 
-**Not for:**
-- A pure question with no code change.
-- A deliberate, thorough re-audit of an existing codebase — use `review-code` (heavyweight, multi-agent). `develop` only self-reviews the diff you just wrote; see "Relationship to review-code" below.
+State in one line what is being built or changed, then classify it.
 
-## Start here — required reading
+**Project type**, read off the tree: CLI Only, Web Only, CLI + Web, Headless API Service, Library, Node Web Only, or Chrome Extension. `go.mod` with `cmd/` and `utils/` and no `internal/server/` is CLI Only; `internal/server/static/` without `utils/` is Web Only; both together is the hybrid; `package.json` with `"type":"module"` plus `public/` and `src/` is Node Web Only; `manifest.json` with `manifest_version` is an extension.
 
-`develop` has no references of its own — it routes you to the skills that do. Before writing any code:
+**Work type**: new project, feature, refactor, bug fix, tests, infrastructure, docs.
 
-- Read `go-foundations` (`../go-foundations/SKILL.md`) in full for any Go work, or `node-foundations` (`../node-foundations/SKILL.md`) for any Node work — always in scope.
-- Read, in full, the `SKILL.md` of every domain skill you select in Step 2 (Skill Map) — and honor each one's own **Start here** gate (its Always-tier references). Naming a skill is not reading it.
-- Delegating a sub-task? Brief the subagent with the same skills and their required references so it inherits the constraints.
+## Step 2: Select and read the governing skills
 
-## Workflow
+Pick from the Skill Map below, then read each selected `SKILL.md` in full. Naming a skill is not reading it, and a convention you half-remember is the one that produces a plausible file nobody wants.
 
-### Step 1: Frame the task
+Load the skills the task actually touches rather than the whole set. When in doubt, take the two always-in-scope skills for the language plus the one that matches the files being edited.
 
-State in one line what is being built or changed. Then classify:
+A delegated sub-task is briefed with the same skills, so a subagent inherits the constraints rather than reinventing them.
 
-- **Project type** — per the `go-foundations` taxonomy: CLI Only / Web Only / CLI + Web / Headless API Service / Library / Chrome Extension, or **Node Web Only** (a Node server process that serves a frontend). Infer it from the tree (`go.mod`, `cmd/`, `internal/server/static/`, `manifest.json`, `package.json` with `"type":"module"` + `public/`, presence/absence of `utils/`, …).
-- **Work type** — new project, feature, refactor, bug fix, tests, infra/CI, docs.
+## Step 3: State the rules in effect
 
-### Step 2: Select and READ the governing skills
-
-Use the **Skill Map** below to pick the skills this task touches. Then actually **read** each selected `SKILL.md` (and note which reference files will matter for this task) — do not just name them. `go-foundations` is always in scope for any Go work.
-
-Pull in the skills the task *actually* touches — not all of them. When in doubt, load `go-foundations` plus the one domain skill that matches the files you are editing.
-
-### Step 3: State the rules in effect
-
-Before writing code, emit a short checklist — the **specific** rules from the loaded skills that apply to *this* task, not a restatement of whole skills. A handful of concrete bullets, e.g.:
+Before writing code, emit a short checklist of the specific rules from the loaded skills that apply to this task. Concrete bullets, not whole skills restated.
 
 ```
 Rules in effect (CLI Only, new command):
-- Comments: default none; keep one only if its *why* is load-bearing, judged on its own merit — why-not-what, one line, never restate code or embed scaffolding
-- Output via utils printer (PrintInfo/PrintSuccess/...), never fmt.Println
-- zerolog only behind --debug; human output through utils otherwise
-- Tables via utils.PrintTable; honor --for-ai plain-text path
+- Comments: default none; keep one only where its why is load-bearing
+- Output through the utils printers, never fmt.Println
+- zerolog only behind --debug; utils printers otherwise
+- Tables via utils.PrintTable, honoring the --for-ai markdown path
 - New command file under cmd/, registered in root.go init()
+- Flags grouped in a per-command struct, registered in init()
 ```
 
-A few rules are **always in effect** for any Go work regardless of task — first among them comment discipline (`go-foundations` → *Comments and Code Style*). Put these on the checklist every time: being cross-cutting rather than task-specific, they are the first to drop off the list and the first to decay mid-session. This keeps the rules in front of you while you code — it is the main defense against rules decaying out of attention mid-session.
+The cross-cutting rules go on the list every time, comment discipline first among them. Being cross-cutting rather than task-specific, they are the first to fall off the list and the first to decay mid-session, and the written checklist is the defense against that.
 
-### Step 4: Do the work
+## Step 4: Do the work
 
-Implement, holding to the Step 3 checklist. When the task spans several skills, keep each skill's rules in view for the part it governs (e.g. `go-concurrency` for the worker pool, `go-cli` for the command wiring).
+Implement, holding to the Step 3 checklist. When a task spans several skills, keep each one's rules in view for the part it governs: the concurrency skill for the worker pool, the command skill for the wiring around it.
 
-For a large task, brief any sub-agents you spawn with the relevant skill(s) and their Step 3 rules so they inherit the same constraints.
+## Step 5: Self-review the diff
 
-### Step 5: Quick self-review (inline)
+Pass over what you changed this session and check it against the Step 3 checklist. Fix small deviations directly and call out anything larger that needs a decision.
 
-After the change is done, do a **fast** pass over what you changed *this session* and check it against the rules you listed in Step 3. Fix gaps inline. This is a lightweight self-check, not a full audit:
-
-- **Scope it to the files you touched this session** — not the whole project.
-- **Check the Step 3 checklist**, not every rule in every skill.
-- **Fix small deviations directly**; call out anything larger that needs a decision.
-- No sub-agents, no domain orchestration — keep it quick.
-
-Escalate to `review-code` instead when: you are re-engaging a project you have not touched in a while, the skills may have changed since the code was written, or you want a thorough multi-agent domain audit.
+Scope it to the files you touched, check the checklist rather than every rule in every skill, and keep it quick. This catches the drift that creeps in mid-session, which is most of what a review of fresh work finds.
 
 ## Skill Map
 
-| Task touches… | Load |
+| Task touches | Load |
 |---|---|
-| Any Go code | `go-foundations` (always) |
-| Cobra commands, subcommands, flags, CLI output lifecycle, TUI | `go-cli` |
-| HTTP servers, internal package architecture, storage, OAuth/auth | `go-backend` |
-| Embedded SPA frontend (`embed.FS`, Tailwind, Catppuccin, PWA) | `go-frontend` |
-| Goroutines, concurrent pipelines, fan-out/fan-in, progress/resume | `go-concurrency` |
-| Any Node code (Web Only: a server process that serves a frontend) | `node-foundations` (always, for Node) |
-| Node HTTP/WebSocket server, routing, auth, JSON state | `node-backend` |
-| Vanilla-JS SPA frontend (Catppuccin, vendored assets, WebSocket client) | `node-frontend` |
-| Makefile, GitHub Actions, Docker, releases, versioning | `project-ci-cd` |
+| Any Go code | `go-project-layout`, `go-idioms` |
+| Tests, in any language | `unit-testing` |
+| Cobra root, commands, subcommands, flags | `go-cli-commands` |
+| Printing, tables, `--debug` and `--for-ai`, terminal colors | `go-cli-output` |
+| Interactive prompts, passwords, selection lists | `go-cli-prompts` |
+| Running/done progress, phases, progress bars | `go-cli-progress` |
+| `internal/` package structure, error boundaries, storage | `go-package-architecture` |
+| `net/http` server, embedded static serving, middleware | `go-http-server` |
+| OAuth login for a CLI client | `go-oauth-cli` |
+| Goroutines, errgroup, semaphores, fan-out/fan-in | `go-concurrency` |
+| A multi-job pipeline with progress and resume | `go-job-pipeline` |
+| The embedded SPA under `internal/server/static/` | `go-embedded-frontend` |
+| Rendering Markdown in a browser page | `web-markdown-rendering` |
+| Mermaid diagrams in a browser page | `web-mermaid-diagrams` |
+| Any Node code | `node-project-layout`, `node-idioms` |
+| `config.json`, deep merge, `state.json`, the session secret | `node-config-state` |
+| The `node:http` and `ws` server, routing, static serving | `node-http-ws-server` |
+| Password and session-cookie auth in Node | `node-auth` |
+| The vanilla-JS SPA under `public/` | `node-frontend` |
+| A Go or Chrome extension Makefile | `go-makefile` |
+| A Node Makefile, vendoring, the native addon build | `node-makefile` |
+| What a Node project ships: binary or tarball | `node-release-artifacts` |
+| A Dockerfile or docker-compose, in any language | `dockerize` |
+| `.github/workflows/release.yaml`, version bumps | `github-release-workflow` |
 | README | `project-readme` |
-| Chrome extension (manifest, popup, content/background scripts) | `chrome-extension-basics` |
+| Chrome extension | `chrome-extension` |
 
-For which skills a whole project type typically pulls in, defer to the `go-foundations` taxonomy and layout — it is the source of truth for project structure.
+A whole project type pulls in a predictable set. A CLI Only tool takes the two Go skills plus `go-cli-commands` and `go-cli-output`, and adds the others as the surface grows. A Web Only service takes the two Go skills plus `go-http-server`, `go-package-architecture`, and `go-embedded-frontend`.
 
-## Relationship to review-code
+## Principles
 
-These are deliberately different tools:
+Skills are the source of truth for what a rule is. Follow, and self-flag against, only what a loaded skill defines; anything no skill covers is not a rule and does not belong on the checklist.
 
-- **`develop`** — lightweight, inline, *during active coding*. Confirms the change you just made follows the skills you loaded for it. Fast, scoped to your diff, no sub-agents.
-- **`review-code`** — heavyweight, separate, multi-agent domain audit of an *existing codebase*. For re-engaging a project, or a deliberate compliance pass when skills may have changed.
-
-Use `develop` every time you code. Reach for `review-code` when you specifically want the thorough audit.
-
-## Key Principles
-
-- **Skills first, code second** — load and read the governing skills in Steps 1–2 before writing, not after.
-- **Skills are the single source of truth** — only follow (and only self-flag) what a loaded skill defines. If no skill covers it, it is not a rule.
-- **Keep the checklist concrete** — Step 3 lists the specific rules for *this* task, not whole skills restated.
-- **Always close with the self-review** — Step 5 is cheap and catches the drift that creeps in mid-session.
-- **Don't over-load** — pull in the skills the task actually touches, not the whole set.
+Load and read before writing, not after. A convention applied retroactively is a second diff on top of the first.

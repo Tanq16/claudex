@@ -1,96 +1,84 @@
 # Review Domain: Go Concurrency
 
-**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web (only if concurrency/pipeline patterns are detected) **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
-- `../../go-concurrency/SKILL.md`
+**Applies to:** any Go project type, and only where the patterns are actually present.
+
+**Skills to load, in full, before running any check below:**
+- `[SKILLS_DIR]/go-concurrency/SKILL.md`
+- `[SKILLS_DIR]/go-job-pipeline/SKILL.md` (Category 2 only)
+
+The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
 
 ---
 
-## Pre-Check: Detect Usage
+## Pre-check
 
-Before running these categories, first determine if the project uses concurrency or pipeline patterns:
+1. **Concurrency:** grep for `go func`, `sync.WaitGroup`, `wg.Go`, and `errgroup`. Skip Category 1 when none appear.
+2. **Pipeline:** glob for `internal/highway/`, `internal/jobs/`, or an equivalent job execution package. Skip Category 2 when absent.
 
-1. **Concurrency:** Grep for `go func`, `sync.WaitGroup`, `errgroup`, goroutine launches. If none found, mark Category 10 as SKIP.
-2. **Pipeline:** Glob for `internal/highway/` or similar job execution engine directory. If none found, mark Category 11 as SKIP.
-
----
-
-## Category 10: Concurrency Patterns (go-concurrency)
-
-Only check if the project uses goroutines or concurrent patterns.
-
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| errgroup preferred | Default choice for concurrent operations with error handling is `errgroup` | Grep for errgroup imports vs manual WaitGroup+error channel patterns |
-| Context cancellation | Long-running operations check `ctx.Done()` in loops and before work | Grep for `ctx.Done()` checks near goroutine code |
-| Loop variable semantics | Go 1.22+ scopes loop variables per-iteration; no `item := item` capture needed | Grep for goroutine launches inside loops, verify no unnecessary variable capture |
-| wg.Go over manual Add/Done | Goroutines spawned with `sync.WaitGroup.Go` (Go 1.25+), not manual `wg.Add(1)` + `go func` + `defer wg.Done()` | Grep for `wg.Add`/`wg.Done`; flag manual pairing in favor of `wg.Go` |
-| No goroutine leaks | Channels are properly closed by senders; goroutines have exit paths | Review channel usage patterns |
-| Bounded concurrency | If many concurrent operations, uses `errgroup.SetLimit()` or buffered channel semaphore | Grep for concurrency limiting patterns |
+Reporting a skip is the correct outcome for a project that does neither, and inventing findings for absent patterns is the failure mode this pre-check exists to prevent.
 
 ---
 
-## Category 11: Job Pipeline Pattern (go-concurrency)
+## Category 1: Concurrency Primitives
 
-Check only if `internal/highway/` or similar job execution engine exists.
+| Check | How to verify |
+|---|---|
+| Primitive matches the error semantics | For each concurrent site, read whether the operations can fail and what happens to the error |
+| Goroutine spawning form | Grep for `wg.Add` and `wg.Done` |
+| Semaphore acquisition point | For each buffered-channel semaphore, read whether the acquire is inside or outside the goroutine |
+| Channel closing side | For each `close(` on a channel, trace whether the closer is the sender |
+| Cancellation is observed | Grep for `ctx.Done()` near long-running loops and before blocking work |
+| Context propagation | Grep for `context.Background()` and `context.TODO()` inside functions that already receive a context |
+| Bounded concurrency where it matters | Read sites that spawn one goroutine per input for any limit at all |
+| Result collection safety | For shared slices and maps written from goroutines, check whether each write targets a unique index or is guarded |
+| No leftover loop capture | Grep for `x := x` immediately before a goroutine launch |
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Job interface | `Job` interface with `ID()`, `Type()`, `Run(ctx, progress)`, `Marshal()` methods | Grep for Job interface definition |
-| Progress struct | `Progress` struct with `JobID`, `Type` (Progress/SubStatus), `Message`, `Current`, `Total`, `Done`, `Error` | Read progress type definition |
-| Highway struct | `Highway` with `workers`, `jobs` channel, `progress` channel, `state`, `unmarshalers` | Read highway implementation |
-| State persistence | State file (`.toolname-resume-state.json`) with `completed` and `pending` arrays | Grep for state file save/load logic |
-| Resume capability | `LoadState()` method that deserializes pending jobs via registered unmarshalers | Read resume/load code |
-| Ctrl+C handling | `signal.NotifyContext` in command, state saved on context cancellation | Grep for signal handling |
-| Display manager | Separate `internal/display/` package consuming progress channel | Glob for display package |
-| Display AI mode | Display manager checks `utils.GlobalForAIFlag` and prints sequential `[INFO]`/`[OK]`/`[ERROR]` lines instead of interactive TUI | Read display.go, check for `GlobalForAIFlag` branch in `Start()` and `renderFinal()` |
-| Job registration | Job types registered via `RegisterType()` before `Run()` | Read command setup code |
+## Category 2: Job Pipeline
+
+| Check | How to verify |
+|---|---|
+| Job interface | Read the interface declaration and its method set |
+| Progress type | Read the progress struct and its fields |
+| Engine structure | Read the engine for its worker count, queue, progress channel, and completion tracking |
+| Progress channel is buffered | Read the channel construction |
+| Feeder does not hold the lock while sending | Read the feeder goroutine |
+| State file format | Read the persisted structures |
+| State file mode | Read the mode argument on the state write |
+| State output goes through the printer | Grep the engine for `fmt.Print` and `fmt.Printf` |
+| State deleted on clean completion | Read the successful-completion path |
+| Failed jobs on resume | Read what happens to a job that returned an error |
+| Partial progress is recorded after success | For a resumable job, read where its completed-work list is appended relative to the work itself |
+| Type registration precedes load | Read the command wiring for the order of registration and state loading |
+| Signal handling | Grep for `signal.NotifyContext` |
+| Display package separation | Glob for a display package and check the engine does not import it |
+| Display AI branch | Read the display entry point for a `GlobalForAIFlag` branch |
+| Display colors | Grep the display for color construction and check ANSI indices against hex |
 
 ---
 
 ## Output Format
 
-Report findings in this exact format:
-
 ```
 ## Domain: Go Concurrency
 
-### [PASS] Category Name (source-skill)
+### [PASS] Category Name
 
 All checks passed.
 
-### [ISSUES] Category Name (source-skill)
+### [ISSUES] Category Name
 
-1. **[Issue title]** (source-skill: section)
+1. **[Issue title]** (skill-name: section)
    - **Current:** [what the code does now]
-   - **Expected:** [what the skill says it should do]
-   - **Fix:** [specific action to take]
+   - **Expected:** [what the cited skill section says]
+   - **Fix:** [the specific action]
 
-### [SKIP] Category Name (source-skill)
+### [SKIP] Category Name
 
-Not applicable — [reason, e.g., "no goroutines detected" or "no pipeline engine found"].
+Not applicable: [reason, such as "no goroutines detected" or "no pipeline engine found"].
 ```
 
-End your response with exactly:
+End with exactly:
+
 ```
 SUMMARY_LINE: categories_checked=N pass=N issues=N skipped=N total_issues=N
 ```
-
----
-
-## Out of Scope (Hard Boundary)
-
-Do NOT flag any of the following — they are not defined in any loaded skill:
-
-| Category | Specific Examples |
-|----------|-------------------|
-| Linting & Formatting | No golangci-lint, no gofmt, inconsistent formatting |
-| Pre-commit | No pre-commit hooks, no husky |
-| Code Quality CI | No lint/format CI steps |
-| Documentation beyond README | No godoc, no changelogs, no contributing guide |
-| Docker Compose | No docker-compose for development |
-| Database | No migrations, no schema files |
-| Dependency tooling | No dependabot, no renovate |
-| Security scanning | No SAST, no container scanning |
-| Code style opinions | Naming conventions not in skills, personal preferences |
-
-**Rule:** If you cannot cite a specific section in a loaded skill for a finding, do not report it.

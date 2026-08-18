@@ -1,139 +1,109 @@
 ---
 name: review-code
-description: Use when reviewing existing code against development skill best practices — orchestrates multi-agent domain reviews for thoroughness
+description: A thorough multi-agent audit of an existing codebase against the development skills, with one sub-agent per domain. Use when re-engaging a project you have not touched recently, when the skills may have changed since the code was written, when auditing a specific package or domain, or when a deliberate compliance pass is wanted. Not for checking the diff you just wrote, which the develop skill already covers. Accepts an optional target: a domain keyword such as cli, node, infra, or concurrency, or a package path such as internal/server.
 user-invocable: true
 ---
 
 # Review Code
 
-**Review code against all development skill best practices — with sub-agent orchestration for thoroughness.**
-
-## When to Use
-
-Use this skill when:
-- Reviewing an existing project for compliance with skill-defined patterns
-- Checking a specific package or domain against best practices
-- Running a full multi-agent code review
+**Detect the project type, work out which domains apply, hand each to a sub-agent that reads the governing skills, then combine the findings into one report.**
 
 ## Start here — required reading
 
-Every domain in scope must have its `review-domain-*.md` read before that domain is reviewed — by you for a targeted review, or by the domain's subagent for a full review (the subagent prompt in the Workflow already requires it). Never review a domain without its file. Read only the file(s) for the domain(s) that apply to the detected project type.
+Read the manifest for every domain in scope before that domain is reviewed: by you for a targeted review, or by the domain's sub-agent for a full one. A manifest names the skills to load, the applicability rules, and how each check is verified. Read only the manifests for domains that apply to the detected project type.
 
-- `./references/review-domain-go-foundations.md` — reviewing Go Foundations (layout, principles, modern Go, logging, utils)
-- `./references/review-domain-go-cli.md` — reviewing Go CLI (Cobra, commands, output lifecycle, TUI)
-- `./references/review-domain-go-backend-frontend.md` — reviewing Go backend/frontend (architecture, assets)
-- `./references/review-domain-go-concurrency.md` — reviewing Go concurrency (primitives, Highway pipeline)
-- `./references/review-domain-infra.md` — reviewing infrastructure (CI/CD, Chrome, README, deps)
-- `./references/review-domain-node.md` — reviewing Node (foundations, backend, frontend)
+**Before reviewing a domain:**
+- `./references/review-domain-go-core.md`: Go layout, idioms, logging, config, tests
+- `./references/review-domain-go-cli.md`: Cobra commands, output tiers, prompts, progress
+- `./references/review-domain-go-server.md`: package architecture, HTTP server, OAuth, frontend
+- `./references/review-domain-go-concurrency.md`: goroutine primitives and the job pipeline
+- `./references/review-domain-node.md`: Node layout, idioms, server, auth, config, frontend
+- `./references/review-domain-infra.md`: Makefiles, release workflow, containers, README, extensions
 
-## Review Domains
+## Where the Expected Pattern Comes From
 
-Reviews are organized into 6 domains, each with its own check tables:
+A manifest lists what to check and how to verify it. It does not restate what the correct answer is. The expected pattern for every check lives in the skill that owns it, and the reviewing agent reads that skill before running the check.
 
-| Domain | Reference File | Categories | Skills |
-|--------|---------------|------------|--------|
-| Go Foundations | `./references/review-domain-go-foundations.md` | 1-4 (Layout, Principles, Modern Go, Logging, Utils) | go-foundations |
-| Go CLI | `./references/review-domain-go-cli.md` | 5-7 (Cobra, Commands, Output Lifecycle, TUI) | go-cli |
-| Go Backend & Frontend | `./references/review-domain-go-backend-frontend.md` | 8-9 (Architecture, Assets) | go-backend, go-frontend |
-| Go Concurrency | `./references/review-domain-go-concurrency.md` | 10-11 (Concurrency, Pipeline) | go-concurrency |
-| Infrastructure | `./references/review-domain-infra.md` | 12-15 (CI/CD, Chrome, README, Deps) | project-ci-cd, chrome-extension-basics, project-readme, go-foundations |
-| Node | `./references/review-domain-node.md` | 16-18 (Foundations, Backend, Frontend) | node-foundations, node-backend, node-frontend |
+This is deliberate. A check table that repeats a rule is a second copy that drifts the moment the skill is edited, and the copy in the review is the one nobody notices is stale. Improving a skill improves the review for free.
 
-> Reference paths in this skill are relative to this `SKILL.md`. Sibling skills (e.g. `go-cli`, `go-foundations`) live alongside this skill, so their files are at `../<skill-name>/SKILL.md` and `../<skill-name>/references/<file>.md`.
-
----
+Every finding cites the skill and the section it comes from. A finding that cannot cite one is not a finding, and reporting it anyway trains the reader to ignore the report.
 
 ## Workflow
 
-### Step 1: Detect Project Type
+### Step 1: Detect the project type
 
-Inspect the current directory to determine what kind of project this is:
+| Indicator | Type |
+|---|---|
+| `go.mod` with `cmd/` and `utils/`, no `internal/server/` | Go CLI Only |
+| `go.mod` with `internal/server/static/`, no `utils/` | Go Web Only |
+| `go.mod` with `internal/server/static/` and `utils/` | Go CLI + Web |
+| `go.mod` with `internal/server/` and no `static/`, no `utils/` | Go Headless API Service |
+| `go.mod` with no `main.go` and no `cobra` | Go Library |
+| `manifest.json` carrying `manifest_version` | Chrome Extension |
+| `package.json` with `"type":"module"`, plus `public/` and `src/`, no `go.mod` | Node Web Only |
+| `go.mod` alone | treat as Go CLI Only |
 
-| Indicator | Project Type |
-|-----------|--------------|
-| `go.mod` + `cmd/`, `utils/`, no `internal/server/` | Go CLI Only |
-| `go.mod` + `internal/server/static/`, no `utils/` | Go Web Only |
-| `go.mod` + `internal/server/static/` **and** `utils/` | Go CLI + Web (hybrid) |
-| `manifest.json` with `manifest_version` field | Chrome Extension |
-| `package.json` with `"type":"module"` + `public/` + `src/`, no `go.mod` | Node Web Only |
-| `go.mod` only (minimal) | Go Project (treat as CLI Only) |
+Report and stop when nothing matches, since a review against the wrong taxonomy produces findings that are all false.
 
-If no recognizable project structure is found, report that and stop.
+### Step 2: Parse the target
 
-### Step 2: Parse Target Argument
+With no target, go to Step 3a. With one, resolve it here first.
 
-If no target argument was provided, go to **Step 3a** (Full Review).
+| Keywords | Domain | Scope |
+|---|---|---|
+| `core`, `foundations`, `layout`, `logging`, `idioms`, `config` | Go Core | whole domain |
+| `tests`, `testing` | Go Core and Node | the testing checks only |
+| `cli`, `cobra`, `commands`, `flags`, `output`, `prompts`, `progress`, `tui` | Go CLI | whole domain |
+| `server`, `backend`, `frontend`, `web`, `http`, `auth`, `oauth`, `markdown`, `mermaid` | Go Server and Frontend | whole domain |
+| `concurrency`, `goroutines`, `pipeline`, `highway` | Go Concurrency | whole domain |
+| `node`, `nodejs`, `esm` | Node | whole domain |
+| `makefile`, `assets`, `build` | Infrastructure | Makefile checks only |
+| `ci`, `cd`, `cicd`, `release`, `workflow` | Infrastructure | release workflow checks only |
+| `docker`, `container`, `dockerfile` | Infrastructure | container checks only |
+| `readme` | Infrastructure | README checks only |
+| `chrome`, `extension` | Infrastructure | extension checks only |
+| `deps`, `dependencies` | Go Core and Node | dependency checks only |
+| `infra`, `infrastructure` | Infrastructure | whole domain |
 
-If a target argument was provided:
+A target containing `/` is a package path:
 
-**2a. Check keyword table:**
-
-| Keyword(s) | Domain | Subset |
-|------------|--------|--------|
-| `foundations`, `core`, `layout`, `logging`, `utils` | Go Foundations | All categories |
-| `cli`, `cobra`, `commands`, `tui` | Go CLI | All categories |
-| `backend`, `frontend`, `server`, `web` | Go Backend & Frontend | All categories |
-| `concurrency`, `pipeline`, `highway`, `goroutines` | Go Concurrency | All categories |
-| `cicd`, `ci`, `cd`, `docker`, `makefile` | Infrastructure | CI/CD category only |
-| `chrome`, `extension` | Infrastructure | Chrome category only |
-| `readme` | Infrastructure | README category only |
-| `deps`, `dependencies` | Infrastructure | Deps category only |
-| `infra`, `infrastructure` | Infrastructure | All categories |
-| `node`, `nodejs`, `esm`, `node-backend`, `node-frontend` | Node | All categories |
-
-If a keyword matches, go to **Step 3b** (Targeted Review) with the mapped domain and subset.
-
-**2b. Check if package path:**
-
-If the target contains `/`, treat it as a package path. Map to domain(s):
-
-| Path Pattern | Domain(s) |
-|-------------|-----------|
+| Path | Domains |
+|---|---|
 | `cmd/**` | Go CLI |
-| `internal/server/static/**` | Go Backend & Frontend |
-| `internal/server/**` | Go Backend & Frontend |
-| `internal/highway/**` or `internal/display/**` | Go Concurrency |
-| `utils/**` | Go Foundations |
-| `internal/**` (anything else) | Go Foundations + Go Backend & Frontend |
+| `utils/**` | Go CLI |
+| `internal/server/static/**` | Go Server and Frontend |
+| `internal/server/**` | Go Server and Frontend |
+| `internal/auth/**` | Go Server and Frontend |
+| `internal/highway/**`, `internal/display/**`, `internal/jobs/**` | Go Concurrency |
+| `internal/**`, anything else | Go Core and Go Server and Frontend |
 | `src/**`, `public/**`, `test/**`, `package.json` | Node |
 | `.github/**`, `Makefile`, `Dockerfile`, `README.md` | Infrastructure |
 
-Go to **Step 3b** (Targeted Review) with the mapped domain(s).
-
-**2c. Validate applicability:**
-
-If the target maps to a domain that does not apply to the detected project type (e.g., `backend` for a Go CLI Only project), report:
+When the resolved domain does not apply to the detected project type, report that and stop:
 
 ```
 The [domain] domain does not apply to this project type ([project type]).
 ```
 
-And stop.
+Otherwise go to Step 3b.
 
----
+### Step 3a: Full review
 
-### Step 3a: Full Review (Multi-Agent Orchestration)
-
-Determine which domains apply based on project type:
-
-| Project Type | Applicable Domains |
-|--------------|-------------------|
-| Go CLI Only | Go Foundations, Go CLI, Go Concurrency (conditional), Infrastructure |
-| Go Web Only | Go Foundations, Go CLI, Go Backend & Frontend, Infrastructure |
-| Go CLI + Web (hybrid) | Go Foundations, Go CLI, Go Backend & Frontend, Go Concurrency (conditional), Infrastructure |
+| Project type | Domains |
+|---|---|
+| Go CLI Only | Go Core, Go CLI, Go Concurrency (conditional), Infrastructure |
+| Go Web Only | Go Core, Go CLI, Go Server and Frontend, Infrastructure |
+| Go CLI + Web | Go Core, Go CLI, Go Server and Frontend, Go Concurrency (conditional), Infrastructure |
+| Go Headless API Service | Go Core, Go Server and Frontend, Go Concurrency (conditional), Infrastructure |
+| Go Library | Go Core |
 | Chrome Extension | Infrastructure |
 | Node Web Only | Node, Infrastructure |
 
-**If only one domain applies** (e.g., Chrome Extension), skip sub-agents and handle it directly — read the domain reference file, load its skills, run checks, and generate the report inline. Go to **Step 4**.
+With one domain applying, handle it inline: read the manifest, load its skills, run the checks, and produce the report. Spawning a single sub-agent adds a round trip and no parallelism.
 
-**If multiple domains apply**, launch parallel sub-agents. For each applicable domain, launch a Task with these parameters:
+With several, launch one sub-agent per domain, all in a single message so they run concurrently.
 
-- `subagent_type: "general-purpose"`
-- `model: "sonnet"`
-
-Before building the prompt, resolve `[SKILLS_DIR]` to an **absolute path**: it is the directory that contains the sibling skills — i.e. the parent of this `review-code` skill directory (the directory holding this `SKILL.md`, then one level up). Sub-agents run in the target project's working directory, so they need absolute paths to locate skill files.
-
-Use this prompt template for each sub-agent. Substitute `[SKILLS_DIR]` with its resolved absolute value, and fill in all other bracketed values:
+Resolve `[SKILLS_DIR]` to an absolute path before building any prompt: it is the parent of this skill's own directory. Sub-agents run in the target project's working directory, so a relative path resolves against the wrong root.
 
 ```
 You are a focused code review agent for the [DOMAIN_NAME] domain.
@@ -141,70 +111,57 @@ You are a focused code review agent for the [DOMAIN_NAME] domain.
 ## Context
 - Project type: [PROJECT_TYPE]
 - Working directory: [CWD]
-- Skills directory (absolute path, for locating skill/reference files): [SKILLS_DIR]
+- Skills directory (absolute): [SKILLS_DIR]
 
 ## Instructions
 
-1. Read your domain check tables:
-   Read the file at [SKILLS_DIR]/review-code/references/review-domain-[DOMAIN_FILE].md
+1. Read your domain manifest:
+   [SKILLS_DIR]/review-code/references/review-domain-[DOMAIN_FILE].md
 
-2. Read the skill files listed in your domain reference header. The skill files are at:
+2. Read, in full, every skill the manifest lists. They are at
    [SKILLS_DIR]/[SKILL_NAME]/SKILL.md
-   Also read any reference files mentioned within the skills (reference files within a skill are at [SKILLS_DIR]/[SKILL_NAME]/references/).
+   The manifest states what to check and how to verify it; the skill states what the
+   correct answer is. Running a check without having read its skill produces a
+   finding you cannot cite.
 
-3. Thoroughly inspect the project in [CWD] against EVERY check in your domain reference:
-   - Use Read, Glob, Grep, and Bash (read-only) to verify each check
-   - Only check categories marked as applicable to [PROJECT_TYPE]
-   - For conditional categories, first detect if the pattern exists before deep-diving
-   - Read the ACTUAL source files — do not guess or assume
+3. Inspect the project in [CWD] against every check in the manifest that applies to
+   [PROJECT_TYPE]. Use Read, Glob, Grep, and read-only Bash. For a conditional check,
+   detect whether the pattern is present before reviewing it. Read the actual source
+   files rather than inferring from names.
 
-4. Report findings using the output format defined in your domain reference file.
+4. Report using the output format in the manifest.
 
-5. HARD BOUNDARY: Do not flag anything not defined in your check tables or loaded skill files.
-   If you cannot cite a specific skill section, it is NOT a finding.
+5. Do not flag anything that is not defined in a skill you loaded. If you cannot cite
+   a specific skill section, it is not a finding.
 
 6. End your response with exactly:
    SUMMARY_LINE: categories_checked=N pass=N issues=N skipped=N total_issues=N
 ```
 
-**Launch ALL domain sub-agents in a single message** (parallel tool calls) for maximum throughput.
+Go to Step 4.
 
-Go to **Step 4**.
+### Step 3b: Targeted review
 
----
+Handle it inline with no sub-agents. Read the manifest, load the skills it names, narrow to the requested subset or package scope, run the applicable checks, and produce the report.
 
-### Step 3b: Targeted Review (Single Agent, Inline)
+A package path narrows file-existence checks to that package while keeping cross-cutting checks such as error handling and logging, since those are the ones a package most commonly gets wrong in isolation.
 
-For targeted reviews, do NOT launch sub-agents. Handle the review directly:
+Go to Step 4.
 
-1. Read the domain reference file: `./references/review-domain-[domain].md`
-2. Load the skill files listed in the reference header (sibling skills at `../[SKILL_NAME]/SKILL.md`)
-3. If a **subset** was specified (e.g., keyword `cicd` maps to only the CI/CD category within Infrastructure), check only that category — skip the rest in the reference file
-4. If a **package path** was specified, narrow checks to patterns relevant within that package scope (skip file-existence checks outside the package, but still check cross-cutting concerns like error handling and logging patterns)
-5. Run all applicable checks and generate the report
+### Step 4: Report
 
-Go to **Step 4**.
-
----
-
-### Step 4: Generate Review Report
-
-**For full reviews with sub-agents:** After all Task calls complete, collect their outputs and combine into a unified report.
-
-**For targeted reviews:** You already have the findings from Step 3b.
-
-Present the final report in this format:
+Combine the sub-agent outputs, or use the inline findings.
 
 ```
 ## Code Review Report: [Project Name]
 
-**Project type:** [CLI Only | Web Only | CLI + Web | Chrome Extension | Node Web Only]
-**Review scope:** [Full | Targeted: domain-name | Targeted: package-path]
-**Skills checked against:** [list of loaded skills]
+**Project type:** [type]
+**Review scope:** [Full | Targeted: domain | Targeted: path]
+**Skills checked against:** [list]
 
 ---
 
-[Domain sections — each sub-agent's output, or inline findings for targeted reviews]
+[domain sections]
 
 ---
 
@@ -214,48 +171,42 @@ Present the final report in this format:
 |----------|--------|--------|
 | Project Layout | PASS | 0 |
 | Core Principles | ISSUES | 2 |
-| Logging | PASS | 0 |
-| ... | ... | ... |
 
 **Total issues found:** N
 ```
 
-### Step 5: Offer to Fix
-
-After presenting the report, ask:
+### Step 5: Offer to fix
 
 ```
 Would you like me to fix these issues? I can address them one category at a time.
 ```
 
-If the user agrees, work through each category's issues in order, making the changes described in the "Fix" suggestions.
+Work through the categories in order when the answer is yes.
 
----
+## Principles
 
-## Key Principles
+Be specific enough to act on. "Missing `PrintFatal` in `utils/printer.go`" is a finding; "the utils package is incomplete" is a complaint.
 
-- **Skills are the single source of truth** — Every finding MUST cite the specific skill and section it comes from. If no skill defines a pattern, it is NOT a finding.
-- **Only check relevant categories** — Skip categories that don't apply to the detected project type.
-- **Be specific** — "Missing `PrintFatal` function in printer.go" not "Utils package is incomplete."
-- **Reference fixes to skill patterns** — Don't invent best practices. Every "Expected" and "Fix" must come from a loaded skill.
-- **Don't flag what skills don't cover** — No findings for: missing linting, missing formatting, missing pre-commit hooks, missing documentation beyond README.
-- **Detect before deep-diving** — Check if a pattern is even used before reviewing it in depth (e.g., don't review concurrency if no goroutines exist).
-- **Sub-agents read actual code** — Each domain agent must Read the actual source files, not guess based on file names.
+Every expected value and every suggested fix comes from a loaded skill rather than from general practice, because a review that invents standards produces work nobody agreed to.
 
-## Out of Scope (Hard Boundary)
+Detect before diving. Check whether a pattern is even used before reviewing it in depth, so a project with no goroutines gets a skip rather than a paragraph.
 
-The following are NOT defined in any loaded skill and MUST NOT be flagged as issues:
+Skip categories that do not apply to the detected project type. A `utils/` finding against a Web Only project is backwards: its absence is the rule.
 
-| Category | Specific Examples |
-|----------|-------------------|
-| Linting & Formatting | No golangci-lint, no gofmt, inconsistent formatting |
-| Pre-commit | No pre-commit hooks, no husky |
-| Code Quality CI | No lint/format CI steps |
-| Documentation beyond README | No godoc, no changelogs, no contributing guide |
-| Docker Compose | No docker-compose for development |
-| Database | No migrations, no schema files |
-| Dependency tooling | No dependabot, no renovate |
-| Security scanning | No SAST, no container scanning |
-| Code style opinions | Naming conventions not in skills, personal preferences |
+## Out of Scope
 
-**Rule of thumb:** If you are about to flag something and cannot point to a specific section in a loaded skill that defines the expected pattern, do not flag it.
+None of the following is defined in any skill, so none of it is ever a finding. This is the full list, and it is stated here once rather than in each manifest.
+
+| Category | Examples |
+|---|---|
+| Linting and formatting | no golangci-lint, no eslint, no gofmt, inconsistent formatting |
+| Pre-commit | no hooks, no husky |
+| Code quality CI | no lint or format steps in a workflow |
+| Documentation beyond README | no godoc, no jsdoc, no changelog, no contributing guide |
+| Compose files | no docker-compose for development |
+| Database | no migrations, no schema files |
+| Dependency tooling | no dependabot, no renovate |
+| Security scanning | no SAST, no container scanning |
+| Style opinions | naming conventions no skill defines, personal preference |
+
+If you are about to flag something and cannot point at a specific section of a loaded skill that defines the expected pattern, do not flag it.

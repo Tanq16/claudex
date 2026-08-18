@@ -1,136 +1,107 @@
 # Review Domain: Go CLI
 
-**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web **Skills to load** (paths relative to the plugin root provided in the sub-agent context):
-- `../../go-cli/SKILL.md`
+**Applies to:** Go CLI Only, Go Web Only, Go CLI + Web. Categories 3 through 5 apply to CLI Only and the command surface of a hybrid, and are skipped for Web Only.
+
+**Skills to load, in full, before running any check below:**
+- `[SKILLS_DIR]/go-cli-commands/SKILL.md`
+- `[SKILLS_DIR]/go-cli-output/SKILL.md`
+- `[SKILLS_DIR]/go-cli-prompts/SKILL.md`
+- `[SKILLS_DIR]/go-cli-progress/SKILL.md`
+
+The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
+
+Several checks invert by project type: the same construct is required in CLI Only and is a defect in Web Only. Establish the type before running any of them.
 
 ---
 
-## Category 5: Cobra CLI Setup (go-cli)
+## Category 1: Root Command
 
-**CLI Only checks:**
+| Check | How to verify |
+|---|---|
+| Root command fields | Read `cmd/root.go` |
+| `AppVersion` and its injection | Grep `cmd/root.go` for `AppVersion`; grep the Makefile for the matching `-X` path |
+| `Execute` behavior | Read `cmd/root.go` |
+| Help and completion visibility | Read `cmd/root.go` |
+| Logging setup | Read `cmd/root.go` for `setupLogs` and `cobra.OnInitialize`, then compare against the project type |
+| Global flags | Read `cmd/root.go` for `--debug` and `--for-ai` and their exclusivity, then compare against the type |
+| Imports | Read the import block for zerolog and `utils`, then compare against the type |
+| Command registration | Read `init()` |
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Root command structure | `rootCmd` with `Use`, `Short`, `Version`, `CompletionOptions.HiddenDefaultCmd: true` | Read `cmd/root.go` |
-| AppVersion variable | `var AppVersion = "dev-build"` set via ldflags at build time | Grep for `AppVersion` in `cmd/root.go` |
-| Execute function | `func Execute()` wrapping `rootCmd.Execute()` with stderr error output and `os.Exit(1)` | Read `cmd/root.go` |
-| setupLogs function | Called via `cobra.OnInitialize(setupLogs)` | Read `cmd/root.go` |
-| Debug flag | `rootCmd.PersistentFlags().BoolVar(&debugFlag, "debug", false, ...)` | Read `cmd/root.go` |
-| AI flag | `rootCmd.PersistentFlags().BoolVar(&forAIFlag, "for-ai", false, ...)` with `utils.GlobalForAIFlag = true` in `setupLogs()` | Read `cmd/root.go` |
-| Hidden help command | `rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})` | Read `cmd/root.go` |
-| Command registration | Commands added via `rootCmd.AddCommand()` in `init()` | Read `cmd/root.go` |
+## Category 2: Commands and Flags
 
-**Web Only checks:**
+| Check | How to verify |
+|---|---|
+| Flag structs | Grep `cmd/` for flag variable declarations and check they are grouped per command |
+| Flag registration site | Read each `init()` in `cmd/` |
+| Required and exclusive flags | Grep for `MarkFlagRequired` and `MarkFlagsMutuallyExclusive`; read each `Run` for hand-rolled validation that should be one of them |
+| `Run` shape | Read each `Run` body and trace where the work happens |
+| Subcommand package shape | Read each `cmd/*/` package: whether the parent is exported, whether it has a `Run`, whether children do |
+| Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, `u.Print`, and `log.Printf`, then compare against the type |
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Root command structure | `rootCmd` with `Use`, `Short`, `Version`, `CompletionOptions.HiddenDefaultCmd: true` | Read `cmd/root.go` |
-| AppVersion variable | `var AppVersion = "dev-build"` set via ldflags at build time | Grep for `AppVersion` in `cmd/root.go` |
-| Execute function | `func Execute()` wrapping `rootCmd.Execute()` with stderr error output and `os.Exit(1)` | Read `cmd/root.go` |
-| NO setupLogs function | No `setupLogs` function, no `cobra.OnInitialize(setupLogs)` | Read `cmd/root.go`, flag if present |
-| NO debug flag | No `--debug` persistent flag | Read `cmd/root.go`, flag if present |
-| NO for-ai flag | No `--for-ai` persistent flag | Read `cmd/root.go`, flag if present |
-| NO zerolog import | No `rs/zerolog` import | Read `cmd/root.go`, flag if present |
-| NO utils import | No utils package import | Read `cmd/root.go`, flag if present |
-| Hidden help command | `rootCmd.SetHelpCommand(&cobra.Command{Hidden: true})` | Read `cmd/root.go` |
-| Command registration | Commands added via `rootCmd.AddCommand()` in `init()` | Read `cmd/root.go` |
+## Category 3: Output Tiers
 
----
+| Check | How to verify |
+|---|---|
+| `globals.go` | Read `utils/globals.go` |
+| Printer branch order and completeness | Read `utils/printer.go`; check every structured printer for the same three-way branch |
+| `PrintGeneric` stays unbranched | Read `utils/printer.go` |
+| Error detail confined to debug | Read the human and AI branches of `PrintError`, `PrintFatal`, and `PrintWarn` and check whether `err` reaches them |
+| Error passed as `err` | Grep call sites of `PrintFatal`, `PrintError`, and `PrintIndentedError` for an error formatted into the message string |
+| Subprocess stderr | Grep for `exec.Command`; for each, check whether stderr is captured before the error is reported |
+| Table branch | Read `utils/table.go` |
+| Cell escaping | Read the markdown branch of `utils/table.go` |
+| Terminal colors | Grep for lipgloss color construction and check whether the values are ANSI indices or hex |
 
-## Category 6: Command Patterns (go-cli)
+## Category 4: Prompts
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Flag structs | Flags grouped in structs per command (e.g., `var serveFlags struct { ... }`) | Grep for flag struct patterns in `cmd/` files |
-| Run function pattern | Validate flags, build config struct, call internal package, output result | Read command `Run` functions |
-| Flag registration | Flags registered in `init()` function using `cmd.Flags().TypeVarP()` | Read `init()` functions in command files |
+Skip when the project takes no interactive input.
 
-**CLI Only additional check:**
+| Check | How to verify |
+|---|---|
+| Prompt helpers exist | Glob for `utils/input.go` and list its exported functions |
+| Every prompt branches on AI mode | Read each prompt function for a `GlobalForAIFlag` branch |
+| Piped reads use the right helper | Check which of the line and bulk readers each prompt uses |
+| Shared scanner | Read the scanner construction and check it is not per-call |
+| Cancel paths | Grep call sites of the selectors for handling of the cancel return |
+| Password handling | Grep for the password prompt's return value reaching any `Print` call |
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Utils for output | Commands use `u.PrintInfo`, `u.PrintSuccess`, `u.PrintFatal` etc., not raw `fmt.Println` | Grep for `fmt.Println` or `fmt.Printf` in `cmd/` files (should use utils instead) |
+## Category 5: Progress
 
-**Web Only additional check:**
+Skip when the project shows no sequential progress.
 
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| log.Printf/log.Fatalf for output | Commands use `log.Printf` with prefixes and `log.Fatalf` for fatal errors. No utils functions. | Grep for `utils.Print` or `u.Print` in `cmd/` files (flag if present) |
-
----
-
-## Category 6b: Output Lifecycle Patterns (go-cli)
-
-**Applies to: CLI Only (and the CLI surface of CLI + Web hybrids).** SKIP for Web Only projects. Only check if the project uses output lifecycle patterns (phases, running indicators, progress bars).
-
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Phase lifecycle | Phases use `PrintRunning` header → indented sub-results → `ClearLines(lineCount + 1)` → summary. Errors-only phase uses `PrintError` header with `PrintIndentedError` for each failure; clean phase uses `PrintInfo` | Grep for `PrintRunning` and `ClearLines` patterns in command files |
-| ClearLines count | `ClearLines(lineCount + 1)` — always `+1` for the running header. `lineCount` tracks only sub-lines printed during the loop | Verify `+1` in all `ClearLines` calls that follow a `PrintRunning` header |
-| Single-operation lifecycle | Single ops use `PrintRunning` → work → `ClearLines(1)` → result (`PrintSuccess` or `PrintFatal`) | Check that `ClearLines(1)` follows single running lines |
-| Progress indicator guard | Progress goroutines use `atomic.Bool` to track whether the goroutine printed. Final `ClearPreviousLine()` after `close(done)` is guarded by `if printed.Load()` | Grep for progress goroutine patterns, verify `atomic.Bool` guard exists |
-| Error discipline | `PrintError`/`PrintFatal`/`PrintIndentedError` pass the actual `err` as the error parameter, never baked into `msg` via `fmt.Sprintf` | Grep for `PrintFatal` and `PrintIndentedError` calls, verify `err` is passed as second arg not embedded in first |
-| Subprocess stderr capture | Direct `exec.Command` calls (not via `utils.RunCmd`) capture stderr into the error before passing to `PrintFatal` | Grep for `exec.Command` calls, verify stderr is captured when not using `RunCmd` |
-
----
-
-## Category 7: TUI Output (go-cli)
-
-**Applies to: CLI Only (and the CLI surface of CLI + Web hybrids).** SKIP for Web Only projects.
-
-| Check | Expected Pattern | How to Verify |
-|-------|-----------------|---------------|
-| Terminal-adaptive colors | Lipgloss color constants use ANSI standard indices (0-15) that adapt to the user's terminal theme, not hardcoded hex values | Grep for lipgloss color definitions, verify they use `lipgloss.ANSIColor(N)` (e.g., `lipgloss.ANSIColor(12)`) not hex (e.g., `lipgloss.Color("#89b4fa")`) |
-| Table output | If tables used, lipgloss table formatting via utils | Grep for table rendering |
-| Clean output without debug | Without `--debug`, user sees clean colored output (no log lines) | Check that print functions route through utils, not zerolog directly |
-| AI mode output | With `--for-ai`, print functions emit prefixed plain text (`[OK]`, `[ERROR]`, `[WARN]`, `[INFO]`) and tables render as markdown | Grep for `GlobalForAIFlag` usage in utils print/table functions |
+| Check | How to verify |
+|---|---|
+| Clear count | For each `ClearLines` following a running header, check the count against the lines printed |
+| Clearing is inert outside human mode | Read `ClearLines` and `ClearPreviousLine` |
+| Lifecycle shapes | Grep for `PrintRunning` and trace each to its clear and its final line |
+| Progress goroutine guard | Grep for progress goroutines and check for the atomic guard on the final clear |
+| Progress in AI and debug modes | Read `PrintProgress` |
 
 ---
 
 ## Output Format
 
-Report findings in this exact format:
-
 ```
 ## Domain: Go CLI
 
-### [PASS] Category Name (go-cli)
+### [PASS] Category Name
 
 All checks passed.
 
-### [ISSUES] Category Name (go-cli)
+### [ISSUES] Category Name
 
-1. **[Issue title]** (go-cli: section)
+1. **[Issue title]** (skill-name: section)
    - **Current:** [what the code does now]
-   - **Expected:** [what the skill says it should do]
-   - **Fix:** [specific action to take]
+   - **Expected:** [what the cited skill section says]
+   - **Fix:** [the specific action]
 
-### [SKIP] Category Name (go-cli)
+### [SKIP] Category Name
 
-Not applicable to this project type.
+Not applicable: [reason].
 ```
 
-End your response with exactly:
+End with exactly:
+
 ```
 SUMMARY_LINE: categories_checked=N pass=N issues=N skipped=N total_issues=N
 ```
-
----
-
-## Out of Scope (Hard Boundary)
-
-Do NOT flag any of the following — they are not defined in any loaded skill:
-
-| Category | Specific Examples |
-|----------|-------------------|
-| Linting & Formatting | No golangci-lint, no gofmt, inconsistent formatting |
-| Pre-commit | No pre-commit hooks, no husky |
-| Code Quality CI | No lint/format CI steps |
-| Documentation beyond README | No godoc, no changelogs, no contributing guide |
-| Docker Compose | No docker-compose for development |
-| Database | No migrations, no schema files |
-| Dependency tooling | No dependabot, no renovate |
-| Security scanning | No SAST, no container scanning |
-| Code style opinions | Naming conventions not in skills, personal preferences |
-
-**Rule:** If you cannot cite a specific section in a loaded skill for a finding, do not report it.
