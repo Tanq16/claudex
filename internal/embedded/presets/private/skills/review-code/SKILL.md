@@ -8,7 +8,7 @@ user-invocable: true
 
 **Detect the project type, work out which domains apply, hand each to a sub-agent that reads the governing skills, then combine the findings into one report.**
 
-## Start here — required reading
+## Start here: required reading
 
 Read the manifest for every domain in scope before that domain is reviewed: by you for a targeted review, or by the domain's sub-agent for a full one. A manifest names the skills to load, the applicability rules, and how each check is verified. Read only the manifests for domains that apply to the detected project type.
 

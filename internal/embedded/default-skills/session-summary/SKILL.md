@@ -1,6 +1,6 @@
 ---
 name: session-summary
-description: User-invoked session handoff. `/session-summary pause` writes a structured resume file capturing what the session was doing, what changed, what was decided, and what is unfinished; `/session-summary resume` reads that file back and continues from it. Invoked explicitly by name only — never write or read the resume file on your own initiative, and never at the end of an ordinary task.
+description: User-invoked session handoff. `/session-summary pause` writes a structured resume file capturing what the session was doing, what changed, what was decided, and what is unfinished; `/session-summary resume` reads that file back and continues from it. Invoked explicitly by name only. Never write or read the resume file on your own initiative, and never at the end of an ordinary task.
 user-invocable: true
 ---
 
@@ -17,7 +17,7 @@ This skill is explicit-invoke only. A session ending, a task finishing, or a con
 /session-summary resume    # read it back and continue
 ```
 
-An invocation with no argument, or an unrecognized one, is a request to say which of the two was meant rather than to guess — writing a handoff when the user wanted to read one destroys the file they were asking for.
+An invocation with no argument, or an unrecognized one, is a request to say which of the two was meant rather than to guess. Writing a handoff when the user wanted to read one destroys the file they were asking for.
 
 ## The file
 
@@ -37,17 +37,17 @@ Up to about 5,000 tokens, and shorter whenever shorter is enough. The whole budg
 
 What sets the length is whether the work is finished:
 
-- **Finished** — the outcome, where it landed, and the decisions worth not re-litigating. Usually a few hundred words. A completed feature does not need its own history retold.
-- **Unfinished** — everything a fresh session would otherwise have to rediscover: the exact state of the last thing tried, the commands that worked, the paths in flight, the approaches already ruled out. This is where the budget goes, because rediscovering it costs far more than writing it down.
-- **Blocked** — as above, plus what the block is and what would clear it.
+- **Finished**: the outcome, where it landed, and the decisions worth not re-litigating. Usually a few hundred words. A completed feature does not need its own history retold.
+- **Unfinished**: everything a fresh session would otherwise have to rediscover, meaning the exact state of the last thing tried, the commands that worked, the paths in flight, and the approaches already ruled out. This is where the budget goes, because rediscovering it costs far more than writing it down.
+- **Blocked**: as above, plus what the block is and what would clear it.
 
 ### Structure
 
 ```markdown
-# Session resume — <one line naming the work>
+# Session resume: <one line naming the work>
 
 ## State
-<complete | in progress | blocked> — one sentence.
+<complete | in progress | blocked> - one sentence.
 
 ## What we set out to do
 The task as the user framed it, including constraints they stated.
@@ -64,7 +64,7 @@ Only when the state is not complete: what is unfinished, what has been
 tried, what the next step is.
 
 ## Specifics to carry forward
-Paths, commands, IDs, URLs, flags, versions — verbatim.
+Paths, commands, IDs, URLs, flags, versions - verbatim.
 ```
 
 Drop a section that has nothing real in it. An empty heading reads as a gap in the work rather than as an omission in the summary.
@@ -85,7 +85,7 @@ Say what is uncertain when something is uncertain, rather than presenting a gues
 
 ### Reporting
 
-After writing, report the path and the state in one line. The file's content does not need repeating back — the user is about to restart, not read it in this session.
+After writing, report the path and the state in one line. The file's content does not need repeating back, because the user is about to restart rather than read it in this session.
 
 ## resume
 
