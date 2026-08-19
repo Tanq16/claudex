@@ -1,6 +1,6 @@
 ---
 name: write-document
-description: Settles what a standalone document should be before it is written: whether a file is the right output at all, who consumes it (an agent, a third party, or the user), and which shape that consumer needs. Defers section order and house format to a more specific document skill whenever the session has one for that artifact. Invoked explicitly as `/write-document`, and applies on its own whenever a standalone document, plan, spec, handoff, analysis, report, runbook, or writeup is the deliverable. Not for chat replies, commit messages, PR bodies, or code comments, which the project's instruction files already govern.
+description: "Settles what a standalone document should be before it is written: whether a file is the right output at all, who consumes it (an agent, a third party, or the user), and which shape that consumer needs. Defers section order and house format to a more specific document skill whenever the session has one for that artifact. Invoked explicitly as `/write-document`, and applies on its own whenever a standalone document, plan, spec, handoff, analysis, report, runbook, or writeup is the deliverable. Not for chat replies, commit messages, PR bodies, or code comments, which the project's instruction files already govern."
 user-invocable: true
 ---
 

@@ -49,6 +49,8 @@ user-invocable: <true when the user calls it by name, false when the model route
 | `metadata` | no | String-to-string map for anything outside the spec |
 | `allowed-tools` | no | Space-separated pre-approved tools; experimental, support varies |
 
+A value carrying a colon followed by a space, such as `for every project type: the header`, is wrapped in double quotes. YAML reads that bare colon as a key separator and the block stops parsing. A skill whose frontmatter does not parse is skipped at discovery without an error anywhere, so it never loads and nothing says why.
+
 The `description` is the only part loaded before activation, so it is doing routing work rather than summary work. Name the concrete triggers (the file types, commands, or phrasings that should pull the skill in), because a description that only says what the skill is about leaves the model guessing about when.
 
 A skill the user calls by name says so in the description (`Invoked explicitly as /<name> ...`) and states what should not trigger it. Without that, incidental mentions of the subject activate it.
@@ -92,7 +94,15 @@ When references are used:
 - `./references/<templates>.md`: full file templates
 ```
 
-### Step 5: Check the size and report
+### Step 5: Parse the frontmatter, check the size, and report
+
+Every finished skill is parsed before it is reported, however obviously correct the block looks:
+
+```
+yq --front-matter=extract -e '.name, .description' .agents/skills/<name>/SKILL.md
+```
+
+A non-zero exit names the line and column that broke, and the fix is quoting the value it points at. Reading the block instead of parsing it is what lets a colon through.
 
 The body is loaded in full on activation, and after a compaction each skill re-attaches at its first 5,000 tokens under a shared 25,000-token budget. Past that cap the tail is dropped silently, so a skill that overruns loses content without saying so.
 
@@ -109,7 +119,7 @@ A request for a skill covering the project's database migration process:
 ```markdown
 ---
 name: db-migrations
-description: Writes and reviews database migrations for this project: file naming, the up/down pair, and the backfill rules for a live table. Use when adding a migration, changing a schema, or reviewing a migration in a diff.
+description: "Writes and reviews database migrations for this project: file naming, the up/down pair, and the backfill rules for a live table. Use when adding a migration, changing a schema, or reviewing a migration in a diff."
 user-invocable: false
 ---
 

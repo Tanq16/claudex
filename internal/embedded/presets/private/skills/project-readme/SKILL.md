@@ -1,6 +1,6 @@
 ---
 name: project-readme
-description: README structure for every project type: the frozen header block, the opener, and the rules that decide which sections a project earns and how long each one gets. Covers install paths including the self-hosted Docker run and compose blocks, collapsed tabular screenshots, and the test for when a section becomes its own file under docs/. Use when creating a README, restructuring one, deciding whether something belongs in the README at all, adding badges or navigation links, or documenting installation and configuration. Triggers on README.md, shields.io badges, .github/assets/logo.svg, a capabilities table, an install section, a docker-compose snippet, and screenshots of a web UI.
+description: "README structure for every project type: the frozen header block, the opener, and the rules that decide which sections a project earns and how long each one gets. Covers install paths including the self-hosted Docker run and compose blocks, collapsed tabular screenshots, and the test for when a section becomes its own file under docs/. Use when creating a README, restructuring one, deciding whether something belongs in the README at all, adding badges or navigation links, or documenting installation and configuration. Triggers on README.md, shields.io badges, .github/assets/logo.svg, a capabilities table, an install section, a docker-compose snippet, and screenshots of a web UI."
 user-invocable: false
 ---
 

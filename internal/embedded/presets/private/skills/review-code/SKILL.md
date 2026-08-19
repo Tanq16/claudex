@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: A thorough multi-agent audit of an existing codebase against the development skills, with one sub-agent per domain. Use when re-engaging a project you have not touched recently, when the skills may have changed since the code was written, when auditing a specific package or domain, or when a deliberate compliance pass is wanted. Not for checking the diff you just wrote, which the develop skill already covers. Accepts an optional target: a domain keyword such as cli, node, infra, or concurrency, or a package path such as internal/server.
+description: "A thorough multi-agent audit of an existing codebase against the development skills, with one sub-agent per domain. Use when re-engaging a project you have not touched recently, when the skills may have changed since the code was written, when auditing a specific package or domain, or when a deliberate compliance pass is wanted. Not for checking the diff you just wrote, which the develop skill already covers. Accepts an optional target: a domain keyword such as cli, node, infra, or concurrency, or a package path such as internal/server."
 user-invocable: true
 ---
 
