@@ -16,8 +16,6 @@ type skillFrontmatter struct {
 	UserInvocable bool   `yaml:"user-invocable"`
 }
 
-// A skill whose frontmatter does not parse is skipped at discovery without an error,
-// so nothing but a parse of every shipped file catches one that stopped loading.
 func TestEmbeddedSkillFrontmatter(t *testing.T) {
 	sources := map[string]fs.FS{
 		"default-skills": DefaultSkillsFS,
