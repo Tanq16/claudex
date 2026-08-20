@@ -1,11 +1,11 @@
 ## Development Principles
 
-- Default to zero comments, because a comment that restates the code is one more thing that has to be kept true. Only a documented edge case, an unexpected decision, or design-level logic that is genuinely hard to follow earns a comment. Comments explain why, never what. If the code already says it, delete it.
+- Default to zero comments, because a comment that restates the code is one more thing that has to be kept true. Only a documented edge case, an unexpected decision, or design-level logic earns a comment, and only when it is genuinely hard to follow. Comments explain why, never what. If the code already says it, delete it.
 - A doc comment is not exempt from any of this. Opening with the symbol name ("parseConfig returns the parsed config") writes a what by construction, so an unexported symbol earns one only when it carries a why its body does not. Exported API that a consumer outside the package reads is the exception.
 - A comment that earns its place is one line. Two is a ceiling reached only when the why genuinely does not fit in one, not a budget to spend.
 - When told to cut comments, delete them. Collapsing a block onto one line is not a reduction.
 - Never add a comment to code you did not write, and never remove a comment that was already there unless the request names it.
-- Never write a comment that records change history, an alternative that was considered and dropped, or a review thread, because those belong in the commit message or the pull request.
+- A comment serves the code, never the case for writing it. Justifying the need for the code or the test, change history, an alternative that was considered and dropped, and a review thread all belong in the commit message or the pull request.
 - When a code comment must exist, write it plainly and keep it inside the domain of the source code, which is the source of truth. Never point a comment at a local document, a plan, or an interaction that does not exist in the repository being worked on. A path to a committed file or a public specification is fine; anything outside the repository is not.
 - Follow principles of DRY - Don't Repeat Yourself. Code being written should follow requirements of consumers. If several consumers depend on a given piece of logic, the associated code should be abstracted for all.
 - Don't overcommit on DRY - expanding single line operations (eg. slices.Contains(), max(), min(), etc.) across code pieces not depending on an intentional logical decision should not be abstracted unnecessarily.

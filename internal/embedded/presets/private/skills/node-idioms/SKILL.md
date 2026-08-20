@@ -1,6 +1,6 @@
 ---
 name: node-idioms
-description: Modern Node 24+ idioms and dependency selection - pure ESM, node: builtins, top-level await, structuredClone, AbortController. Use when writing or refactoring any Node code, or when adding, auditing, or upgrading a dependency in package.json. Triggers on require, module.exports, __dirname, import.meta, node: prefixed imports, JSON.parse(JSON.stringify()), fetch timeouts, AbortSignal, and any package.json dependency change.
+description: "Modern Node 24+ idioms and dependency selection - pure ESM, node: builtins, top-level await, structuredClone, AbortController. Use when writing or refactoring any Node code, or when adding, auditing, or upgrading a dependency in package.json. Triggers on require, module.exports, __dirname, import.meta, node: prefixed imports, JSON.parse(JSON.stringify()), fetch timeouts, AbortSignal, and any package.json dependency change."
 user-invocable: false
 ---
 
