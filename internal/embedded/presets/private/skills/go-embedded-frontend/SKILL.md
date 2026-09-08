@@ -17,7 +17,7 @@ internal/server/static/
 ├── index.html          # the single page
 ├── app.js              # application logic, when it outgrows an inline block
 ├── manifest.json       # PWA, when enabled
-├── sw.js               # PWA, when enabled
+├── sw.js               # PWA, when enabled, served at /sw.js
 ├── css/
 │   ├── inter.css               # @font-face for Inter
 │   ├── google-sans.css         # @font-face for Google Sans
@@ -38,7 +38,7 @@ internal/server/static/
 └── js/                 # tailwind.js, lucide.min.js, and anything else vendored
 ```
 
-Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed to the repository. A Makefile target downloads them on demand and the release workflow calls that same target, so the tree in git holds only what a person wrote. A downloaded asset in a diff is a binary nobody reviews and a version nobody can trace.
+Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed to the repository. A Makefile target downloads them and the release workflow calls that same target. A downloaded asset in a diff is a binary nobody reviews and a version nobody can trace.
 
 ## Assets
 
@@ -59,9 +59,9 @@ Every asset is pinned to an exact version. A floating `@latest` makes two builds
 | Mermaid | `mermaid@11.17.2` | `js/mermaid.min.js` |
 | Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
 
-The three fonts are always downloaded, whether or not a given page uses all three, so the asset step is the same everywhere and a later design change needs no build change. Everything below them in the table is downloaded when the project actually uses it.
+The three fonts are always downloaded, so the asset step is the same everywhere and a later design change needs no build change. Everything below them in the table is downloaded when the project uses it.
 
-Web fonts are woff2, never ttf. woff2 is roughly half the bytes of the same ttf and every browser targeted here supports it. All three families come from Google Fonts, which already serves woff2, so nothing is converted.
+Web fonts are woff2, never ttf. woff2 is roughly half the bytes of the same ttf and every browser targeted here supports it. Google Fonts already serves woff2, so nothing is converted.
 
 Only the `latin` and `latin-ext` blocks of each Google Fonts stylesheet are kept. The endpoint declares every subset the family has, which for Google Sans is twenty-five files covering scripts the page never renders, and `//go:embed` compiles all of them into the binary regardless.
 
@@ -82,11 +82,11 @@ rm -f fontawesome/css/all.min.css.bak
 | Google Sans | display headings and branding | `'Google Sans'` |
 | JetBrains Mono | code and monospace | `'JetBrains Mono'` |
 
-Each has its own `@font-face` stylesheet under `css/`, linked from `<head>`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, because a page that fetches a font from a third party leaks every visitor's IP and stops rendering correctly offline.
+Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, because a page that fetches a font from a third party leaks every visitor's IP and stops rendering correctly offline.
 
-The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, so it is downloaded from the nerd-fonts release as ttf and compressed to woff2, which costs two megabytes and roughly ten seconds against sixty kilobytes and half a second. A page earns that only by actually rendering Nerd Font glyphs, which means a Powerline separator, a file-type icon from the private use area, or terminal output that carries them. An icon that Lucide or Font Awesome already has is not a reason.
+The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, so it is downloaded from the nerd-fonts release as ttf and compressed to woff2, which costs two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs, which means a Powerline separator, a file-type icon from the private use area, or terminal output that carries them. An icon that Lucide or Font Awesome already has is not a reason.
 
-Switching is a Makefile variable, not a page change. The nerd target writes the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name, so the HTML is identical either way.
+Switching is a Makefile variable, not a page change. The nerd target writes the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name.
 
 ## The Page
 
@@ -172,24 +172,24 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
     <script>lucide.createIcons();</script>
     <script>
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js');
+            navigator.serviceWorker.register('/sw.js');
         }
     </script>
 </body>
 </html>
 ```
 
-Theme values are declared in a `<style type="text/tailwindcss">` block containing an `@theme` at-rule. The Tailwind v4 browser build reads that block and rejects a JavaScript config entirely, so the `tailwind.config = {...}` global from v3 produces no CSS and no error.
+The Tailwind v4 browser build reads the `<style type="text/tailwindcss">` block containing `@theme` and rejects a JavaScript config entirely, so the `tailwind.config = {...}` global from v3 produces no CSS and no error.
 
 A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, `border-mauve`, and a real `var(--color-mauve)` for hand-written CSS. Naming the palette entries after Catppuccin's own names keeps the class you write and the swatch you picked identical.
 
-`@theme` maps each name onto a `--ctp-*` variable rather than a literal hex. The utility resolves the variable at paint time, so redefining the `--ctp-*` set under a selector re-themes the page without a second `@theme` and without touching a single class. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--color-mauve) 50%, transparent)` rather than substituting a value.
+`@theme` maps each name onto a `--ctp-*` variable rather than a literal hex. The utility resolves the variable at paint time, so redefining the `--ctp-*` set under a selector re-themes the page without a second `@theme` or a class change. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--color-mauve) 50%, transparent)` rather than substituting a value.
 
 `@import "tailwindcss";` is omitted, because the browser build injects it when no `@import` appears anywhere in the block. Writing one takes over the whole import graph and drops the base styles unless you add it back yourself.
 
 ## Layering
 
-The page is grounded on `crust`, the darkest step, and every surface is raised from there. Grounding on `base` instead pushes the whole page one rung up the ramp, leaves the chrome darker than the page it sits on, and costs contrast against every text color.
+The page is grounded on `crust`, the darkest step, and every surface is raised from there. Grounding on `base` instead leaves the chrome darker than the page it sits on and costs contrast against every text color.
 
 | Role | Token |
 |---|---|
@@ -205,13 +205,13 @@ Text runs the same way. Body copy takes `subtext0`, headings and the one value a
 
 Structure never borrows from the accent ramp. Borders, dividers, and backgrounds come from the neutral steps, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing in one view means neither is signal.
 
-Nothing here names a component. The tokens are assigned by what a surface does, so a layout this skill has never seen still lands on the right step.
+The tokens are assigned by what a surface does, so a layout this skill has never seen still lands on the right step.
 
 ## Theme
 
-Catppuccin Mocha is the default for a new frontend in this style. A project that already has a palette keeps it rather than being re-themed, since re-theming an existing app is a design decision rather than a convention.
+Catppuccin Mocha is the default for a new frontend. A project that already has a palette keeps it, since re-theming an existing app is a design decision rather than a convention.
 
-Light and dark switching is added only when it is asked for. The `--ctp-*` indirection is what makes it cheap: redefine that set for Latte and every utility follows.
+Light and dark switching is added only when it is asked for, by redefining the `--ctp-*` set for Latte.
 
 ```html
 <style>
@@ -225,15 +225,15 @@ Light and dark switching is added only when it is asked for. The `--ctp-*` indir
 </style>
 ```
 
-Latte's ramp runs light to dark, the opposite of Mocha's, so re-slotting is what keeps `crust` the ground and `mantle` the surface above it in both. The text tokens shift by the same one step, because Latte's own `subtext0` on its own `base` is 4.37 and body copy has to clear 4.5.
+Latte's ramp runs light to dark, the opposite of Mocha's, so re-slotting keeps `crust` the ground and `mantle` the surface above it in both. The text tokens shift by the same one step, because Latte's own `subtext0` on its own `base` is 4.37 and body copy has to clear 4.5.
 
-A script in `<head>` sets the class from `localStorage` or `prefers-color-scheme` before the body renders, which is what prevents a flash of the wrong theme.
+A script in `<head>` sets the class from `localStorage` or `prefers-color-scheme` before the body renders, preventing a flash of the wrong theme.
 
 ## Styling Rules
 
-Styling is Tailwind utility classes on the element. Hand-written CSS is the exception and earns its place only in a case that has no utility form:
+Styling is Tailwind utility classes on the element. Hand-written CSS earns its place only in a case that has no utility form:
 
-- `@font-face` declarations, which live in the downloaded stylesheets under `css/`
+- `@font-face` declarations
 - scrollbar pseudo-elements, `::selection`, and other pseudo-elements Tailwind does not reach
 - a subtree a third party generates, where the classes are not yours to write, such as rendered Markdown, a Mermaid diagram, or an editor widget
 - `@media print` rules
@@ -241,21 +241,21 @@ Styling is Tailwind utility classes on the element. Hand-written CSS is the exce
 
 Everything else is a class. A hand-written rule that duplicates a utility is a second place a color or a spacing value can drift, and it is invisible to anyone reading the element.
 
-The custom CSS that remains lives in inline `<style>` blocks. Downloaded stylesheets live in `css/`. Keeping the two apart means the asset step can wipe and re-download `css/` without touching anything a person wrote.
+The custom CSS that remains lives in inline `<style>` blocks rather than `css/`, so the asset step can wipe and re-download `css/` without touching anything a person wrote.
 
-An existing project's working CSS is not ripped out to impose this. The rule governs what you write, not what is already there.
+An existing project's working CSS is not ripped out to impose this, since the rule governs what you write.
 
-The browser build compiles utility classes in the page at run time. Tailwind documents it as development-only. It is fine for an embedded tool or a dashboard, and an app that needs a small payload and no runtime compile moves to a build step emitting a static `tailwind.css`.
+The browser build compiles utility classes at run time and Tailwind documents it as development-only. It is fine for an embedded tool or a dashboard, and an app needing a small payload and no runtime compile moves to a build step emitting a static `tailwind.css`.
 
 One `index.html` is the default. Views are shown and hidden client-side, and shared logic moves into `app.js` only once more than one place needs it.
 
 ## Icons
 
-| Library | Use for | Vendored to |
-|---|---|---|
-| Lucide | general UI icons, the default | `js/lucide.min.js` |
-| Font Awesome | brand icons, and gaps in Lucide | `fontawesome/` |
-| Dev Icons | technology and language logos | `css/devicon.min.css` |
+| Library | Use for |
+|---|---|
+| Lucide | general UI icons, the default |
+| Font Awesome | brand icons, and gaps in Lucide |
+| Dev Icons | technology and language logos |
 
 ```html
 <i data-lucide="settings"></i>
@@ -266,7 +266,7 @@ One `index.html` is the default. Views are shown and hidden client-side, and sha
 <i class="devicon-go-original-wordmark"></i>
 ```
 
-`lucide.createIcons()` runs after any DOM update that inserts an `<i data-lucide>`, since it replaces those elements with inline SVG once and does not observe later insertions.
+`lucide.createIcons()` runs after any DOM update that inserts an `<i data-lucide>`, since it replaces those elements with inline SVG and does not observe later insertions.
 
 App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on both light and dark browser chrome. PWA icons keep their content inside the centre 80%, because the installer rounds the corners off.
 
@@ -292,12 +292,25 @@ Add PWA support when the app is used often on a phone, when offline behavior is 
 }
 ```
 
-`static/sw.js` is a no-op worker that exists only to make the app installable:
+`static/sw.js` is a no-op worker:
 
 ```javascript
 self.addEventListener('fetch', () => {});
 ```
 
-It caches nothing and every request goes to the network, so the app behaves exactly like a normal tab. A caching worker serves stale assets after a deploy and gives users a version they cannot refresh away.
+It caches nothing, so the app behaves like a normal tab. A caching worker serves stale assets after a deploy and gives users a version they cannot refresh away.
 
-Drop the manifest, the worker, the registration script, and the PWA meta tags together when not building a PWA. A manifest with no worker is an install prompt that leads nowhere.
+The worker is not what makes the app installable, since the manifest, the two icon sizes, and HTTPS are. It earns its line by controlling the app's pages, which any later offline or push behavior needs.
+
+A worker's scope is the directory it is served from, so one served at `/static/sw.js` controls `/static/` and never the app at `/`. It registers without error and reports that narrow scope, so nothing fails loudly enough to notice. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
+
+The file stays under `static/` so `//go:embed static` picks it up, and it is served at the root by its own route:
+
+```go
+s.mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) {
+    w.Header().Set("Content-Type", "text/javascript")
+    http.ServeFileFS(w, r, staticFiles, "static/sw.js")
+})
+```
+
+Drop the manifest, the worker, its route, the registration script, and the PWA meta tags together when not building a PWA. The manifest alone is enough to prompt an install, which an app that gains nothing from being installed should not do.

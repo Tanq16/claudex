@@ -80,6 +80,8 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 `fs.Sub` strips the `static` prefix from the embedded tree, and `http.StripPrefix` strips it from the request path. Both are needed: without the first, `/static/css/app.css` resolves to `static/static/css/app.css` inside the FS.
 
+A PWA service worker needs its own exact route rather than the `/static/` mount, because a worker's scope is the directory it is served from. One served under `/static/` cannot control the app at `/`.
+
 `handleIndex` is registered on `/` rather than on an exact pattern, so a deep link into a client-routed single-page app returns the page instead of a 404.
 
 The server layer logs through zerolog, the same as every other part of every project type. A CLI + Web hybrid keeps its `utils` printers for the command surface and uses zerolog here, so the binary has one logger rather than one per command.
