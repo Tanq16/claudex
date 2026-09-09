@@ -59,5 +59,6 @@ func init() {
 	rootCmd.AddCommand(applyCmd)
 	rootCmd.AddCommand(applyPresetCmd)
 	rootCmd.AddCommand(createPresetCmd)
+	rootCmd.AddCommand(pullPresetCmd)
 	rootCmd.AddCommand(cleanCwdCmd)
 }

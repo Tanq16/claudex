@@ -91,3 +91,7 @@ func GlobalPluginDir() string {
 func PresetsDir() string {
 	return filepath.Join(ClaudexConfigDir(), "presets")
 }
+
+func RemotePresetsDir() string {
+	return filepath.Join(ClaudexConfigDir(), "remote-presets")
+}
