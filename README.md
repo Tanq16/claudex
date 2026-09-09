@@ -19,7 +19,7 @@ It exists for juggling several Claude subscriptions, and everything except the a
 | Accounts | `configure`, `status`, `switch`, `oauth-token` | Provision every account, read its usage, move a project between accounts |
 | Sessions | `launch` | Pick the account and the session, then exec `claude` |
 | Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
-| Presets | `create-preset` | Scaffold your own bundle of skills and rules |
+| Presets | `create-preset`, `pull-preset` | Scaffold your own bundle of skills and rules, or pull one from a repository |
 
 ## Install
 
@@ -92,11 +92,14 @@ Nothing is written when any of those paths already holds something ClaudeX did n
 
 ### apply-preset
 
-A preset is a directory under `~/.config/claudex/presets/` holding a `preset.yaml`, an optional `AGENTS.partial.md`, and a `skills/` directory. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, keyed by preset name, so re-applying replaces that section instead of appending a second copy. It needs `claudex apply` to have run first.
+A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, and an optional `skills/` directory. Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, so re-applying replaces that section instead of appending a second copy. It needs `claudex apply` to have run first.
+
+A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
 
 ```bash
-claudex apply-preset            # multi-select picker
-claudex apply-preset private    # by name; several names apply in order
+claudex apply-preset                             # multi-select picker
+claudex apply-preset private                     # local, by name; several apply in order
+claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 ```
 
 `--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset; passing one narrows the run to that half.
@@ -107,13 +110,27 @@ The manifest keys:
 
 | Key | Default | Description |
 |-----|---------|-------------|
-| `name` | the directory name | Shown in the picker and used as the `AGENTS.md` section key |
+| `name` | the directory name | The directory a pulled preset installs into |
 | `description` | empty | One line shown beside the name in the picker |
 | `skills` | every directory under `skills/` holding a `SKILL.md` | Which skills to link |
 
 ### create-preset
 
-Scaffolds `~/.config/claudex/presets/<name>/` with a `preset.yaml`, an `AGENTS.partial.md`, and an empty `skills/`. Names take lowercase letters, digits, and single hyphens.
+Scaffolds `~/.config/claudex/presets/<name>/` with a `preset.yaml`, an empty `AGENTS.partial.md`, and an empty `skills/`. Names take lowercase letters, digits, and single hyphens.
+
+### pull-preset
+
+Clones a repository at depth 1 into a temporary directory and installs the presets it holds under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Nothing tracks the clone afterwards, so pulling again is how you update.
+
+```bash
+claudex pull-preset tanq16/presets                          # every preset in the repo
+claudex pull-preset https://github.com/tanq16/presets.git   # a full URL works too
+claudex pull-preset tanq16/monorepo --path tools/go-strict  # one, by repo-relative path
+```
+
+Without `--path`, a preset is the repository root when it holds a `preset.yaml`, and otherwise every directory one level under the root that holds one. The whole slug directory is replaced, so a preset deleted upstream disappears on the next pull. With `--path`, only that one preset is replaced and the rest of the slug is left alone.
+
+Cloning runs `git`, so a private repository works with whatever credentials you already have. Removing a pulled repository means deleting its slug directory.
 
 ### clean-cwd
 
