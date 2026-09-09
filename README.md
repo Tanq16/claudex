@@ -130,7 +130,7 @@ claudex pull-preset tanq16/monorepo --path tools/go-strict  # one, by repo-relat
 
 Without `--path`, a preset is the repository root when it holds a `preset.yaml`, and otherwise every directory one level under the root that holds one. The whole slug directory is replaced, so a preset deleted upstream disappears on the next pull. With `--path`, only that one preset is replaced and the rest of the slug is left alone.
 
-Cloning runs `git`, so a private repository works with whatever credentials you already have. Removing a pulled repository means deleting its slug directory.
+Cloning runs `git`, so a private repository works with whatever credentials you already have. A path on this machine is rejected rather than cloned, because a preset already here belongs in the presets directory. Removing a pulled repository means deleting its slug directory.
 
 ### clean-cwd
 

@@ -190,28 +190,35 @@ func parseRepo(repo string) (cloneURL, owner, name string, err error) {
 
 	switch {
 	case strings.HasPrefix(path, "git@"):
-		if _, after, ok := strings.Cut(path, ":"); ok {
-			path = after
+		_, after, ok := strings.Cut(path, ":")
+		if !ok {
+			return "", "", "", notRepoErr(repo)
 		}
-	case strings.Contains(path, "://"):
+		path = after
+	case strings.HasPrefix(path, "https://"), strings.HasPrefix(path, "http://"), strings.HasPrefix(path, "ssh://"):
 		_, afterScheme, _ := strings.Cut(path, "://")
-		if _, afterHost, ok := strings.Cut(afterScheme, "/"); ok {
-			path = afterHost
+		_, afterHost, ok := strings.Cut(afterScheme, "/")
+		if !ok {
+			return "", "", "", notRepoErr(repo)
 		}
+		path = afterHost
+	case strings.HasPrefix(path, "file://"), strings.HasPrefix(path, "/"), strings.HasPrefix(path, "."):
+		return "", "", "", fmt.Errorf("%q is a path on this machine rather than a remote repository; a preset already here belongs in the presets directory", repo)
+	case strings.Contains(path, "://"):
+		return "", "", "", fmt.Errorf("%q uses an unsupported scheme; pull over https or ssh, or give an <owner>/<repo> reference", repo)
 	default:
-		cloneURL = "https://github.com/" + strings.Trim(path, "/") + ".git"
+		cloneURL = "https://github.com/" + path + ".git"
 	}
 
-	var segments []string
-	for segment := range strings.SplitSeq(strings.Trim(path, "/"), "/") {
-		if segment != "" {
-			segments = append(segments, segment)
-		}
+	owner, name, ok := strings.Cut(strings.Trim(path, "/"), "/")
+	if !ok || owner == "" || name == "" || strings.Contains(name, "/") {
+		return "", "", "", notRepoErr(repo)
 	}
-	if len(segments) < 2 {
-		return "", "", "", fmt.Errorf("%q is not an <owner>/<repo> reference or a git URL ending in one", repo)
-	}
-	return cloneURL, segments[len(segments)-2], segments[len(segments)-1], nil
+	return cloneURL, owner, name, nil
+}
+
+func notRepoErr(repo string) error {
+	return fmt.Errorf("%q is not an <owner>/<repo> reference or a git URL ending in one", repo)
 }
 
 func slugify(s string) string {
