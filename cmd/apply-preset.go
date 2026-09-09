@@ -29,10 +29,10 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	}
 	skills, agents := presetParts(applyPresetFlags.skills, applyPresetFlags.agents)
 
-	dir := presetsDir()
-	available := workspace.ListPresets(dir)
+	local, remote := presetsDir(), remotePresetsDir()
+	available := workspace.ListPresets(local, remote)
 	if len(available) == 0 {
-		u.PrintFatal("no presets found in "+u.AbbreviatePath(dir), nil)
+		u.PrintFatal("no presets found in "+u.AbbreviatePath(local)+" or "+u.AbbreviatePath(remote), nil)
 	}
 
 	selected := args
@@ -47,10 +47,10 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	if agents {
 		conflicts = append(conflicts, workspace.PreflightAgentsFile(root)...)
 	}
-	for _, name := range selected {
-		p, err := workspace.FindPreset(dir, name)
+	for _, ref := range selected {
+		p, err := workspace.FindPreset(local, remote, ref)
 		if err != nil {
-			u.PrintFatal("preset not found: "+name, err)
+			u.PrintFatal("preset not found: "+ref, err)
 		}
 		presets = append(presets, p)
 		if skills {
@@ -64,19 +64,19 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	for _, p := range presets {
 		if skills {
 			if err := workspace.LinkSkills(root, p.SkillsDir(), p.Skills); err != nil {
-				u.PrintFatal("failed to link the skills of preset "+p.Name, err)
+				u.PrintFatal("failed to link the skills of preset "+p.Ref, err)
 			}
 		}
 		partial := ""
 		if agents {
 			if partial = p.Partial(); partial != "" {
-				if err := workspace.UpsertSection(root, p.Name, partial); err != nil {
-					u.PrintFatal("failed to write the AGENTS.md section of preset "+p.Name, err)
+				if err := workspace.UpsertSection(root, p.Ref, partial); err != nil {
+					u.PrintFatal("failed to write the AGENTS.md section of preset "+p.Ref, err)
 				}
 			}
 		}
 
-		u.PrintSuccess("Applied preset: " + p.Name)
+		u.PrintSuccess("Applied preset: " + p.Ref)
 		if skills {
 			u.PrintGeneric(fmt.Sprintf("  skills: %d linked into .agents/skills", len(p.Skills)))
 		}
@@ -100,7 +100,7 @@ func presetParts(skillsFlag, agentsFlag bool) (skills, agents bool) {
 func choosePresets(available []workspace.Preset) []string {
 	labels := make([]string, len(available))
 	for i, p := range available {
-		labels[i] = p.Name
+		labels[i] = p.Ref
 		if p.Description != "" {
 			labels[i] += " — " + u.Truncate(p.Description, 70)
 		}
