@@ -80,7 +80,7 @@ Writes the layout into the current directory:
 ```
 AGENTS.md          base instruction block, between <!-- claudex:base --> markers
 CLAUDE.md          -> AGENTS.md
-.agents/skills/    session-summary, skill-creator, write-document
+.agents/skills/    agents-md, session-summary, skill-creator, write-document
 .claude/skills     -> ../.agents/skills
 ```
 
