@@ -48,7 +48,7 @@ The H1 is the skill's name, and the line directly under it is a bold thesis nami
 
 A model-routed skill titles its H1 in Title Case and a user-invocable one uses its own slug, so an invocable skill's heading reads back as the command the user typed.
 
-Title Case, in the H1 and in every section heading, leaves articles, conjunctions and short prepositions lowercase. Capitalizing them produces `Pragmas That Do Not Persist` and `Choosing Cursor Or Offset`, which read as the title of a work rather than the name of a section.
+Where a heading is in Title Case, articles, conjunctions and short prepositions stay lowercase. Capitalizing them produces `Pragmas That Do Not Persist` and `Choosing Cursor Or Offset`, which read as the title of a work rather than the name of a section.
 
 A section of rules is written as prose paragraphs rather than a bulleted list. A bullet list carries parallel items of one kind, and a rule set formatted as a list reads as a checklist and gets skimmed instead of applied.
 
