@@ -26,11 +26,9 @@ Another location is used when the invocation names one, such as a preset's `skil
 
 ## How a rule is written
 
-A skill body is written under the prose discipline in `AGENTS.md`, because a skill is read the way an instruction file is read. One thing inverts: `AGENTS.md` cuts rationale, and a skill attaches a reason to every rule.
+A skill body is written under the prose discipline in `AGENTS.md`, because a skill is read the way an instruction file is read. Where `AGENTS.md` cuts rationale unless it is load bearing, a rule's reason is always load bearing and stays.
 
-The subject of a rule is the thing being written, not the writer. "A build has exactly two stages" rather than "write exactly two stages", because a property can be checked against the finished work and an order cannot.
-
-Rules are written in the present tense and the third person, with no addressee. A rule whose subject is "you" or "the agent" has turned into an instruction, and an instruction only covers the case it names.
+The subject of a rule is the thing being written rather than the writer, in the present tense and with no addressee. "A build has exactly two stages" rather than "write exactly two stages", because a property can be checked against the finished work while an instruction only covers the case it names.
 
 Every rule carries the reason it exists, in the same sentence or the next one. A rule with a reason attached is followed far more often than a bare instruction, and the reason is what lets an agent extend the rule to a case the skill never anticipated.
 
@@ -39,8 +37,6 @@ A rule runs to one or two sentences of prose. The first states the property and 
 One sentence carries one idea. A sentence that has taken on a second idea splits at the point the second one starts.
 
 A negative states the property rather than forbidding the act. "The final stage runs as a fixed non-root user" rather than "do not run as root", since the property still holds in the case the prohibition forgot to name.
-
-Rules are prose paragraphs rather than bullets. A bullet list carries parallel items of one kind, and a rule set formatted as a list reads as a checklist and gets skimmed instead of applied.
 
 `MUST`, `CRITICAL`, ALL-CAPS and `!!` stay out of the body. Emphasis belongs in the `description`, where it does routing work; in the body, emphasis without an adjacent reason reads as anxiety, and an anxious prompt produces a hedging agent.
 
@@ -53,6 +49,8 @@ The H1 is the skill's name, and the line directly under it is a bold thesis nami
 A model-routed skill titles its H1 in Title Case and a user-invocable one uses its own slug, so an invocable skill's heading reads back as the command the user typed.
 
 Title Case, in the H1 and in every section heading, leaves articles, conjunctions and short prepositions lowercase. Capitalizing them produces `Pragmas That Do Not Persist` and `Choosing Cursor Or Offset`, which read as the title of a work rather than the name of a section.
+
+A section of rules is written as prose paragraphs rather than a bulleted list. A bullet list carries parallel items of one kind, and a rule set formatted as a list reads as a checklist and gets skimmed instead of applied.
 
 A table carries a closed set of facts the agent checks rather than reasons about, such as field names, a catalog of valid values, a per-language mapping or a budget. It also carries a comparison the reader reads across, such as two approaches measured against the same four properties.
 
