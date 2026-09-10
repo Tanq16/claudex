@@ -28,6 +28,7 @@ var (
 )
 
 type Preset struct {
+	Ref         string
 	Name        string
 	Description string
 	Dir         string
@@ -59,31 +60,69 @@ func EnsurePresets(srcFS fs.FS, root, dir string) error {
 	return nil
 }
 
-func ListPresets(dir string) []Preset {
+func ListPresets(localDir, remoteDir string) []Preset {
+	found := presetsIn(localDir, "")
+	for _, slug := range subdirs(remoteDir) {
+		found = append(found, presetsIn(filepath.Join(remoteDir, slug), slug)...)
+	}
+	slices.SortFunc(found, func(a, b Preset) int { return strings.Compare(a.Ref, b.Ref) })
+	return found
+}
+
+func FindPreset(localDir, remoteDir, ref string) (*Preset, error) {
+	slug, name, remote := strings.Cut(ref, "/")
+	dir := localDir
+	if !remote {
+		slug, name = "", slug
+	} else {
+		if !validName(slug) {
+			return nil, fmt.Errorf("%q is not a valid repository slug", slug)
+		}
+		dir = filepath.Join(remoteDir, slug)
+	}
+	if !validName(name) {
+		return nil, fmt.Errorf("%q is not a valid preset name", name)
+	}
+	p, err := loadPreset(filepath.Join(dir, name))
+	if err != nil {
+		return nil, err
+	}
+	p.Ref = presetRef(slug, name)
+	return p, nil
+}
+
+func presetsIn(dir, slug string) []Preset {
+	var found []Preset
+	for _, name := range subdirs(dir) {
+		p, err := loadPreset(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		p.Ref = presetRef(slug, name)
+		found = append(found, *p)
+	}
+	return found
+}
+
+func presetRef(slug, name string) string {
+	if slug == "" {
+		return name
+	}
+	return slug + "/" + name
+}
+
+func subdirs(dir string) []string {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
-	var found []Preset
+	var names []string
 	for _, e := range entries {
-		if !e.IsDir() {
-			continue
+		if e.IsDir() {
+			names = append(names, e.Name())
 		}
-		p, err := loadPreset(filepath.Join(dir, e.Name()))
-		if err != nil {
-			continue
-		}
-		found = append(found, *p)
 	}
-	slices.SortFunc(found, func(a, b Preset) int { return strings.Compare(a.Name, b.Name) })
-	return found
-}
-
-func FindPreset(dir, name string) (*Preset, error) {
-	if !validName(name) {
-		return nil, fmt.Errorf("%q is not a valid preset name", name)
-	}
-	return loadPreset(filepath.Join(dir, name))
+	return names
 }
 
 func loadPreset(dir string) (*Preset, error) {
@@ -138,7 +177,7 @@ func ScaffoldPreset(dir, name string) (string, error) {
 	}
 	files := map[string]string{
 		ManifestName: fmt.Sprintf("name: %s\ndescription: What this preset is for, shown in the picker\n\n# skills: []  # optional, defaults to every skill under skills/\n", name),
-		PartialName:  fmt.Sprintf("## %s\n\nRules this preset adds to AGENTS.md. Keep it short and give every rule a reason.\n", name),
+		PartialName:  "",
 	}
 	for base, body := range files {
 		if err := os.WriteFile(filepath.Join(target, base), []byte(body), configModes.file); err != nil {

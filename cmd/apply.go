@@ -45,6 +45,14 @@ func presetsDir() string {
 	return dir
 }
 
+func remotePresetsDir() string {
+	dir := u.RemotePresetsDir()
+	if err := workspace.EnsureRemotePresets(dir); err != nil {
+		u.PrintFatal("failed to create the remote presets directory", err)
+	}
+	return dir
+}
+
 func currentDir() string {
 	cwd, err := os.Getwd()
 	if err != nil {
