@@ -51,6 +51,29 @@ func ApplyBase(root string, base []byte, skillsFS fs.FS, skillsRoot string) ([]s
 	return names, WriteGitExclude(root)
 }
 
+func PruneDeadSkillLinks(root string) ([]string, error) {
+	dir := SkillsPath(root)
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+	var pruned []string
+	for _, e := range entries {
+		if e.Type()&os.ModeSymlink == 0 {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if _, err := os.Stat(path); err == nil {
+			continue
+		}
+		if err := os.Remove(path); err != nil {
+			return pruned, err
+		}
+		pruned = append(pruned, e.Name())
+	}
+	return pruned, nil
+}
+
 func LinkSkills(root, srcDir string, names []string) error {
 	if err := os.MkdirAll(SkillsPath(root), 0o755); err != nil {
 		return err

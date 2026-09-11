@@ -92,7 +92,7 @@ Nothing is written when any of those paths already holds something ClaudeX did n
 
 ### apply-preset
 
-A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, and an optional `skills/` directory. Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, so re-applying replaces that section instead of appending a second copy. It needs `claudex apply` to have run first.
+A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, and an optional `skills/` directory. Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, so re-applying replaces that section instead of appending a second copy. It also removes any skill link whose target no longer exists, which is what a skill dropped from a preset leaves behind. It needs `claudex apply` to have run first.
 
 A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
 
