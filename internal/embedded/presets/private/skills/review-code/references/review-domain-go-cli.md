@@ -101,7 +101,9 @@ Skip when the project shows no progress output at all.
 | Two rates | Read the meter for a windowed rate distinct from the whole-operation average |
 | Rate window floor | Read the windowed rate for the minimum sample span before it reports |
 | ETA source and unknowns | Read the ETA for the windowed rate, and for unknown on a zero rate, an unknown total, and an absurd result |
+| Duration rendering | Check an elapsed time carries a tenth of a second and an estimate does not, and that both switch to `6m12s` and `3h04m` |
 | Settled and summary share a builder | Read both for one function and one field order |
+| Summary amount | Read the summary for an amount summing what actually moved, omitted when the count already carries it and when units differ |
 | Failure takes an error | Check `Fail` takes an `error` and passes it to the debug tier, rather than a caller-formatted string |
 | Verb and name are separate | Read the meter constructor for a verb argument distinct from the name |
 | Group owns its meters | Check meters under a group come from the group, and that a pre-meter failure is still counted |
@@ -109,6 +111,7 @@ Skip when the project shows no progress output at all.
 | Average floor | Check the 200ms floor applies to live frames and not to the settled line |
 | Cursor restored on interrupt | Grep for a signal handler restoring the cursor, installed once |
 | Progress outside a terminal | Read the non-terminal branch; one line per tick, glyph kept, no bar |
+| Tick interval | Read the ticker for 100ms on the live block against 1s on the non-terminal and debug paths |
 | Debug tier fields | Read the debug branch for structured zerolog fields rather than a formatted string |
 
 ---
