@@ -96,8 +96,8 @@ Skip when the project shows no progress output at all.
 | One write per frame | Read the draw path for a single `fmt.Print` of an assembled string |
 | Cursor restored on every path | Trace the hide to its show, including the failure path |
 | Width is measured, not assumed | Read the width helper for `term.GetSize` ahead of `COLUMNS` and a final constant |
-| Fields reserve their widest form | Read the field widths for reservation rather than current length |
-| Degradation order | Read the fit loop for fields dropping right to left, then the bar shrinking, then the bar dropping |
+| Reservation sizes the bar | Check reserved widths feed the bar's width and that fields render at natural width joined by two spaces |
+| Degradation order | Read the fit loop for fields dropping right to left while the bar shrinks, the bar going when its floor stops fitting, and transferred and percent never dropping |
 | Two rates | Read the meter for a windowed rate distinct from the whole-operation average |
 | Rate window floor | Read the windowed rate for the minimum sample span before it reports |
 | ETA source and unknowns | Read the ETA for the windowed rate, and for unknown on a zero rate, an unknown total, and an absurd result |
