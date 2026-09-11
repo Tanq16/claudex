@@ -1,6 +1,6 @@
 ---
 name: go-cli-progress
-description: The progress surface for Go CLI tools - the two-line live block, the in-place meter carrying rate and ETA, how it degrades with terminal width, and the settled and summary lines it collapses into. Use when a command runs work worth watching, when clearing terminal lines, when showing a download or a file count advance, or when a command prints "Running..." then replaces it with a result. Triggers on ClearLines, ClearPreviousLine, NewMeter, Meter.Add, Meter.Done, Meter.Fail, StdoutIsTerminal, GlobalDebugFlag, term.GetSize, and an in-place progress bar.
+description: The progress surface for Go CLI tools - the two-line live block, the in-place meter carrying rate and ETA, how it degrades with terminal width, and the settled and summary lines it collapses into. Use when a command runs work worth watching, when clearing terminal lines, when showing a download or a file count advance, or when a command prints "Running..." then replaces it with a result. Triggers on ClearLines, ClearPreviousLine, NewMeter, NewGroup, Meter.Add, Meter.Done, Meter.Fail, StdoutIsTerminal, GlobalDebugFlag, term.GetSize, and an in-place progress bar.
 user-invocable: false
 ---
 
@@ -17,11 +17,16 @@ The contract underneath everything below: redrawing is a terminal affordance, so
 | Behavior | Terminal | Piped | `--debug` |
 |---|---|---|---|
 | Styled icons and colors | yes | glyphs kept, color stripped | no |
-| The live block | redraws in place | one line per tick | one zerolog entry per tick |
+| The live block | redraws in place | one line per tick, no bar | one zerolog entry per tick |
+| Tick interval | 100ms | 1s | 1s |
 | `ClearLines` / `ClearPreviousLine` | clears | no-op | no-op |
-| Everything printed persists | no | yes | yes |
+| The live block persists | no | yes | yes |
 
 Glyphs survive a pipe because `✓`, `↻`, and the bar rune are text rather than escape sequences, and only color and cursor control are stripped on the way out. What disappears outside a terminal is the redraw, never the fact that a step ran, because a step that failed is the one a log is read for.
+
+A piped line carries the fields without the bar. A bar means something only while it redraws in place, and one drawn per tick fills a log with rows of dashes saying what the percent beside them already said.
+
+Ten frames a second is below what reads as stutter in a terminal, and one line a second is the most a log can carry and still read as a progression.
 
 ## Line Clearing
 
@@ -42,7 +47,7 @@ func ClearPreviousLine() {
 
 The escape sequences go out through `fmt.Print` rather than a printer, since they are cursor control rather than content and the guard above has already established there is a cursor to control.
 
-The count is always `lineCount + 1`, where the `+1` is the running header itself. Counting only the sub-lines leaves the header stranded above the summary that was meant to replace it.
+A running header cleared together with its sub-lines takes `lineCount + 1`, where the `+1` is the header itself. Counting only the sub-lines leaves the header stranded above the summary that was meant to replace it.
 
 ## The Live Block
 
@@ -55,10 +60,10 @@ A meter owns two lines: a header naming the work, and an indented meter line car
 
 The header glyph costs two columns, so its text starts at column 2 and the meter line's bar starts there too. Every baseline line in a CLI puts content at column 2 and every indented detail line at column 4, which is what lets a meter, a settled line, and a failure sit under one another without looking ragged.
 
-Context after the name is secondary and takes the muted color: the position in a set, a running total across the set, or the item currently being worked. It drops entirely before the name is ever clipped, because the name is what the user is waiting on.
+Context after the name is secondary and takes the muted color: the position in a set, a running total across the set, and the item currently being worked. It drops entirely before the name is ever clipped, because the name is what the user is waiting on.
 
 ```go
-m := utils.NewMeter(name, resp.ContentLength, utils.UnitBytes)
+m := utils.NewMeter("Downloading", name, resp.ContentLength, utils.UnitBytes)
 m.Context("file 1 of 2")
 if _, err := io.Copy(dst, io.TeeReader(resp.Body, m)); err != nil {
     m.Fail(err)
@@ -67,7 +72,9 @@ if _, err := io.Copy(dst, io.TeeReader(resp.Body, m)); err != nil {
 m.Done()
 ```
 
-A meter is an `io.Writer`, so a byte stream feeds it through `io.TeeReader` and the caller counts nothing. Work measured in items calls `Add` once per item instead.
+The verb and the name are separate arguments, because the header reads `↻ <verb> <name>` while the settled line and the group total carry the name alone.
+
+A meter is an `io.Writer`, so a byte stream feeds it through `io.TeeReader` and the caller counts nothing. Work measured in items calls `m.Add(1)` once per item instead.
 
 The meter owns its own ticker and its own line count. A caller that tracks either one has to get the clear count right on every path out of the function, and the path it misses is the error path.
 
@@ -90,26 +97,30 @@ func (m *Meter) draw(lines []string) {
 
 The cursor is hidden while a meter is live and restored when it settles, including on the error path, because a process that exits with the cursor hidden leaves the user's shell without one.
 
+The same restore runs from an interrupt handler, installed once when the first meter hides the cursor and left in place for the life of the process, which then exits `130`. Ctrl+C during a long transfer reaches neither `Done` nor `Fail`, and it is the most common way such a run ends.
+
 ## The Meter Line
 
 Six fields in a fixed order, so a reader's eye lands in the same place moving from a download to a file count.
 
 | Field | Example | Reserved | Drops |
 |---|---|---|---|
-| bar | `─────────` | 8 to 30 cells | last |
-| percent | ` 36%` | 4 | never |
-| transferred | `242 / 661 MB` | 14 | fourth |
+| bar | `─────────` | 8 to 30 cells | when its floor stops fitting |
+| percent | ` 36%` | 4 | with an unknown total |
+| transferred | `242 / 661 MB` | 14 | never |
 | current rate | `28.3 MB/s` | 11 | third |
 | eta | `eta 15s` | 11 | second |
 | average rate | `avg 40.7 MB/s` | 15 | first |
 
-Each field reserves its widest form rather than its current one, so the bar does not shift by a cell when `eta 9s` becomes `eta 15s`. A bar that jitters every second draws the eye to the jitter instead of the progress.
+The reserved widths size the bar rather than pad the fields. The bar takes what the reservations leave, and the fields are joined by exactly two spaces at their natural width, so reserving the widest form is what keeps the bar from resizing when `eta 9s` becomes `eta 15s`. A bar that jitters every second draws the eye to the jitter instead of the progress.
 
-Fields drop from the right as the terminal narrows, then the bar shrinks toward its eight-cell floor, and only then does the bar itself go and the stats stand alone. Nothing wraps and no field is cut mid-value, because a wrapped frame makes the next redraw clear the wrong number of lines.
+Percent is the one field rendered at a fixed width, `%3d%%`, so the fields to its right hold their column from `  9%` through `100%`.
+
+Fields drop from the right as the terminal narrows while the bar shrinks toward its eight-cell floor. The bar goes once that floor no longer fits beside the fields still standing, which leaves the numbers rather than a stub of a bar in the narrowest terminals. Nothing wraps and no field is cut mid-value, because a wrapped frame makes the next redraw clear the wrong number of lines.
 
 ```
 ↻ Copying db.sqlite
-  71%  45.8 / 64.0 MB
+   71%  45.8 / 64.0 MB
 ```
 
 Width comes from the terminal and falls back rather than guessing.
@@ -126,17 +137,21 @@ func termWidth() int {
 }
 ```
 
+`defaultWidth` is 80 and `minWidth` is 24, the width below which the stats alone stop fitting. A `COLUMNS` narrower than that is a stale value from a resized terminal rather than a real width.
+
 `github.com/charmbracelet/x/term` supplies both `GetSize` and the `IsTerminal` that `utils/globals.go` already calls, and it arrives under the lipgloss stack a CLI Only project has anyway. Taking `golang.org/x/term` for the same pair adds a second module for nothing.
 
 The bar is a single `─` rune for both halves, filled in the info blue that every other live line uses and unfilled in dimmed chrome. One rune throughout means the bar's length never changes as it fills, and a two-glyph bar has to reserve the wider of them everywhere.
 
-A total that is not known ahead of time gets a sweep across the track instead of a fill, since a percentage of an unknown quantity is a number the tool does not have.
+An unknown total arrives as a `total` of zero or less, which is what `resp.ContentLength` already returns when the server sends no length. The bar sweeps across the track instead of filling, percent leaves the frame, and the transferred field shows the running count alone, because a percentage and a share of an unknown quantity are numbers the tool does not have.
 
 ## Rates and ETA
 
 Two rates are shown. The instantaneous one comes from a trailing window and the average from the whole operation, because a single rate hides a stall behind a healthy-looking average and the user is watching precisely to see the stall.
 
 The window is 800ms wide and reports zero until 200ms of samples have accumulated. A two-sample window microseconds wide divides a chunk by almost no time and reports hundreds of MB/s on the first tick.
+
+The whole-operation average carries that same 200ms floor while the meter is live and none on the settled line, since a run that really did take 40ms has a real average and only a first tick that wide is an artifact.
 
 ```go
 func (r *rateWindow) current() float64 {
@@ -159,7 +174,9 @@ ETA is computed from the windowed rate rather than the average, so a stall reads
 
 ETA is unknown whenever the total is unknown, the windowed rate is zero, or the result runs past about a hundred hours. Printing `eta 3170h` is worse than printing nothing, because the user reads it as a real estimate before working out that it is not.
 
-A rate during a stall reads `0.00 B/s` rather than being blanked, since a blank field reads as a rendering bug and a zero reads as the truth.
+A rate during a stall reads `0.0 B/s` rather than being blanked, since a blank field reads as a rendering bug and a zero reads as the truth.
+
+Under a minute an elapsed time reads `9.5s` and an estimate reads `eta 15s`, because a measurement is accurate to a tenth of a second and an estimate is not. Both read `6m12s` under an hour and `3h04m` above one, which keeps the eta field inside the eleven cells `eta unknown` already needs.
 
 ## Settling
 
@@ -175,7 +192,9 @@ A rate during a stall reads `0.00 B/s` rather than being blanked, since a blank 
   ✗ receipts/hotel-0913.heic: unsupported image format
 ```
 
-The failure carries the underlying error rather than a message with the reason already formatted into it. Normal output shows the label and the debug tier records `.Err(err)` with the whole wrapped chain, which is the entire reason the debug tier is worth having.
+`Fail` takes the error itself rather than a string the caller has already formatted. The line reads the name, a colon, and that error's own message, and the same error reaches the debug tier as `.Err(err)` with the whole wrapped chain, which a pre-formatted string cannot become.
+
+The meter composing the reason into its own line is the one exception to error detail staying in the debug tier, since a failure inside a run of twelve is unusable without saying which of the twelve failed and why.
 
 A long name is clipped with `…` on both the header and the settled line. Clipping on one and hard-cutting on the other makes the same name look different depending on which line it lands in.
 
@@ -192,14 +211,31 @@ Several operations under one heading print their settled lines as they land and 
 
 ```
 → Copy  4 files  664 MB  11.9s  avg 56.0 MB/s
-✗ Process  10 ok, 2 failed  12 items  11.0s  avg 1.1 items/s
+✗ Process  10 ok, 2 failed  11.0s  avg 0.9 items/s
 ```
+
+```go
+g := utils.NewGroup("Copy", "files")
+for _, f := range files {
+    m := g.Meter("Copying", f.Name, f.Size, utils.UnitBytes)
+    if err := copyFile(f, m); err != nil {
+        m.Fail(err)
+        continue
+    }
+    m.Done()
+}
+g.Done()
+```
+
+A group is opened with the label its summary carries and the plural noun it counts in, and every meter under it comes from `g.Meter` rather than `NewMeter`. `→ Copy  4 files` has no other source for either word, and a meter that does not know its group cannot add what it moved to the total.
+
+A failure with no meter behind it is reported with `g.Fail(name, err)`. A group that counts only what a meter reported prints `4 files` for a run that attempted six, and a request that never returned a body is exactly the failure worth counting.
 
 The summary and the settled line are built by one function with the same field order, so the two read as the same shape with a count in front. Two hand-rolled formats drift apart on the first change to either.
 
 A summary is printed when more than one operation ran or when any of them failed. A single clean operation is already fully described by its settled line, and repeating it as a summary says nothing twice.
 
-A total that would sum unlike units is omitted rather than printed. Adding bytes to a file count produces a number that is wrong in a way nobody can see.
+The amount sums what actually moved, including the partial bytes of a transfer that failed, because the elapsed time bought those bytes and the rate is a lie without them. It is omitted when the count already carries the same number, which is every counted noun and no byte total, and omitted again when summing would add unlike units.
 
 The glyph carries the outcome: `→` when everything succeeded, `✗` when anything failed, and the count reads `10 ok, 2 failed` instead of the plain total in that case.
 
@@ -247,7 +283,9 @@ type Unit string
 const UnitBytes Unit = ""
 ```
 
-The empty unit means bytes and formats in binary multiples with a scaled pair such as `242 / 661 MB`. Any other value is the plural noun printed after a plain count, so `utils.Unit("items")` renders `7 / 12 items` and `7.0 items/s` with no change anywhere in the renderer.
+The empty unit means bytes and formats in binary multiples with a scaled pair such as `242 / 661 MB`. Any other value is the plural noun printed after a plain count, so `utils.Unit("items")` renders `7 / 12 items` and `1.1 items/s` with no change anywhere in the renderer.
+
+A number carries one decimal below 100 and none at or above it, so `45.8 MB`, `242 MB`, and `1.1 items/s` all stay inside the width their field reserved.
 
 Both halves of a pair are scaled by the total rather than each by itself, so `39.9 / 64.0 MB` stays readable where `40874 KB / 64.0 MB` does not.
 

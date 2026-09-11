@@ -102,7 +102,12 @@ Skip when the project shows no progress output at all.
 | Rate window floor | Read the windowed rate for the minimum sample span before it reports |
 | ETA source and unknowns | Read the ETA for the windowed rate, and for unknown on a zero rate, an unknown total, and an absurd result |
 | Settled and summary share a builder | Read both for one function and one field order |
-| Failure carries the error | Grep the failure path for an error formatted into the message string instead of passed as `err` |
+| Failure takes an error | Check `Fail` takes an `error` and passes it to the debug tier, rather than a caller-formatted string |
+| Verb and name are separate | Read the meter constructor for a verb argument distinct from the name |
+| Group owns its meters | Check meters under a group come from the group, and that a pre-meter failure is still counted |
+| Unknown total | Read the zero-or-less path for a sweeping bar, no percent, and a single-value transferred field |
+| Average floor | Check the 200ms floor applies to live frames and not to the settled line |
+| Cursor restored on interrupt | Grep for a signal handler restoring the cursor, installed once |
 | Progress outside a terminal | Read the non-terminal branch; one line per tick, glyph kept, no bar |
 | Debug tier fields | Read the debug branch for structured zerolog fields rather than a formatted string |
 
