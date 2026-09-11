@@ -92,12 +92,11 @@ The LSP is already wired into every session for Go, Python, TypeScript, and Java
 | Flags, positional arguments, enum values, a flag reading stdin | `go-cli-commands` |
 | Printing, tables, `--debug`, terminal colors | `go-cli-output` |
 | Interactive prompts, passwords, selection lists, a flag reading stdin | `go-cli-prompts` |
-| Running/done progress, phases, progress bars | `go-cli-progress` |
+| Progress meters, running/done lifecycles, terminal width | `go-cli-progress` |
 | `internal/` package structure, error boundaries, storage | `go-package-architecture` |
 | `net/http` server, embedded static serving, middleware | `go-http-server` |
 | OAuth login for a CLI client | `go-oauth-cli` |
 | Goroutines, errgroup, semaphores, fan-out/fan-in | `go-concurrency` |
-| A multi-job pipeline with progress and resume | `go-job-pipeline` |
 | The embedded SPA under `internal/server/static/` | `go-embedded-frontend` |
 | Rendering Markdown in a browser page | `web-markdown-rendering` |
 | Mermaid diagrams in a browser page | `web-mermaid-diagrams` |

@@ -4,7 +4,6 @@
 
 **Skills to load, in full, before running any check below:**
 - `[SKILLS_DIR]/go-concurrency/SKILL.md`
-- `[SKILLS_DIR]/go-job-pipeline/SKILL.md` (Category 2 only)
 
 The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
 
@@ -12,10 +11,9 @@ The expected pattern for every check lives in those skills. This file states wha
 
 ## Pre-check
 
-1. **Concurrency:** grep for `go func`, `sync.WaitGroup`, `wg.Go`, and `errgroup`. Skip Category 1 when none appear.
-2. **Pipeline:** glob for `internal/highway/`, `internal/jobs/`, or an equivalent job execution package. Skip Category 2 when absent.
+Grep for `go func`, `sync.WaitGroup`, `wg.Go`, and `errgroup`. Skip Category 1 when none appear.
 
-Reporting a skip is the correct outcome for a project that does neither, and inventing findings for absent patterns is the failure mode this pre-check exists to prevent.
+Reporting a skip is the correct outcome for a project that runs nothing concurrently, and inventing findings for absent patterns is the failure mode this pre-check exists to prevent.
 
 ---
 
@@ -32,27 +30,6 @@ Reporting a skip is the correct outcome for a project that does neither, and inv
 | Bounded concurrency where it matters | Read sites that spawn one goroutine per input for any limit at all |
 | Result collection safety | For shared slices and maps written from goroutines, check whether each write targets a unique index or is guarded |
 | No leftover loop capture | Grep for `x := x` immediately before a goroutine launch |
-
-## Category 2: Job Pipeline
-
-| Check | How to verify |
-|---|---|
-| Job interface | Read the interface declaration and its method set |
-| Progress type | Read the progress struct and its fields |
-| Engine structure | Read the engine for its worker count, queue, progress channel, and completion tracking |
-| Progress channel is buffered | Read the channel construction |
-| Feeder does not hold the lock while sending | Read the feeder goroutine |
-| State file format | Read the persisted structures |
-| State file mode | Read the mode argument on the state write |
-| State output goes through the printer | Grep the engine for `fmt.Print` and `fmt.Printf` |
-| State deleted on clean completion | Read the successful-completion path |
-| Failed jobs on resume | Read what happens to a job that returned an error |
-| Partial progress is recorded after success | For a resumable job, read where its completed-work list is appended relative to the work itself |
-| Type registration precedes load | Read the command wiring for the order of registration and state loading |
-| Signal handling | Grep for `signal.NotifyContext` |
-| Display package separation | Glob for a display package and check the engine does not import it |
-| Display non-terminal branch | Read the display entry point for a `GlobalDebugFlag` or `!StdoutIsTerminal` branch |
-| Display colors | Grep the display for color construction and check ANSI indices against hex |
 
 ---
 
@@ -75,7 +52,7 @@ All checks passed.
 
 ### [SKIP] Category Name
 
-Not applicable: [reason, such as "no goroutines detected" or "no pipeline engine found"].
+Not applicable: [reason, such as "no goroutines detected"].
 ```
 
 End with exactly:

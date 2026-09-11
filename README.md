@@ -104,7 +104,7 @@ claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 
 `--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset; passing one narrows the run to that half.
 
-One preset ships in the binary. `private` carries 31 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
+One preset ships in the binary. `private` carries 30 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
 
 The manifest keys:
 
