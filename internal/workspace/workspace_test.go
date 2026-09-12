@@ -185,7 +185,7 @@ func TestGitExcludeIsAnchoredAtTheWorktreeRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := WriteGitExclude(sub); err != nil {
+	if _, _, err := WriteGitExclude(sub); err != nil {
 		t.Fatalf("WriteGitExclude() error = %v", err)
 	}
 	body := readFile(excludePath)
@@ -195,7 +195,7 @@ func TestGitExcludeIsAnchoredAtTheWorktreeRoot(t *testing.T) {
 		}
 	}
 
-	if err := WriteGitExclude(sub); err != nil {
+	if _, _, err := WriteGitExclude(sub); err != nil {
 		t.Fatalf("second WriteGitExclude() error = %v", err)
 	}
 	if got := strings.Count(readFile(excludePath), excludeBegin); got != 1 {
