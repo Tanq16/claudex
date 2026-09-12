@@ -37,6 +37,8 @@ Packages fall into two kinds, and the kind decides what happens to an error pass
 
 **Task packages** hold internal logic that could be lifted to `pkg/` unchanged. They return errors as they are, add no context for its own sake, and log nothing. Staying quiet is what makes them portable, since a package that logs has already decided how the program talks to its user.
 
+A task package that has to report progress takes an `io.Writer` as a parameter and never constructs the meter, which keeps the choice of how the program talks to its user at the boundary where the rest of that choice is already made.
+
 ```go
 // internal/download/client.go
 func (c *Client) FetchFile(url string) ([]byte, error) {
@@ -53,7 +55,7 @@ func (c *Client) FetchFile(url string) ([]byte, error) {
 }
 ```
 
-**Interaction packages** are the boundaries: Cobra commands and HTTP handlers. They add the context that names what the user was trying to do, they log, and they produce the user-facing message. Doing it here means the context is written once, where the intent is known, rather than accumulated as a stack of prefixes on the way up.
+**Interaction packages** are the boundaries where the program talks to its user. Cobra commands and HTTP handlers are always this kind, and so is any package that owns the loop a progress meter is drawing, because the meter is an `io.Writer` on the byte stream and cannot leave that package without the copy loop going with it. They add the context that names what the user was trying to do, they log, and they produce the user-facing message. Doing it here means the context is written once, where the intent is known, rather than accumulated as a stack of prefixes on the way up.
 
 ```go
 // cmd/download.go, CLI Only
@@ -139,17 +141,21 @@ if err := download.Download(cfg); err != nil {
 
 ## HTTP Clients
 
-A shared client sets explicit timeouts and connection limits, because `http.DefaultClient` has no timeout at all and one unresponsive host hangs the program indefinitely.
+A shared client bounds every phase that can hang and leaves the body read unbounded, because `http.DefaultClient` has no timeout at all and one unresponsive host hangs the program indefinitely.
+
+`Client.Timeout` is not that bound. It covers the whole exchange including the body, so a 30-second value cancels any download that runs past 30 seconds, and a deadline genuinely meant to cover a body belongs on a `context.WithTimeout` at the call site where the size of that body is known.
 
 ```go
 // internal/httpclient/client.go
 func New() *http.Client {
     return &http.Client{
-        Timeout: 30 * time.Second,
         Transport: &http.Transport{
-            MaxIdleConns:        100,
-            MaxIdleConnsPerHost: 10,
-            IdleConnTimeout:     90 * time.Second,
+            DialContext:           (&net.Dialer{Timeout: 10 * time.Second}).DialContext,
+            TLSHandshakeTimeout:   10 * time.Second,
+            ResponseHeaderTimeout: 30 * time.Second,
+            MaxIdleConns:          100,
+            MaxIdleConnsPerHost:   10,
+            IdleConnTimeout:       90 * time.Second,
         },
     }
 }

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/workspace"
@@ -40,6 +41,14 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 		if selected = choosePresets(available); len(selected) == 0 {
 			return
 		}
+	}
+
+	pruned, err := workspace.PruneDeadSkillLinks(root)
+	if err != nil {
+		u.PrintFatal("failed to remove dead skill links", err)
+	}
+	if len(pruned) > 0 {
+		u.PrintInfo("Removed dead skill links: " + strings.Join(pruned, ", "))
 	}
 
 	presets := make([]*workspace.Preset, 0, len(selected))

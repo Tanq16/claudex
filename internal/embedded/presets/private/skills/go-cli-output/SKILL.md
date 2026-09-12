@@ -33,7 +33,7 @@ if StdoutIsTerminal {
 log.Logger = zerolog.New(out).With().Timestamp().Logger()
 ```
 
-Ephemeral output is a terminal affordance and nothing else. `ClearLines` and the in-place progress bar are inert under `--debug` and whenever stdout is not a terminal, so a log or a pipe keeps the full progression rather than a stream of cursor escapes.
+Ephemeral output is a terminal affordance and nothing else. `ClearLines` and the in-place progress meter are inert under `--debug` and whenever stdout is not a terminal, so a log or a pipe keeps the full progression rather than a stream of cursor escapes.
 
 ## Globals
 

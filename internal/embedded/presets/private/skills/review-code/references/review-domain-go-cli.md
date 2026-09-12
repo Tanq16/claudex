@@ -84,15 +84,35 @@ Skip when the project takes no interactive input.
 
 ## Category 5: Progress
 
-Skip when the project shows no sequential progress.
+Skip when the project shows no progress output at all.
 
 | Check | How to verify |
 |---|---|
 | Clear count | For each `ClearLines` following a running header, check the count against the lines printed |
 | Clearing is inert outside a terminal | Read `ClearLines` and `ClearPreviousLine` for the `GlobalDebugFlag` and `StdoutIsTerminal` guard |
 | Lifecycle shapes | Grep for `PrintRunning` and trace each to its clear and its final line |
-| Progress goroutine guard | Grep for progress goroutines and check for the atomic guard on the final clear |
-| Progress outside a terminal | Read `PrintProgress`; one line per tick and no bar |
+| One meter at a time | Grep for meter construction and check that no two are live in the same scope |
+| The meter owns its line count | Read the meter for its own `drawn` count, and check no caller tracks lines on its behalf |
+| One write per frame | Read the draw path for a single `fmt.Print` of an assembled string |
+| Cursor restored on every path | Trace the hide to its show, including the failure path |
+| Width is measured, not assumed | Read the width helper for `term.GetSize` ahead of `COLUMNS` and a final constant |
+| Reservation sizes the bar | Check reserved widths feed the bar's width and that fields render at natural width joined by two spaces |
+| Degradation order | Read the fit loop for fields dropping right to left while the bar shrinks, the bar going when its floor stops fitting, and transferred and percent never dropping |
+| Two rates | Read the meter for a windowed rate distinct from the whole-operation average |
+| Rate window floor | Read the windowed rate for the minimum sample span before it reports |
+| ETA source and unknowns | Read the ETA for the windowed rate, and for unknown on a zero rate, an unknown total, and an absurd result |
+| Duration rendering | Check an elapsed time carries a tenth of a second and an estimate does not, and that both switch to `6m12s` and `3h04m` |
+| Settled and summary share a builder | Read both for one function and one field order |
+| Summary amount | Read the summary for an amount summing what actually moved, omitted when the count already carries it and when units differ |
+| Failure takes an error | Check `Fail` takes an `error` and passes it to the debug tier, rather than a caller-formatted string |
+| Verb and name are separate | Read the meter constructor for a verb argument distinct from the name |
+| Group owns its meters | Check meters under a group come from the group, and that a pre-meter failure is still counted |
+| Unknown total | Read the zero-or-less path for a sweeping bar, no percent, and a single-value transferred field |
+| Average floor | Check the 200ms floor applies to live frames and not to the settled line |
+| Cursor restored on interrupt | Grep for a signal handler restoring the cursor, installed once |
+| Progress outside a terminal | Read the non-terminal branch; one line per tick, glyph kept, no bar |
+| Tick interval | Read the ticker for 100ms on the live block against 1s on the non-terminal and debug paths |
+| Debug tier fields | Read the debug branch for structured zerolog fields rather than a formatted string |
 
 ---
 

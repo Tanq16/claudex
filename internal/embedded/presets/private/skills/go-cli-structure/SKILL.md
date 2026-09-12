@@ -39,6 +39,7 @@ func main() {
 package cmd
 
 import (
+    "io"
     "os"
     "time"
 
@@ -69,8 +70,11 @@ func Execute() {
 
 func setupLogs() {
     zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-    output := zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.DateTime, NoColor: !utils.StdoutIsTerminal}
-    log.Logger = zerolog.New(output).With().Timestamp().Logger()
+    var out io.Writer = os.Stdout
+    if utils.StdoutIsTerminal {
+        out = zerolog.ConsoleWriter{Out: os.Stdout, TimeFormat: time.DateTime}
+    }
+    log.Logger = zerolog.New(out).With().Timestamp().Logger()
     zerolog.SetGlobalLevel(zerolog.InfoLevel)
     if debugFlag {
         zerolog.SetGlobalLevel(zerolog.DebugLevel)

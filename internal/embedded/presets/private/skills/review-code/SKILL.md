@@ -55,7 +55,7 @@ With no target, go to Step 3a. With one, resolve it here first.
 | `tests`, `testing` | Go Core and Node | the testing checks only |
 | `cli`, `cobra`, `structure`, `root`, `commands`, `flags`, `args`, `stdin`, `output`, `prompts`, `progress`, `tui` | Go CLI | whole domain |
 | `server`, `backend`, `frontend`, `web`, `http`, `auth`, `oauth`, `markdown`, `mermaid` | Go Server and Frontend | whole domain |
-| `concurrency`, `goroutines`, `pipeline`, `highway` | Go Concurrency | whole domain |
+| `concurrency`, `goroutines`, `pipeline` | Go Concurrency | whole domain |
 | `node`, `nodejs`, `esm` | Node | whole domain |
 | `makefile`, `assets`, `build` | Infrastructure | Makefile checks only |
 | `ci`, `cd`, `cicd`, `release`, `workflow` | Infrastructure | release workflow checks only |
@@ -74,7 +74,6 @@ A target containing `/` is a package path:
 | `internal/server/static/**` | Go Server and Frontend |
 | `internal/server/**` | Go Server and Frontend |
 | `internal/auth/**` | Go Server and Frontend |
-| `internal/highway/**`, `internal/display/**`, `internal/jobs/**` | Go Concurrency |
 | `internal/**`, anything else | Go Core and Go Server and Frontend |
 | `src/**`, `public/**`, `test/**`, `package.json` | Node |
 | `.github/**`, `Makefile`, `Dockerfile`, `README.md` | Infrastructure |
