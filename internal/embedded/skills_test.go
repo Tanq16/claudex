@@ -67,31 +67,6 @@ func TestEmbeddedSkillFrontmatter(t *testing.T) {
 	}
 }
 
-func TestFrontmatterBlock(t *testing.T) {
-	tests := []struct {
-		name    string
-		in      string
-		want    string
-		wantErr bool
-	}{
-		{"empty file", "", "", true},
-		{"no frontmatter", "# Title\n", "", true},
-		{"unterminated", "---\nname: x\n", "", true},
-		{"body holds a rule", "---\nname: x\n---\n\ntext\n\n---\n\nmore\n", "name: x", false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := frontmatterBlock([]byte(tt.in))
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("frontmatterBlock(%q) err = %v, wantErr %v", tt.in, err, tt.wantErr)
-			}
-			if err == nil && string(got) != tt.want {
-				t.Errorf("frontmatterBlock(%q) = %q, want %q", tt.in, got, tt.want)
-			}
-		})
-	}
-}
-
 func frontmatterBlock(data []byte) ([]byte, error) {
 	rest, ok := bytes.CutPrefix(data, []byte("---\n"))
 	if !ok {

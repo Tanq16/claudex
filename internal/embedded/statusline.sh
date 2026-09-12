@@ -15,7 +15,7 @@ NC='\033[0m'
 FIRE="🔥"
 WARN="⚠️"
 
-# $1 is the optional label override from "claudex statusline --label"
+# $1 is the optional label override from "claudex configure --label"
 # Resolve the ACTIVE account from CLAUDE_CONFIG_DIR when set (launch sets it per
 # account), falling back to this script's own directory. This matters in $HOME,
 # where the project-scope .claude/ is the first account's config dir, so Claude
