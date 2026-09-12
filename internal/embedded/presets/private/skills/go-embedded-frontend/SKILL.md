@@ -249,6 +249,12 @@ The browser build compiles utility classes at run time and Tailwind documents it
 
 One `index.html` is the default. Views are shown and hidden client-side, and shared logic moves into `app.js` only once more than one place needs it.
 
+Every form control renders at 16px on a coarse pointer, through `pointer-coarse:text-[16px]` alongside whatever size the design uses. iOS Safari zooms the viewport in when a focused control computes under 16px, and it does not zoom back out on blur.
+
+`text-base` cannot carry it, because the palette defines `--color-base` and Tailwind compiles `text-base` to `color: var(--color-base)` with no font size.
+
+The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-scalable=no` and `maximum-scale=1` suppress the zoom only by taking pinch zoom away from everyone.
+
 ## Icons
 
 | Library | Use for |
