@@ -45,9 +45,8 @@ var launchFlags struct {
 var launchCmd = &cobra.Command{
 	Use:   "launch",
 	Short: "Launch a Claude Code session with interactive config selection",
-	// NoArgs so a stray positional such as "--resume <id>" typed for "--session <id>" errors instead of being ignored.
-	Args: cobra.NoArgs,
-	Run:  runLaunch,
+	Args:  cobra.NoArgs,
+	Run:   runLaunch,
 }
 
 func init() {
@@ -80,9 +79,6 @@ func runLaunch(cmd *cobra.Command, args []string) {
 
 	accountDirs := u.DiscoverAccountPaths()
 	sessions := discoverSessions(accountDirs, cwd)
-	if len(sessions) > resumeListLimit {
-		sessions = sessions[:resumeListLimit]
-	}
 	multiAccount := len(accountDirs) > 1
 
 	resumeID := launchFlags.session
@@ -118,22 +114,20 @@ func runLaunch(cmd *cobra.Command, args []string) {
 		var s sessionEntry
 		switch {
 		case resumeID != "":
-			found := false
-			for _, cand := range sessions {
-				if cand.sessionID == resumeID {
-					s = cand
-					found = true
-					break
-				}
-			}
-			if !found {
+			idx := slices.IndexFunc(sessions, func(cand sessionEntry) bool { return cand.sessionID == resumeID })
+			if idx < 0 {
 				u.PrintFatal("session not found: "+resumeID, nil)
 			}
+			s = sessions[idx]
 		case len(sessions) == 1:
 			s = sessions[0]
 		default:
-			labels := make([]string, len(sessions))
-			for i, sess := range sessions {
+			listed := sessions
+			if len(listed) > resumeListLimit {
+				listed = listed[:resumeListLimit]
+			}
+			labels := make([]string, len(listed))
+			for i, sess := range listed {
 				labels[i] = sessionLabel(sess, multiAccount)
 			}
 			idx, err := u.PromptSelect("Resume Session", labels)
@@ -143,7 +137,7 @@ func runLaunch(cmd *cobra.Command, args []string) {
 			if idx < 0 {
 				return
 			}
-			s = sessions[idx]
+			s = listed[idx]
 		}
 
 		account = s.configDir
@@ -197,7 +191,7 @@ func runLaunch(cmd *cobra.Command, args []string) {
 
 	u.PrintInfo("Launching: " + strings.Join(summary, " · "))
 
-	if err := syscall.Exec(claudePath, cliArgs, accounts.Env(account)); err != nil {
+	if err := syscall.Exec(claudePath, cliArgs, accounts.Env(account, u.ResolveConfigDir(""))); err != nil {
 		u.PrintFatal("Failed to exec claude", err)
 	}
 }
