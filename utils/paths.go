@@ -7,10 +7,17 @@ import (
 	"strings"
 )
 
+func HomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		PrintFatal("cannot resolve home directory", err)
+	}
+	return home
+}
+
 func ExpandPath(path string) string {
 	if len(path) > 0 && path[0] == '~' {
-		home, _ := os.UserHomeDir()
-		return filepath.Join(home, path[1:])
+		return filepath.Join(HomeDir(), path[1:])
 	}
 	return path
 }
@@ -19,12 +26,11 @@ func ResolveConfigDir(flag string) string {
 	if flag != "" {
 		return ExpandPath(flag)
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".claude")
+	return filepath.Join(HomeDir(), ".claude")
 }
 
 func DiscoverAccountPaths() []string {
-	home, _ := os.UserHomeDir()
+	home := HomeDir()
 	var paths []string
 
 	entries, err := os.ReadDir(home)
@@ -71,7 +77,7 @@ func ResolveAccountPaths(account string) []string {
 }
 
 func AbbreviatePath(path string) string {
-	home, _ := os.UserHomeDir()
+	home := HomeDir()
 	if strings.HasPrefix(path, home) {
 		return "~" + path[len(home):]
 	}
@@ -79,9 +85,7 @@ func AbbreviatePath(path string) string {
 }
 
 func ClaudexConfigDir() string {
-	home, _ := os.UserHomeDir()
-	// Hardcoded rather than XDG_CONFIG_HOME so the path is identical on Linux and macOS.
-	return filepath.Join(home, ".config", "claudex")
+	return filepath.Join(HomeDir(), ".config", "claudex")
 }
 
 func GlobalPluginDir() string {
