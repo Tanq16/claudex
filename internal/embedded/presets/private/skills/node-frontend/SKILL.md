@@ -54,6 +54,12 @@ Everything else is a class. A hand-written rule that duplicates a utility is a s
 
 What remains goes in an inline `<style>` block, never split across the page and a second file. Scattering the same rules across two places is how a color ends up defined twice with different values.
 
+Every form control renders at 16px on a coarse pointer, through `pointer-coarse:text-[16px]` alongside whatever size the design uses. iOS Safari zooms the viewport in when a focused control computes under 16px, and it does not zoom back out on blur.
+
+`text-base` cannot carry it, because the palette defines `--color-base` and Tailwind compiles `text-base` to `color: var(--color-base)` with no font size.
+
+The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-scalable=no` and `maximum-scale=1` suppress the zoom only by taking pinch zoom away from everyone.
+
 The three `@font-face` stylesheets always stay as separate linked files under `css/`, since the asset step regenerates that directory wholesale.
 
 ## Fonts
