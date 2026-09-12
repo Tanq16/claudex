@@ -164,12 +164,12 @@ The picker lists this project's sessions from every account, under a row that ta
 
 ### oauth-token
 
-Runs the OAuth PKCE flow in a browser and prints an access token to stdout. `-p/--port` pins the local callback port, which defaults to one the OS picks, and `-e/--expires-in` sets the requested expiry in seconds, which the server may override. `--manual` prints the authorize URL instead of opening a browser and takes the code pasted back, for a machine with no browser to hand off to. Status lines and the URL are printed only when stdout is a terminal, so `TOKEN=$(claudex oauth-token)` still captures the token alone.
+Runs the OAuth PKCE flow in a browser and prints an access token to stdout. `-p/--port` pins the local callback port, which defaults to one the OS picks, and `-e/--expires-in` sets the requested expiry in seconds, which the server may override. `--manual` prints the authorize URL instead of opening a browser and takes the code pasted back, for a machine with no browser to hand off to. Status lines and the URL are printed only on a terminal or under `--debug`, so `TOKEN=$(claudex oauth-token)` still captures the token alone.
 
 ## Notes
 
 - **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
-- **Preset skills are symlinks.** They point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The three base skills from `apply` are real copies extracted from the binary, so re-running `apply` is what updates them.
+- **Preset skills are symlinks.** They point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` are real copies extracted from the binary, so re-running `apply` is what updates them.
 - **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
 - **Language server binaries are yours to install.** ClaudeX writes the `.lsp.json`, and a server whose binary is missing is skipped while the rest still start. Install commands and the `typescript@5` pin are in [docs/language-servers.md](docs/language-servers.md).
 - **Another repo's agent files.** `.git/info/exclude` only reaches untracked files, so a `GEMINI.md` or `.cursor/` that the repository itself tracks stays in your working tree. [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers the sparse-checkout that removes them.
