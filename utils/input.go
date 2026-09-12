@@ -2,7 +2,6 @@ package utils
 
 import (
 	"errors"
-	"fmt"
 	"strings"
 
 	"charm.land/bubbles/v2/textarea"
@@ -164,6 +163,8 @@ type selectModel struct {
 	label     string
 	options   []string
 	cursor    int
+	chosen    map[int]bool
+	multi     bool
 	selected  int
 	cancelled bool
 	done      bool
@@ -180,12 +181,12 @@ func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.done = true
 			return m, tea.Quit
 		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
+			m.cursor = max(m.cursor-1, 0)
 		case "down", "j":
-			if m.cursor < len(m.options)-1 {
-				m.cursor++
+			m.cursor = min(m.cursor+1, len(m.options)-1)
+		case " ":
+			if m.multi {
+				m.chosen[m.cursor] = !m.chosen[m.cursor]
 			}
 		case "enter":
 			m.selected = m.cursor
@@ -205,15 +206,32 @@ func (m selectModel) View() tea.View {
 	b.WriteString(selectLabel.Render("  " + m.label))
 	b.WriteString("\n")
 	for i, opt := range m.options {
-		if i == m.cursor {
-			b.WriteString(selectCursor.Render("  › " + opt))
-		} else {
-			b.WriteString(selectOption.Render("    " + opt))
+		style := selectOption
+		row := opt
+		if m.multi {
+			check := "[ ]"
+			if m.chosen[i] {
+				check = "[●]"
+				style = selectCursor
+			}
+			row = check + " " + opt
 		}
+		marker := "    "
+		if i == m.cursor {
+			marker = "  › "
+			if !m.multi {
+				style = selectCursor
+			}
+		}
+		b.WriteString(style.Render(marker + row))
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(selectHint.Render("  enter select · esc cancel"))
+	hint := "  enter select · esc cancel"
+	if m.multi {
+		hint = "  space toggle · enter confirm · esc cancel"
+	}
+	b.WriteString(selectHint.Render(hint))
 	b.WriteString("\n\n")
 	return tea.NewView(b.String())
 }
@@ -223,10 +241,7 @@ func PromptSelect(label string, options []string) (int, error) {
 		return -1, ErrNoTerminal
 	}
 
-	m := selectModel{label: label, options: options, selected: -1}
-	p := tea.NewProgram(m)
-
-	finalModel, err := p.Run()
+	finalModel, err := tea.NewProgram(selectModel{label: label, options: options, selected: -1}).Run()
 	if err != nil {
 		return -1, err
 	}
@@ -238,91 +253,24 @@ func PromptSelect(label string, options []string) (int, error) {
 	return result.selected, nil
 }
 
-type multiSelectModel struct {
-	label     string
-	options   []string
-	cursor    int
-	selected  map[int]bool
-	cancelled bool
-	done      bool
-}
-
-func (m multiSelectModel) Init() tea.Cmd { return nil }
-
-func (m multiSelectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "ctrl+c", "esc":
-			m.cancelled = true
-			m.done = true
-			return m, tea.Quit
-		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "down", "j":
-			if m.cursor < len(m.options)-1 {
-				m.cursor++
-			}
-		case " ":
-			m.selected[m.cursor] = !m.selected[m.cursor]
-		case "enter":
-			m.done = true
-			return m, tea.Quit
-		}
-	}
-	return m, nil
-}
-
-func (m multiSelectModel) View() tea.View {
-	if m.done {
-		return tea.NewView("")
-	}
-	var b strings.Builder
-	b.WriteString("\n")
-	b.WriteString(selectLabel.Render("  " + m.label))
-	b.WriteString("\n")
-	for i, opt := range m.options {
-		check := "[ ]"
-		style := selectOption
-		if m.selected[i] {
-			check = "[●]"
-			style = selectCursor
-		}
-		if i == m.cursor {
-			b.WriteString(style.Render(fmt.Sprintf("  › %s %s", check, opt)))
-		} else {
-			b.WriteString(style.Render(fmt.Sprintf("    %s %s", check, opt)))
-		}
-		b.WriteString("\n")
-	}
-	b.WriteString("\n")
-	b.WriteString(selectHint.Render("  space toggle · enter confirm · esc cancel"))
-	b.WriteString("\n\n")
-	return tea.NewView(b.String())
-}
-
 func PromptMultiSelect(label string, options []string) (map[int]bool, error) {
 	if !StdinIsTerminal {
 		return nil, ErrNoTerminal
 	}
 
-	m := multiSelectModel{
-		label:    label,
-		options:  options,
-		selected: make(map[int]bool),
-	}
-	p := tea.NewProgram(m)
-
-	finalModel, err := p.Run()
+	finalModel, err := tea.NewProgram(selectModel{
+		label:   label,
+		options: options,
+		chosen:  make(map[int]bool),
+		multi:   true,
+	}).Run()
 	if err != nil {
 		return nil, err
 	}
 
-	result := finalModel.(multiSelectModel)
+	result := finalModel.(selectModel)
 	if result.cancelled {
 		return nil, nil
 	}
-	return result.selected, nil
+	return result.chosen, nil
 }
