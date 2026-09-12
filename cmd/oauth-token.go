@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"runtime"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/auth"
@@ -59,7 +60,12 @@ func openBrowser(url string) error {
 	default:
 		return fmt.Errorf("no browser launcher for %s", runtime.GOOS)
 	}
+	var stderr strings.Builder
+	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {
+		if detail := strings.TrimSpace(stderr.String()); detail != "" {
+			err = fmt.Errorf("%s: %w", detail, err)
+		}
 		return fmt.Errorf("%s: %w", cmd.Args[0], err)
 	}
 	return nil
