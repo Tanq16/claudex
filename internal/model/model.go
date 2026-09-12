@@ -21,6 +21,8 @@ type AccountUsage struct {
 	Windows      []UsageWindow `json:"windows,omitzero"`
 	TokenExpired bool          `json:"tokenExpired,omitempty"`
 	APIError     string        `json:"apiError,omitempty"`
+	Unavailable  string        `json:"unavailable,omitempty"`
+	Err          error         `json:"-"`
 }
 
 type HistoryEntry struct {

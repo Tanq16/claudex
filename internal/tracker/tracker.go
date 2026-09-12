@@ -48,7 +48,7 @@ type apiError struct {
 	Message string `json:"message"`
 }
 
-func ComputeAccountUsage(configDir string) (model.AccountUsage, error) {
+func ComputeAccountUsage(configDir, defaultDir string) (model.AccountUsage, error) {
 	acct, err := parser.ParseAccount(configDir)
 	if err != nil {
 		acct = model.AccountInfo{ConfigDir: configDir, Email: "unknown"}
@@ -56,15 +56,21 @@ func ComputeAccountUsage(configDir string) (model.AccountUsage, error) {
 
 	usage := model.AccountUsage{Account: acct}
 
-	token, err := getOAuthToken(configDir)
-	if err != nil || token == "" {
+	token, err := getOAuthToken(configDir, defaultDir)
+	if err != nil {
+		usage.Unavailable = "cannot read the stored credential"
+		usage.Err = err
+		return usage, nil
+	}
+	if token == "" {
 		usage.TokenExpired = true
 		return usage, nil
 	}
 
 	resp, err := fetchUsage(token)
 	if err != nil {
-		usage.TokenExpired = true
+		usage.Unavailable = "cannot reach the usage API"
+		usage.Err = err
 		return usage, nil
 	}
 
@@ -125,11 +131,11 @@ type claudeCredentials struct {
 	} `json:"claudeAiOauth"`
 }
 
-func getOAuthToken(configDir string) (string, error) {
+func getOAuthToken(configDir, defaultDir string) (string, error) {
 	// The macOS Keychain value and the Linux/Windows .credentials.json file hold the same blob.
 	var raw []byte
 	if runtime.GOOS == "darwin" {
-		cmd := exec.Command("security", "find-generic-password", "-s", keychainServiceName(configDir), "-w")
+		cmd := exec.Command("security", "find-generic-password", "-s", keychainServiceName(configDir, defaultDir), "-w")
 		var stderr strings.Builder
 		cmd.Stderr = &stderr
 		out, err := cmd.Output()
@@ -158,10 +164,7 @@ func getOAuthToken(configDir string) (string, error) {
 	return creds.ClaudeAiOauth.AccessToken, nil
 }
 
-func keychainServiceName(configDir string) string {
-	home, _ := os.UserHomeDir()
-	defaultDir := filepath.Join(home, ".claude")
-
+func keychainServiceName(configDir, defaultDir string) string {
 	if configDir == defaultDir {
 		return "Claude Code-credentials"
 	}
