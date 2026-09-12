@@ -226,9 +226,6 @@ func WriteGitExclude(root string) (string, bool, error) {
 	if body != "" {
 		body = strings.TrimRight(body, "\n") + "\n"
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return "", false, err
-	}
 	if err := writeFileAtomic(path, []byte(body+block), projectModes.file); err != nil {
 		return "", false, err
 	}
