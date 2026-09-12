@@ -89,8 +89,7 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-func Env(dir string) []string {
-	home, _ := os.UserHomeDir()
+func Env(dir, defaultDir string) []string {
 	base := os.Environ()
 	// An inherited CLAUDE_CONFIG_DIR would override the chosen account, so it is stripped.
 	env := make([]string, 0, len(base)+1)
@@ -99,7 +98,7 @@ func Env(dir string) []string {
 			env = append(env, e)
 		}
 	}
-	if dir != filepath.Join(home, ".claude") {
+	if dir != defaultDir {
 		env = append(env, "CLAUDE_CONFIG_DIR="+dir)
 	}
 	return env

@@ -2,6 +2,7 @@ package convo
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/tanq16/claudex/internal/fsutil"
 	"github.com/tanq16/claudex/internal/model"
 )
 
@@ -58,31 +60,12 @@ func ReadRawHistory(configDir string) ([]RawHistoryEntry, error) {
 }
 
 func WriteRawHistory(configDir string, entries []RawHistoryEntry) error {
-	path := filepath.Join(configDir, "history.jsonl")
-	tmp := path + ".tmp"
-
-	f, err := os.Create(tmp)
-	if err != nil {
-		return err
-	}
-
-	w := bufio.NewWriter(f)
+	var buf bytes.Buffer
 	for _, e := range entries {
-		w.Write(e.Raw)
-		w.WriteByte('\n')
+		buf.Write(e.Raw)
+		buf.WriteByte('\n')
 	}
-
-	if err := w.Flush(); err != nil {
-		f.Close()
-		os.Remove(tmp)
-		return err
-	}
-	if err := f.Close(); err != nil {
-		os.Remove(tmp)
-		return err
-	}
-
-	return os.Rename(tmp, path)
+	return fsutil.WriteFileAtomic(filepath.Join(configDir, "history.jsonl"), buf.Bytes(), 0600)
 }
 
 func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {

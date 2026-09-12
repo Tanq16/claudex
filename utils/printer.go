@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"os"
-	"strings"
 
 	"charm.land/lipgloss/v2"
 	"github.com/rs/zerolog/log"
@@ -107,26 +106,6 @@ func PrintIndentedRunning(msg string) {
 		return
 	}
 	lipgloss.Println(infoStyle.Render("  ↻ " + msg))
-}
-
-func PrintProgress(label string, percent int) {
-	percent = min(percent, 100)
-
-	if GlobalDebugFlag {
-		log.Info().Int("percent", percent).Msg(label)
-		return
-	}
-	if !StdoutIsTerminal {
-		lipgloss.Println(fmt.Sprintf("  ↻ %s: %d%%", label, percent))
-		return
-	}
-
-	const barWidth = 10
-	filled := barWidth * percent / 100
-	empty := barWidth - filled
-
-	bar := strings.Repeat("⣿", filled) + strings.Repeat("⣀", empty)
-	lipgloss.Println(infoStyle.Render(fmt.Sprintf("  ↻ %s: %s %d%%", label, bar, percent)))
 }
 
 func ClearLines(n int) {

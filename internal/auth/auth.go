@@ -202,7 +202,6 @@ func waitForCallback(ctx context.Context, listener net.Listener, expectedState s
 		}
 	}()
 	defer func() {
-		// Bound shutdown so a lingering connection can't hang the deferred cleanup.
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		server.Shutdown(shutdownCtx)
@@ -270,13 +269,13 @@ func exchangeCode(ctx context.Context, code, verifier, state, redirectURI string
 }
 
 func announce(msg string) {
-	if u.StdoutIsTerminal {
+	if u.GlobalDebugFlag || u.StdoutIsTerminal {
 		u.PrintInfo(msg)
 	}
 }
 
 func announceURL(authURL string) {
-	if u.StdoutIsTerminal {
+	if u.GlobalDebugFlag || u.StdoutIsTerminal {
 		u.PrintGeneric(authURL)
 	}
 }

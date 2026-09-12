@@ -34,14 +34,32 @@ var statusCmd = &cobra.Command{
 	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		accountPaths := u.ResolveAccountPaths(statusFlags.account)
+		defaultDir := u.ResolveConfigDir("")
+		live := !statusFlags.jsonOutput
+		if live {
+			u.PrintRunning("Reading account usage")
+		}
+
 		var accounts []model.AccountUsage
+		type skip struct {
+			path string
+			err  error
+		}
+		var skipped []skip
 		for _, p := range accountPaths {
-			usage, err := tracker.ComputeAccountUsage(p)
+			usage, err := tracker.ComputeAccountUsage(p, defaultDir)
 			if err != nil {
-				u.PrintWarn(fmt.Sprintf("skipping %s", p), err)
+				skipped = append(skipped, skip{path: p, err: err})
 				continue
 			}
 			accounts = append(accounts, usage)
+		}
+
+		if live {
+			u.ClearLines(1)
+		}
+		for _, s := range skipped {
+			u.PrintWarn(fmt.Sprintf("skipping %s", s.path), s.err)
 		}
 
 		if len(accounts) == 0 {
@@ -72,6 +90,11 @@ func renderStatus(accounts []model.AccountUsage) {
 			header += dimStyle.Render(fmt.Sprintf(" (%s)", org))
 		}
 		u.PrintGeneric("\n" + header)
+
+		if acct.Unavailable != "" {
+			u.PrintWarn(acct.Unavailable, acct.Err)
+			continue
+		}
 
 		if acct.TokenExpired {
 			u.PrintWarn("OAuth token expired - launch Claude Code on this account to refresh", nil)

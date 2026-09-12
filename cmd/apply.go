@@ -31,7 +31,11 @@ func runApply(cmd *cobra.Command, args []string) {
 	u.PrintSuccess("Applied to " + u.AbbreviatePath(root))
 	u.PrintGeneric("  agents:  AGENTS.md, CLAUDE.md -> AGENTS.md")
 	u.PrintGeneric("  skills:  .agents/skills (" + strings.Join(names, ", ") + "), .claude/skills -> ../.agents/skills")
-	if path, ok := workspace.ExcludeFile(root); ok {
+	path, ok, err := workspace.WriteGitExclude(root)
+	switch {
+	case err != nil:
+		u.PrintWarn("could not write the git exclude entries", err)
+	case ok:
 		u.PrintGeneric("  ignored: " + u.AbbreviatePath(path))
 	}
 	u.PrintGeneric("  presets: claudex apply-preset")

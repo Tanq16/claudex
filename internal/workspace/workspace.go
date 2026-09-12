@@ -1,6 +1,7 @@
 package workspace
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -48,7 +49,7 @@ func ApplyBase(root string, base []byte, skillsFS fs.FS, skillsRoot string) ([]s
 	if err := ensureLink(filepath.Join(root, ClaudeDir, SkillsDir), filepath.Join("..", AgentsDir, SkillsDir)); err != nil {
 		return nil, err
 	}
-	return names, WriteGitExclude(root)
+	return names, nil
 }
 
 func PruneDeadSkillLinks(root string) ([]string, error) {
@@ -209,15 +210,10 @@ func removeIfLink(path string) error {
 	return os.Remove(path)
 }
 
-func ExcludeFile(root string) (string, bool) {
-	path, _, ok := gitExcludePath(root)
-	return path, ok
-}
-
-func WriteGitExclude(root string) error {
-	path, prefix, ok := gitExcludePath(root)
-	if !ok {
-		return nil
+func WriteGitExclude(root string) (string, bool, error) {
+	path, prefix, ok, err := gitExcludePath(root)
+	if err != nil || !ok {
+		return "", false, err
 	}
 	block := excludeBegin + "\n" + strings.Join([]string{
 		prefix + AgentsFile,
@@ -230,16 +226,16 @@ func WriteGitExclude(root string) error {
 	if body != "" {
 		body = strings.TrimRight(body, "\n") + "\n"
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return err
+	if err := writeFileAtomic(path, []byte(body+block), projectModes.file); err != nil {
+		return "", false, err
 	}
-	return writeFileAtomic(path, []byte(body+block), projectModes.file)
+	return path, true, nil
 }
 
 func StripGitExclude(root string) error {
-	path, _, ok := gitExcludePath(root)
-	if !ok {
-		return nil
+	path, _, ok, err := gitExcludePath(root)
+	if err != nil || !ok {
+		return err
 	}
 	body := readFile(path)
 	stripped := stripExcludeBlock(body)
@@ -261,25 +257,28 @@ func stripExcludeBlock(body string) string {
 	return head + strings.TrimLeft(tail, "\n")
 }
 
-func gitExcludePath(root string) (path, prefix string, ok bool) {
+func gitExcludePath(root string) (path, prefix string, ok bool, err error) {
 	out, err := exec.Command("git", "-C", root, "rev-parse", "--absolute-git-dir", "--show-toplevel").Output()
 	if err != nil {
-		return "", "", false
+		if _, ranAndFailed := errors.AsType[*exec.ExitError](err); ranAndFailed {
+			return "", "", false, nil
+		}
+		return "", "", false, fmt.Errorf("running git rev-parse in %s: %w", root, err)
 	}
 	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
 	if len(lines) != 2 {
-		return "", "", false
+		return "", "", false, nil
 	}
 	// git reports the worktree root with symlinks resolved and the working directory may not be.
 	rel, err := filepath.Rel(resolve(lines[1]), resolve(root))
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return "", "", false
+		return "", "", false, nil
 	}
 	prefix = "/"
 	if rel != "." {
 		prefix += filepath.ToSlash(rel) + "/"
 	}
-	return filepath.Join(lines[0], "info", "exclude"), prefix, true
+	return filepath.Join(lines[0], "info", "exclude"), prefix, true, nil
 }
 
 func resolve(path string) string {
