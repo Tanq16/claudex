@@ -1,6 +1,6 @@
 ---
 name: go-cli-progress
-description: The progress surface for Go CLI tools - the two-line live block, the in-place meter carrying rate and ETA, how it degrades with terminal width, and the settled and summary lines it collapses into. Use when a command runs work worth watching, when clearing terminal lines, when showing a download or a file count advance, or when a command prints "Running..." then replaces it with a result. Triggers on ClearLines, ClearPreviousLine, NewMeter, NewGroup, Meter.Add, Meter.Done, Meter.Fail, StdoutIsTerminal, GlobalDebugFlag, term.GetSize, and an in-place progress bar.
+description: The progress surface for Go CLI tools - the two-line live block, the in-place meter carrying rate and ETA, how it degrades with terminal width, and the settled and summary lines it collapses into. Use when a command runs work worth watching, when clearing terminal lines, when showing a download or a file count advance, or when a command prints "Running..." then replaces it with a result. Triggers on ClearLines, NewMeter, NewGroup, Meter.Set, Meter.Add, Meter.Rate, Meter.Fields, Meter.Done, Meter.Fail, StdoutIsTerminal, GlobalDebugFlag, term.GetSize, out_time_us, speed=, and an in-place progress bar.
 user-invocable: false
 ---
 
@@ -27,6 +27,35 @@ Glyphs survive a pipe because `✓`, `↻`, and the bar rune are text rather tha
 A piped line carries the fields without the bar. A bar means something only while it redraws in place, and one drawn per tick fills a log with rows of dashes saying what the percent beside them already said.
 
 Ten frames a second is below what reads as stutter in a terminal, and one line a second is the most a log can carry and still read as a progression.
+
+## Reading the Source
+
+A meter needs a position and a total, and derives everything else. What a source reports varies, so the source decides how the meter is built rather than the other way round.
+
+| The source reports | The meter takes |
+|---|---|
+| a position and a total | `Set` or `Add`, and the total |
+| a position, no total | `Set` or `Add`, and a total of zero |
+| a percentage alone | a ratio unit, `Set(pct)`, and a total of 100 |
+| finished items | `Add(1)`, and a total of `len(items)` |
+| nothing countable | no meter, the running line |
+
+A position is set when the source says where it is and added when it says how far it moved. `ffmpeg -progress` reports `out_time_us`, an absolute offset. A loop converting it into an increment gets the first tick wrong and every resumed run wrong after it.
+
+```go
+m := utils.NewMeter("Encoding", name, durationUS, utils.UnitMicros)
+for b := range progressBlocks(stdout) {
+    m.Set(b.OutTimeUS)
+    m.Rate(b.Speed * 1e6)
+}
+m.Done()
+```
+
+A number the source measures is placed, and a number the meter can compute is derived. `speed=15.4x` is measured inside the encoder against its own frame accounting. A meter sampling positions reads each half-second report as a burst followed by a stall. It then prints 9.5x and 19x alternately for a run that never left 15x.
+
+`Rate` takes the position's own unit per wall second, so a source reporting in other terms converts once at the call site.
+
+An estimate is not a measurement, so a reported eta is discarded and the meter computes its own. `rsync --progress` prints one, but it is arithmetic over a position, a total and a rate the meter already holds. Two estimates disagreeing beside each other is worse than either alone.
 
 ## Line Clearing
 
@@ -74,7 +103,7 @@ m.Done()
 
 The verb and the name are separate arguments, because the header reads `↻ <verb> <name>` while the settled line and the group total carry the name alone.
 
-A meter is an `io.Writer`, so a byte stream feeds it through `io.TeeReader` and the caller counts nothing. Work measured in items calls `m.Add(1)` once per item instead.
+A meter is an `io.Writer`, so a byte stream feeds it through `io.TeeReader` and the caller counts nothing. Work measured in items calls `m.Add(1)` once per item, and work that reports where it already is calls `m.Set`.
 
 The meter owns its own ticker and its own line count. A caller that tracks either one has to get the clear count right on every path out of the function, and the path it misses is the error path.
 
@@ -101,18 +130,34 @@ The same restore runs from an interrupt handler, installed once when the first m
 
 ## The Meter Line
 
-Six fields in a fixed order, so a reader's eye lands in the same place moving from a download to a file count.
+Six fields in a fixed order, so a reader's eye lands in the same place moving from a download to a file count. A meter carries the ones its source can answer, not all six.
 
 | Field | Example | Reserved | Drops |
 |---|---|---|---|
 | bar | `─────────` | 8 to 30 cells | when its floor stops fitting |
 | percent | ` 36%` | 4 | with an unknown total |
-| transferred | `242 / 661 MB` | 14 | never |
-| current rate | `28.3 MB/s` | 11 | third |
+| pair | `242 / 661 MB` | the widest form its unit takes | never |
+| current rate | `28.3 MB/s` | the widest form its unit takes | third |
 | eta | `eta 15s` | 11 | second |
-| average rate | `avg 40.7 MB/s` | 15 | first |
+| average rate | `avg 40.7 MB/s` | 4 more than the rate | first |
 
-The reserved widths size the bar rather than pad the fields. The bar takes what the reservations leave, and the fields are joined by exactly two spaces at their natural width, so reserving the widest form is what keeps the bar from resizing when `eta 9s` becomes `eta 15s`. A bar that jitters every second draws the eye to the jitter instead of the progress.
+The reserved widths size the bar rather than pad the fields. The bar takes what the reservations leave, and the fields are joined by exactly two spaces at their natural width. A reserved width is the widest form that field takes for its unit rather than a constant. Reserving the widest form keeps the bar from resizing when `eta 9s` becomes `eta 15s`. `avg 40.7 MB/s` needs fifteen cells against nine for `avg 15.4x`, and holding fifteen for a multiplier spends six cells of bar on nothing.
+
+The pair is always carried, since it is the meter. The bar and the percent need a known total. The eta needs a known total and a run long enough to plan around. The current rate is carried when the work moves at a speed the tool does not control. A stall is then the thing being watched for. The average is carried only beside the current rate, because its whole job is the contrast.
+
+| Set | Fields | Fits |
+|---|---|---|
+| `FieldsFull` | bar, percent, pair, rate, eta, average | a transfer over a link the tool does not control |
+| `FieldsRate` | bar, percent, pair, rate, eta | the same, where the average is not worth its cells |
+| `FieldsLean` | bar, percent, pair, eta | local work at a speed the user cannot act on |
+| `FieldsBare` | bar, percent, pair | a short operation where only position matters |
+
+```go
+m := utils.NewMeter("Installing", pkg, 100, utils.UnitPercent)
+m.Fields(utils.FieldsLean)
+```
+
+Omitting `Fields` takes the unit's own default, so a byte transfer needs no decision and only the unusual case says anything.
 
 Percent is the one field rendered at a fixed width, `%3d%%`, so the fields to its right hold their column from `  9%` through `100%`.
 
@@ -143,11 +188,11 @@ func termWidth() int {
 
 The bar is a single `─` rune for both halves, filled in the info blue that every other live line uses and unfilled in dimmed chrome. One rune throughout means the bar's length never changes as it fills, and a two-glyph bar has to reserve the wider of them everywhere.
 
-An unknown total arrives as a `total` of zero or less, which is what `resp.ContentLength` already returns when the server sends no length. The bar sweeps across the track instead of filling, percent leaves the frame, and the transferred field shows the running count alone, because a percentage and a share of an unknown quantity are numbers the tool does not have.
+An unknown total arrives as a `total` of zero or less, which is what `resp.ContentLength` already returns when the server sends no length. The bar sweeps across the track instead of filling, because a share of an unknown quantity is a number the tool does not have.
 
 ## Rates and ETA
 
-Two rates are shown. The instantaneous one comes from a trailing window and the average from the whole operation, because a single rate hides a stall behind a healthy-looking average and the user is watching precisely to see the stall.
+The instantaneous rate comes from a trailing window and the average from the whole operation. A single rate hides a stall behind a healthy-looking average, and the user is watching precisely to see the stall.
 
 The window is 800ms wide and reports zero until 200ms of samples have accumulated. A two-sample window microseconds wide divides a chunk by almost no time and reports hundreds of MB/s on the first tick.
 
@@ -170,9 +215,9 @@ func (r *rateWindow) current() float64 {
 }
 ```
 
-ETA is computed from the windowed rate rather than the average, so a stall reads `eta unknown` instead of a slowly climbing lie the user then has to discount.
+ETA is computed from the whole-operation average rather than the windowed rate. An 800ms window swings the estimate on every tick, and a figure the user re-averages in their head is not an estimate. A stall then shows as the estimate climbing, which is the truth arriving gradually rather than all at once.
 
-ETA is unknown whenever the total is unknown, the windowed rate is zero, or the result runs past about a hundred hours. Printing `eta 3170h` is worse than printing nothing, because the user reads it as a real estimate before working out that it is not.
+ETA is unknown whenever the total is unknown, the average is zero, or the result runs past about a hundred hours. Printing `eta 3170h` is worse than printing nothing, because the user reads it as a real estimate before working out that it is not.
 
 A rate during a stall reads `0.0 B/s` rather than being blanked, since a blank field reads as a rendering bug and a zero reads as the truth.
 
@@ -277,15 +322,28 @@ for _, r := range results {
 
 ## Units
 
-```go
-type Unit string
+A unit says what the counted quantity is, and four kinds cover every source measured so far.
 
-const UnitBytes Unit = ""
+| Kind | Counts | Amount | Rate |
+|---|---|---|---|
+| bytes | bytes | `242 / 661 MB`, binary multiples | `28.3 MB/s` |
+| count | a plural noun | `7 / 12 items` | `1.1 items/s` |
+| duration | a span of time | `30s / 24m52s` | `15.4x` |
+| ratio | a proportion | nothing | nothing |
+
+A duration's rate is a multiplier rather than a quantity over a second. Seconds per second is dimensionless, and the ratio already has a name. `ffmpeg` prints `speed=15.4x` for the same reason, so a tool wrapping it and the user reading both see one figure.
+
+A duration unit carries the resolution it counts in, so a source reporting microseconds hands over `out_time_us` untouched. The amount still renders as `24m52s`, since the resolution governs the counter and never the display.
+
+A ratio has no amount and no rate, so both render as nothing and the fields carrying them drop themselves. A percentage-only source needs no foresight from the caller and settles as one line.
+
+```
+✓ linux-image-6.14.0-32-generic  13.3s
 ```
 
-The empty unit means bytes and formats in binary multiples with a scaled pair such as `242 / 661 MB`. Any other value is the plural noun printed after a plain count, so `utils.Unit("items")` renders `7 / 12 items` and `1.1 items/s` with no change anywhere in the renderer.
+A field whose unit cannot express it renders nothing and leaves the frame. That is what lets an unfamiliar source be wired up without knowing in advance which fields it will support.
 
-A number carries one decimal below 100 and none at or above it, so `45.8 MB`, `242 MB`, and `1.1 items/s` all stay inside the width their field reserved.
+A number carries one decimal below 100 and none at or above it, so `45.8 MB`, `242 MB`, `15.4x`, and `1.1 items/s` all stay inside the width their field reserved.
 
 Both halves of a pair are scaled by the total rather than each by itself, so `39.9 / 64.0 MB` stays readable where `40874 KB / 64.0 MB` does not.
 
