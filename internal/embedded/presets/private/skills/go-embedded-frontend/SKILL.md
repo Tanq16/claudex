@@ -38,11 +38,11 @@ internal/server/static/
 └── js/                 # tailwind.js, lucide.min.js, and anything else vendored
 ```
 
-Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed to the repository. A Makefile target downloads them and the release workflow calls that same target. A downloaded asset in a diff is a binary nobody reviews and a version nobody can trace.
+Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed. A Makefile target downloads them and the release workflow calls the same target, since a downloaded asset in a diff is a binary nobody reviews and a version nobody can trace.
 
 ## Assets
 
-Every asset is pinned to an exact version. A floating `@latest` makes two builds of the same commit produce different bytes, and a new major arriving overnight breaks rendering with no diff to point at.
+Every asset is pinned to an exact version. A floating `@latest` makes two builds of the same commit produce different bytes, and a new major breaks rendering with no diff to point at.
 
 | Asset | Version | Lands at |
 |---|---|---|
@@ -54,16 +54,13 @@ Every asset is pinned to an exact version. A floating `@latest` makes two builds
 | Google Sans | Google Fonts | `css/google-sans.css`, `fonts/*.woff2` |
 | JetBrains Mono | Google Fonts | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | JetBrains Mono Nerd Font Mono | nerd-fonts `v3.5.1`, opt-in | `css/jetbrains-mono.css`, `fonts/*.woff2` |
-| Marked | `marked@18.0.11` | `js/marked.umd.js` |
-| Highlight.js | `highlight.js@11.12.0` | `js/highlight.min.js`, `css/github-dark.min.css` |
-| Mermaid | `mermaid@11.17.2` | `js/mermaid.min.js` |
 | Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
 
-The three fonts are always downloaded, so the asset step is the same everywhere and a later design change needs no build change. Everything below them in the table is downloaded when the project uses it.
+The three fonts are always downloaded, so the asset step is the same everywhere. Everything below them in the table is downloaded when the project uses it. Marked, Highlight.js, and Mermaid are pinned by the skills that own them.
 
-Web fonts are woff2, never ttf. woff2 is roughly half the bytes of the same ttf and every browser targeted here supports it. Google Fonts already serves woff2, so nothing is converted.
+Web fonts are woff2, never ttf. woff2 is roughly half the bytes of the same ttf and every browser here supports it, and Google Fonts already serves woff2.
 
-Only the `latin` and `latin-ext` blocks of each Google Fonts stylesheet are kept. The endpoint declares every subset the family has, which for Google Sans is twenty-five files covering scripts the page never renders, and `//go:embed` compiles all of them into the binary regardless.
+Only the `latin` and `latin-ext` blocks of each Google Fonts stylesheet are kept. The endpoint declares every subset the family has, twenty-five files for Google Sans, and `//go:embed` compiles all of them into the binary regardless.
 
 Font Awesome's stylesheet references its webfonts by a relative path that does not survive being served from `/static/`, so the asset step rewrites it:
 
@@ -82,9 +79,9 @@ rm -f fontawesome/css/all.min.css.bak
 | Google Sans | display headings and branding | `'Google Sans'` |
 | JetBrains Mono | code and monospace | `'JetBrains Mono'` |
 
-Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, because a page that fetches a font from a third party leaks every visitor's IP and stops rendering correctly offline.
+Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, since a page fetching a font from a third party leaks every visitor's IP and stops rendering offline.
 
-The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, so it is downloaded from the nerd-fonts release as ttf and compressed to woff2, which costs two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs, which means a Powerline separator, a file-type icon from the private use area, or terminal output that carries them. An icon that Lucide or Font Awesome already has is not a reason.
+The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, so it is downloaded as ttf and compressed to woff2, costing two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs: a Powerline separator, a private-use file-type icon, or terminal output carrying them. An icon Lucide or Font Awesome already has is not a reason.
 
 Switching is a Makefile variable, not a page change. The nerd target writes the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name.
 
@@ -163,8 +160,8 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
 
     <main class="max-w-6xl mx-auto px-4 py-8">
         <h1 class="text-2xl font-bold mb-6 font-display text-text">Page Title</h1>
-        <div class="bg-mantle border border-surface0 rounded-xl p-6">
-            <input class="w-full bg-surface0 border border-surface1 rounded-lg px-3 py-2 text-text">
+        <div class="bg-mantle rounded-xl p-6">
+            <input class="w-full bg-surface0 rounded-full px-4 py-2 text-text text-sm pointer-coarse:text-[16px]">
         </div>
     </main>
 
@@ -181,7 +178,7 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
 
 The Tailwind v4 browser build reads the `<style type="text/tailwindcss">` block containing `@theme` and rejects a JavaScript config entirely, so the `tailwind.config = {...}` global from v3 produces no CSS and no error.
 
-A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, `border-mauve`, and a real `var(--color-mauve)` for hand-written CSS. Naming the palette entries after Catppuccin's own names keeps the class you write and the swatch you picked identical.
+A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, and a real `var(--color-mauve)` for hand-written CSS. Naming the entries after Catppuccin's own names keeps the class written and the swatch picked identical.
 
 `@theme` maps each name onto a `--ctp-*` variable rather than a literal hex. The utility resolves the variable at paint time, so redefining the `--ctp-*` set under a selector re-themes the page without a second `@theme` or a class change. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--color-mauve) 50%, transparent)` rather than substituting a value.
 
@@ -196,14 +193,26 @@ The page is grounded on `crust`, the darkest step, and every surface is raised f
 | Page ground, and any chrome flush with it such as a sidebar, header, or rail | `crust` |
 | A surface that reads as lifted off the page, such as a card, modal, popover, or dropdown | `mantle` |
 | A control sitting on either of those, such as an input, chip, button, or hovered row | `surface0` |
-| Borders, dividers, and the hover state of a `surface0` control | `surface1` |
+| The hover state of a `surface0` control, and a border where one is earned | `surface1` |
 | A well recessed inside a `mantle` panel, such as a code block or an embedded preview | `base` |
 
 Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast ratio of 1.07 and `crust` to `surface0` is 1.49, which separates them without drawing a seam. Skipping a rung reads as two unrelated panels rather than one raised off the other.
 
 Text runs the same way. Body copy takes `subtext0`, headings and the one value a row exists to show take `text`, and metadata takes `overlay1`. Defaulting body copy to `text` makes every word shout and leaves nothing louder for a heading to be.
 
-Structure never borrows from the accent ramp. Borders, dividers, and backgrounds come from the neutral steps, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing in one view means neither is signal.
+Structure never borrows from the accent ramp. The neutral steps carry it, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing means neither is signal.
+
+A surface is separated by its tone, so a border is added only where two surfaces at the same tone meet. The layering already carries the separation. An outline over a tonal step adds a seam, so the eye reads a box edge instead of the content's shape.
+
+A control marks its state by shifting tone rather than gaining an outline. Moving a hovered row from `surface0` to `surface1` reads as fast as a border appearing and does not change the element's size.
+
+A divider is drawn only where spacing cannot do the work. Rows in a list separate on space and a hover tone. A rule between every pair turns a list into a table nobody asked for.
+
+A focus ring is the exception, since a keyboard user needs the focused element to be unmistakable and no tone step carries that alone.
+
+Buttons and segmented navigation are pill-shaped. Two sources the user flips between, such as Patreon against YouTube, read as one pill with the active half filled. Two outlined buttons carry the same choice and add two more edges.
+
+A standalone input takes the same pill. An input among several in a form takes a rounded rectangle, since a column of pills reads as a stack of buttons.
 
 The tokens are assigned by what a surface does, so a layout this skill has never seen still lands on the right step.
 
@@ -225,7 +234,7 @@ Light and dark switching is added only when it is asked for, by redefining the `
 </style>
 ```
 
-Latte's ramp runs light to dark, the opposite of Mocha's, so re-slotting keeps `crust` the ground and `mantle` the surface above it in both. The text tokens shift by the same one step, because Latte's own `subtext0` on its own `base` is 4.37 and body copy has to clear 4.5.
+Latte's ramp runs light to dark, the opposite of Mocha's, so re-slotting keeps `crust` the ground and `mantle` the surface above it in both. The text tokens shift one step too, because Latte's own `subtext0` on its own `base` is 4.37 and body copy has to clear 4.5.
 
 A script in `<head>` sets the class from `localStorage` or `prefers-color-scheme` before the body renders, preventing a flash of the wrong theme.
 
@@ -245,7 +254,7 @@ The custom CSS that remains lives in inline `<style>` blocks rather than `css/`,
 
 An existing project's working CSS is not ripped out to impose this, since the rule governs what you write.
 
-The browser build compiles utility classes at run time and Tailwind documents it as development-only. It is fine for an embedded tool or a dashboard, and an app needing a small payload and no runtime compile moves to a build step emitting a static `tailwind.css`.
+The browser build compiles utility classes at run time, which Tailwind documents as development-only. It is fine for an embedded tool or a dashboard, and an app needing a small payload moves to a build step emitting a static `tailwind.css`.
 
 One `index.html` is the default. Views are shown and hidden client-side, and shared logic moves into `app.js` only once more than one place needs it.
 
@@ -274,11 +283,11 @@ The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-sca
 
 `lucide.createIcons()` runs after any DOM update that inserts an `<i data-lucide>`, since it replaces those elements with inline SVG and does not observe later insertions.
 
-App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on both light and dark browser chrome. PWA icons keep their content inside the centre 80%, because the installer rounds the corners off.
+App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on light and dark browser chrome. PWA icons keep their content inside the centre 80%, because the installer rounds the corners off.
 
 ## PWA
 
-Add PWA support when the app is used often on a phone, when offline behavior is useful, or when installability was requested. Skip it for an admin dashboard, a developer tool, or anything opened twice a year, where an install prompt is noise.
+Add PWA support when the app is used often on a phone, when offline behavior is useful, or when installability was requested. Skip it for an admin dashboard or a developer tool, where an install prompt is noise.
 
 `static/manifest.json`:
 
@@ -306,17 +315,10 @@ self.addEventListener('fetch', () => {});
 
 It caches nothing, so the app behaves like a normal tab. A caching worker serves stale assets after a deploy and gives users a version they cannot refresh away.
 
-The worker is not what makes the app installable, since the manifest, the two icon sizes, and HTTPS are. It earns its line by controlling the app's pages, which any later offline or push behavior needs.
+The worker is not what makes the app installable, since the manifest, the two icon sizes, and HTTPS are. It earns its line by controlling the app's pages, which later offline or push behavior needs.
 
 A worker's scope is the directory it is served from, so one served at `/static/sw.js` controls `/static/` and never the app at `/`. It registers without error and reports that narrow scope, so nothing fails loudly enough to notice. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
 
-The file stays under `static/` so `//go:embed static` picks it up, and it is served at the root by its own route:
-
-```go
-s.mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) {
-    w.Header().Set("Content-Type", "text/javascript")
-    http.ServeFileFS(w, r, staticFiles, "static/sw.js")
-})
-```
+The file stays under `static/` so `//go:embed static` picks it up, and a route at `/sw.js` serves it from the embedded FS through `http.ServeFileFS` with a `text/javascript` content type.
 
 Drop the manifest, the worker, its route, the registration script, and the PWA meta tags together when not building a PWA. The manifest alone is enough to prompt an install, which an app that gains nothing from being installed should not do.
