@@ -12,7 +12,7 @@ This applies to CLI Only projects and the command surface of a CLI + Web hybrid,
 
 One meter is live at a time. Two writers clearing lines each erase the other's output, so concurrent work reports through a single meter rather than a lane per worker. How that work is scheduled is the project's own decision, and nothing here imposes a pipeline, a job interface, or a resume file on it.
 
-The contract underneath everything below: redrawing is a terminal affordance, so the live block exists only when stdout is a terminal and `--debug` is off. Everywhere else every step is still announced and nothing is cleared, which leaves a log or a pipe holding the full progression instead of a stream of cursor escapes.
+Redrawing is a terminal affordance, so the live block exists only when stdout is a terminal and `--debug` is off. Everywhere else every step is announced and nothing is cleared, which leaves a log or a pipe holding the full progression rather than cursor escapes.
 
 | Behavior | Terminal | Piped | `--debug` |
 |---|---|---|---|
@@ -22,9 +22,9 @@ The contract underneath everything below: redrawing is a terminal affordance, so
 | `ClearLines` / `ClearPreviousLine` | clears | no-op | no-op |
 | The live block persists | no | yes | yes |
 
-Glyphs survive a pipe because `✓`, `↻`, and the bar rune are text rather than escape sequences, and only color and cursor control are stripped on the way out. What disappears outside a terminal is the redraw, never the fact that a step ran, because a step that failed is the one a log is read for.
+Glyphs survive a pipe because `✓`, `↻`, and the bar rune are text rather than escapes, and only color and cursor control are stripped. What disappears outside a terminal is the redraw, never the fact that a step ran.
 
-A piped line carries the fields without the bar. A bar means something only while it redraws in place, and one drawn per tick fills a log with rows of dashes saying what the percent beside them already said.
+A piped line carries the fields without the bar, which means something only while it redraws in place. One bar per tick fills a log with rows of dashes saying what the percent beside them already said.
 
 Ten frames a second is below what reads as stutter in a terminal, and one line a second is the most a log can carry and still read as a progression.
 
@@ -51,7 +51,7 @@ for b := range progressBlocks(stdout) {
 m.Done()
 ```
 
-A number the source measures is placed, and a number the meter can compute is derived. `speed=15.4x` is measured inside the encoder against its own frame accounting. A meter sampling positions reads each half-second report as a burst followed by a stall. It then prints 9.5x and 19x alternately for a run that never left 15x.
+A number the source measures is placed, and a number the meter can compute is derived. `speed=15.4x` is measured inside the encoder against its own frame accounting. A meter sampling positions reads each half-second report as a burst then a stall, printing 9.5x and 19x alternately for a run that never left 15x.
 
 `Rate` takes the position's own unit per wall second, so a source reporting in other terms converts once at the call site.
 
@@ -74,9 +74,9 @@ func ClearPreviousLine() {
 }
 ```
 
-The escape sequences go out through `fmt.Print` rather than a printer, since they are cursor control rather than content and the guard above has already established there is a cursor to control.
+The escapes go out through `fmt.Print` rather than a printer, since they are cursor control rather than content.
 
-A running header cleared together with its sub-lines takes `lineCount + 1`, where the `+1` is the header itself. Counting only the sub-lines leaves the header stranded above the summary that was meant to replace it.
+A running header cleared with its sub-lines takes `lineCount + 1`, the `+1` being the header. Counting only the sub-lines leaves the header stranded above the summary meant to replace it.
 
 ## The Live Block
 
@@ -87,9 +87,9 @@ A meter owns two lines: a header naming the work, and an indented meter line car
   ─────────────────────────────   36%  242 / 661 MB  28.3 MB/s  eta 15s  avg 40.7 MB/s
 ```
 
-The header glyph costs two columns, so its text starts at column 2 and the meter line's bar starts there too. Every baseline line in a CLI puts content at column 2 and every indented detail line at column 4, which is what lets a meter, a settled line, and a failure sit under one another without looking ragged.
+The header glyph costs two columns, so its text and the meter line's bar both start at column 2. Every baseline line sits at column 2 and every indented detail line at column 4, which lets a meter, a settled line, and a failure stack without looking ragged.
 
-Context after the name is secondary and takes the muted color: the position in a set, a running total across the set, and the item currently being worked. It drops entirely before the name is ever clipped, because the name is what the user is waiting on.
+Context after the name takes the muted color: the position in a set, a running total, and the item being worked. It drops entirely before the name is clipped, because the name is what the user is waiting on.
 
 ```go
 m := utils.NewMeter("Downloading", name, resp.ContentLength, utils.UnitBytes)
@@ -105,28 +105,15 @@ The verb and the name are separate arguments, because the header reads `↻ <ver
 
 A meter is an `io.Writer`, so a byte stream feeds it through `io.TeeReader` and the caller counts nothing. Work measured in items calls `m.Add(1)` once per item, and work that reports where it already is calls `m.Set`.
 
-The meter owns its own ticker and its own line count. A caller that tracks either one has to get the clear count right on every path out of the function, and the path it misses is the error path.
+The meter owns its own ticker and line count. A caller tracking either has to get the clear count right on every path out of the function, and the path it misses is the error path.
 
 A frame is assembled into one string and written with one `fmt.Print`. Two writes let the terminal paint a half-cleared block, which reads as a flicker on every tick.
 
-```go
-func (m *Meter) draw(lines []string) {
-    if !m.live() {
-        return
-    }
-    var b strings.Builder
-    b.WriteString(strings.Repeat("\033[1A\033[2K", m.drawn))
-    for _, l := range lines {
-        b.WriteString("\r\033[2K" + l + "\n")
-    }
-    fmt.Print(b.String())
-    m.drawn = len(lines)
-}
-```
+A frame walks back over the lines it drew last time with `\033[1A\033[2K`, then writes each new line as `\r\033[2K` and the text. The meter holds the count it drew, since only it knows how many lines the last frame took.
 
 The cursor is hidden while a meter is live and restored when it settles, including on the error path, because a process that exits with the cursor hidden leaves the user's shell without one.
 
-The same restore runs from an interrupt handler, installed once when the first meter hides the cursor and left in place for the life of the process, which then exits `130`. Ctrl+C during a long transfer reaches neither `Done` nor `Fail`, and it is the most common way such a run ends.
+The same restore runs from an interrupt handler, installed once when the first meter hides the cursor, and the process then exits `130`. Ctrl+C reaches neither `Done` nor `Fail`, and it is the most common way a long transfer ends.
 
 ## The Meter Line
 
@@ -141,7 +128,7 @@ Six fields in a fixed order, so a reader's eye lands in the same place moving fr
 | eta | `eta 15s` | 11 | second |
 | average rate | `avg 40.7 MB/s` | 4 more than the rate | first |
 
-The reserved widths size the bar rather than pad the fields. The bar takes what the reservations leave, and the fields are joined by exactly two spaces at their natural width. A reserved width is the widest form that field takes for its unit rather than a constant. Reserving the widest form keeps the bar from resizing when `eta 9s` becomes `eta 15s`. `avg 40.7 MB/s` needs fifteen cells against nine for `avg 15.4x`, and holding fifteen for a multiplier spends six cells of bar on nothing.
+The reserved widths size the bar rather than pad the fields. The bar takes what the reservations leave, and the fields are joined by exactly two spaces at their natural width. A reserved width is the widest form that field takes for its unit, which keeps the bar from resizing when `eta 9s` becomes `eta 15s`. `avg 40.7 MB/s` needs fifteen cells against nine for `avg 15.4x`, so a constant would spend six cells of bar on nothing.
 
 The pair is always carried, since it is the meter. The bar and the percent need a known total. The eta needs a known total and a run long enough to plan around. The current rate is carried when the work moves at a speed the tool does not control. A stall is then the thing being watched for. The average is carried only beside the current rate, because its whole job is the contrast.
 
@@ -161,34 +148,20 @@ Omitting `Fields` takes the unit's own default, so a byte transfer needs no deci
 
 Percent is the one field rendered at a fixed width, `%3d%%`, so the fields to its right hold their column from `  9%` through `100%`.
 
-Fields drop from the right as the terminal narrows while the bar shrinks toward its eight-cell floor. The bar goes once that floor no longer fits beside the fields still standing, which leaves the numbers rather than a stub of a bar in the narrowest terminals. Nothing wraps and no field is cut mid-value, because a wrapped frame makes the next redraw clear the wrong number of lines.
+Fields drop from the right as the terminal narrows and the bar shrinks toward its eight-cell floor. The bar goes once that floor no longer fits beside the fields still standing, leaving the numbers rather than a stub. Nothing wraps and no field is cut mid-value, because a wrapped frame makes the next redraw clear the wrong number of lines.
 
 ```
 ↻ Copying db.sqlite
    71%  45.8 / 64.0 MB
 ```
 
-Width comes from the terminal and falls back rather than guessing.
+Width comes from `term.GetSize` on stdout, then `COLUMNS`, then a default of 80. A `COLUMNS` below the minimum of 24 is a stale value from a resized terminal rather than a real width, and 24 is where the stats alone stop fitting.
 
-```go
-func termWidth() int {
-    if w, _, err := term.GetSize(os.Stdout.Fd()); err == nil && w > 0 {
-        return w
-    }
-    if n, err := strconv.Atoi(os.Getenv("COLUMNS")); err == nil && n >= minWidth {
-        return n
-    }
-    return defaultWidth
-}
-```
+`GetSize` comes from `github.com/charmbracelet/x/term`, which already supplies the `IsTerminal` in `utils/globals.go` and arrives under the lipgloss stack anyway. `golang.org/x/term` for the same pair adds a second module for nothing.
 
-`defaultWidth` is 80 and `minWidth` is 24, the width below which the stats alone stop fitting. A `COLUMNS` narrower than that is a stale value from a resized terminal rather than a real width.
+The bar is a single `─` rune for both halves, filled in info blue and unfilled in dimmed chrome. One rune means the bar's length never changes as it fills, where a two-glyph bar reserves the wider of them everywhere.
 
-`github.com/charmbracelet/x/term` supplies both `GetSize` and the `IsTerminal` that `utils/globals.go` already calls, and it arrives under the lipgloss stack a CLI Only project has anyway. Taking `golang.org/x/term` for the same pair adds a second module for nothing.
-
-The bar is a single `─` rune for both halves, filled in the info blue that every other live line uses and unfilled in dimmed chrome. One rune throughout means the bar's length never changes as it fills, and a two-glyph bar has to reserve the wider of them everywhere.
-
-An unknown total arrives as a `total` of zero or less, which is what `resp.ContentLength` already returns when the server sends no length. The bar sweeps across the track instead of filling, because a share of an unknown quantity is a number the tool does not have.
+An unknown total arrives as zero or less, which is what `resp.ContentLength` returns when the server sends no length. The bar sweeps across the track instead of filling, since a share of an unknown quantity is a number the tool does not have.
 
 ## Rates and ETA
 
@@ -197,23 +170,6 @@ The instantaneous rate comes from a trailing window and the average from the who
 The window is 800ms wide and reports zero until 200ms of samples have accumulated. A two-sample window microseconds wide divides a chunk by almost no time and reports hundreds of MB/s on the first tick.
 
 The whole-operation average carries that same 200ms floor while the meter is live and none on the settled line, since a run that really did take 40ms has a real average and only a first tick that wide is an artifact.
-
-```go
-func (r *rateWindow) current() float64 {
-    if len(r.samples) < 2 {
-        return 0
-    }
-    first, last := r.samples[0], r.samples[len(r.samples)-1]
-    if last.at.Sub(first.at) < 200*time.Millisecond {
-        return 0
-    }
-    delta := float64(last.val - first.val)
-    if delta <= 0 {
-        return 0
-    }
-    return delta / last.at.Sub(first.at).Seconds()
-}
-```
 
 ETA is computed from the whole-operation average rather than the windowed rate. An 800ms window swings the estimate on every tick, and a figure the user re-averages in their head is not an estimate. A stall then shows as the estimate climbing, which is the truth arriving gradually rather than all at once.
 
@@ -231,17 +187,17 @@ Under a minute an elapsed time reads `9.5s` and an estimate reads `eta 15s`, bec
 ✓ ubuntu-24.04.3-desktop.iso  661 MB  9.5s  avg 69.6 MB/s
 ```
 
-`Fail` clears the block and prints an indented failure that persists, because a failure is what the user still has to act on after the run.
+`Fail` clears the block and prints an indented failure that persists, because a failure is what the user still has to act on.
 
 ```
   ✗ receipts/hotel-0913.heic: unsupported image format
 ```
 
-`Fail` takes the error itself rather than a string the caller has already formatted. The line reads the name, a colon, and that error's own message, and the same error reaches the debug tier as `.Err(err)` with the whole wrapped chain, which a pre-formatted string cannot become.
+`Fail` takes the error itself rather than a formatted string. The line reads the name, a colon, and the error's message, and the same error reaches the debug tier as `.Err(err)` with its whole wrapped chain.
 
-The meter composing the reason into its own line is the one exception to error detail staying in the debug tier, since a failure inside a run of twelve is unusable without saying which of the twelve failed and why.
+This is the one exception to error detail staying in the debug tier, since a failure inside a run of twelve is unusable without naming which one failed and why.
 
-A long name is clipped with `…` on both the header and the settled line. Clipping on one and hard-cutting on the other makes the same name look different depending on which line it lands in.
+A long name is clipped with `…` on both the header and the settled line, so the same name does not look different depending on which line it lands in.
 
 ## Grouped Work
 
@@ -274,21 +230,21 @@ g.Done()
 
 A group is opened with the label its summary carries and the plural noun it counts in, and every meter under it comes from `g.Meter` rather than `NewMeter`. `→ Copy  4 files` has no other source for either word, and a meter that does not know its group cannot add what it moved to the total.
 
-A failure with no meter behind it is reported with `g.Fail(name, err)`. A group that counts only what a meter reported prints `4 files` for a run that attempted six, and a request that never returned a body is exactly the failure worth counting.
+A failure with no meter behind it is reported with `g.Fail(name, err)`. A group counting only what a meter reported prints `4 files` for a run that attempted six.
 
-The summary and the settled line are built by one function with the same field order, so the two read as the same shape with a count in front. Two hand-rolled formats drift apart on the first change to either.
+The summary and the settled line are built by one function with the same field order, so the two read as one shape with a count in front. Two hand-rolled formats drift apart on the first change.
 
-A summary is printed when more than one operation ran or when any of them failed. A single clean operation is already fully described by its settled line, and repeating it as a summary says nothing twice.
+A summary is printed when more than one operation ran or when any failed. A single clean operation is already described by its settled line, and repeating it says nothing twice.
 
-The amount sums what actually moved, including the partial bytes of a transfer that failed, because the elapsed time bought those bytes and the rate is a lie without them. It is omitted when the count already carries the same number, which is every counted noun and no byte total, and omitted again when summing would add unlike units.
+The amount sums what actually moved, including the partial bytes of a failed transfer, because the elapsed time bought those bytes. It is omitted when the count already carries the same number, and again when summing would add unlike units.
 
 The glyph carries the outcome: `→` when everything succeeded, `✗` when anything failed, and the count reads `10 ok, 2 failed` instead of the plain total in that case.
 
 ## Work with No Quantity
 
-Work with nothing to count uses the running line and the clear, with no meter at all. A bar that cannot move is worse than no bar, because it suggests a progress the tool is not actually tracking.
+Work with nothing to count uses the running line and the clear, with no meter at all. A bar that cannot move is worse than no bar, because it suggests progress the tool is not tracking.
 
-Several sequential steps that read as one operation to the user each announce and clear themselves, leaving one line behind.
+Several sequential steps that read as one operation each announce and clear themselves, leaving one line behind.
 
 ```go
 utils.PrintRunning("checking latest version")
@@ -303,22 +259,6 @@ utils.PrintSuccess(fmt.Sprintf("updated: %s → %s", old, new))
 ```
 
 A read-only scan over many items prints nothing per item, just one running line and then the findings. Per-item output during a check scrolls the findings off the screen before the user can read them.
-
-```go
-utils.PrintRunning("Checking tools")
-results := checkAll(tools)
-utils.ClearLines(1)
-
-if len(results) == 0 {
-    utils.PrintSuccess("everything is up to date")
-    return
-}
-
-utils.PrintInfo("Check complete")
-for _, r := range results {
-    utils.PrintIndentedWarn(fmt.Sprintf("%s: update available (%s → %s)", r.Name, r.Current, r.Latest), nil)
-}
-```
 
 ## Units
 
@@ -361,4 +301,4 @@ log.Info().
     Msg(m.label)
 ```
 
-zerolog chooses its writer from the same terminal check the printers use: `ConsoleWriter` on a terminal and its own JSON otherwise. That is settled once in `setupLogs` and nothing in the meter re-decides it.
+zerolog's writer is settled once in `setupLogs` and nothing in the meter re-decides it.
