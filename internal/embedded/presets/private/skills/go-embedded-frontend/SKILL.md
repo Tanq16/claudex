@@ -160,8 +160,8 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
 
     <main class="max-w-6xl mx-auto px-4 py-8">
         <h1 class="text-2xl font-bold mb-6 font-display text-text">Page Title</h1>
-        <div class="bg-mantle rounded-xl p-6">
-            <input class="w-full bg-surface0 rounded-full px-4 py-2 text-text text-sm pointer-coarse:text-[16px]">
+        <div class="bg-mantle border border-surface0 rounded-xl p-6">
+            <input class="w-full bg-surface0 border border-surface1 rounded-lg px-3 py-2 text-text pointer-coarse:text-[16px]">
         </div>
     </main>
 
@@ -193,7 +193,7 @@ The page is grounded on `crust`, the darkest step, and every surface is raised f
 | Page ground, and any chrome flush with it such as a sidebar, header, or rail | `crust` |
 | A surface that reads as lifted off the page, such as a card, modal, popover, or dropdown | `mantle` |
 | A control sitting on either of those, such as an input, chip, button, or hovered row | `surface0` |
-| The hover state of a `surface0` control, and a border where one is earned | `surface1` |
+| Borders, dividers, and the hover state of a `surface0` control | `surface1` |
 | A well recessed inside a `mantle` panel, such as a code block or an embedded preview | `base` |
 
 Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast ratio of 1.07 and `crust` to `surface0` is 1.49, which separates them without drawing a seam. Skipping a rung reads as two unrelated panels rather than one raised off the other.
@@ -201,18 +201,6 @@ Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast rat
 Text runs the same way. Body copy takes `subtext0`, headings and the one value a row exists to show take `text`, and metadata takes `overlay1`. Defaulting body copy to `text` makes every word shout and leaves nothing louder for a heading to be.
 
 Structure never borrows from the accent ramp. The neutral steps carry it, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing means neither is signal.
-
-A surface is separated by its tone, so a border is added only where two surfaces at the same tone meet. The layering already carries the separation. An outline over a tonal step adds a seam, so the eye reads a box edge instead of the content's shape.
-
-A control marks its state by shifting tone rather than gaining an outline. Moving a hovered row from `surface0` to `surface1` reads as fast as a border appearing and does not change the element's size.
-
-A divider is drawn only where spacing cannot do the work. Rows in a list separate on space and a hover tone. A rule between every pair turns a list into a table nobody asked for.
-
-A focus ring is the exception, since a keyboard user needs the focused element to be unmistakable and no tone step carries that alone.
-
-Buttons and segmented navigation are pill-shaped. Two sources the user flips between, such as Patreon against YouTube, read as one pill with the active half filled. Two outlined buttons carry the same choice and add two more edges.
-
-A standalone input takes the same pill. An input among several in a form takes a rounded rectangle, since a column of pills reads as a stack of buttons.
 
 The tokens are assigned by what a surface does, so a layout this skill has never seen still lands on the right step.
 
