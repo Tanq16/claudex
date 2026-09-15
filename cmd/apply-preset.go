@@ -111,7 +111,7 @@ func choosePresets(available []workspace.Preset) []string {
 	for i, p := range available {
 		labels[i] = p.Ref
 		if p.Description != "" {
-			labels[i] += " — " + u.Truncate(p.Description, 70)
+			labels[i] += " - " + u.Truncate(p.Description, 70)
 		}
 	}
 
