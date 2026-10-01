@@ -89,7 +89,7 @@ func PromptInput(prompt, placeholder string) (string, error) {
         return "", ErrNoTerminal
     }
     var value string
-    ok, err := runForm(2, huh.NewInput().Title(prompt).Placeholder(placeholder).Value(&value))
+    ok, err := runForm(huh.NewInput().Title(prompt).Placeholder(placeholder).Value(&value))
     if err != nil || !ok {
         return "", err
     }
@@ -97,17 +97,20 @@ func PromptInput(prompt, placeholder string) (string, error) {
 }
 ```
 
-One `runForm` carries the theme, the key bindings, the width, and the height for every helper. `huh.Run(field)` wraps a bare field in a group and form with help suppressed (`huh@v2.0.3 run.go:4-8`) but exposes no hook for any of those, so the form is built directly.
+One `runForm` carries the theme, the key bindings, the width, and the error handling for every helper. `huh.Run(field)` wraps a bare field in a group and form with help suppressed (`huh@v2.0.3 run.go:4-8`) but exposes no hook for any of those, so the form is built directly.
 
 ```go
-func runForm(height int, fields ...huh.Field) (bool, error) {
-    form := huh.NewForm(huh.NewGroup(fields...)).
+func Form(groups ...*huh.Group) *huh.Form {
+    return huh.NewForm(groups...).
         WithTheme(theme()).
         WithKeyMap(keymap()).
         WithShowHelp(false).
-        WithWidth(Width()).
-        WithHeight(height)
-    if err := form.Run(); err != nil {
+        WithShowErrors(false).
+        WithWidth(Width())
+}
+
+func runForm(fields ...huh.Field) (bool, error) {
+    if err := Form(huh.NewGroup(fields...)).Run(); err != nil {
         if errors.Is(err, huh.ErrUserAborted) {
             return false, nil
         }
@@ -119,14 +122,38 @@ func runForm(height int, fields ...huh.Field) (bool, error) {
 
 The width comes from `term.GetSize` on stdout, then `COLUMNS`, then a default of 80, with 24 as the floor. huh otherwise pins every field to `defaultWidth = 80` (`huh@v2.0.3 form.go:20,130`), so a prompt on a 200-column terminal renders into the left 80 and wraps a value that had room to sit on one line.
 
-The height is fixed rather than left to grow. huh adds a blank line and an error line when a `Validate` fails, and bubbletea's inline renderer moves the cursor up by the previous frame's line count, so the grown frame is only partly erased and each attempt stacks another copy on screen. A constant height makes every frame the same size and the redraw lands in place. A field with no `Validate` reserves no error line.
+A list is sized to its contents, capped at ten rows. huh pads a `Height` larger than the option count with blank rows, so a three-option picker declaring ten leaves seven empty lines under it.
 
-| Helper | Height |
-|---|---|
-| `PromptInput`, `PromptPassword` | `2` |
-| the same with a `Validate` | `4` |
-| `PromptConfirm` | `3` |
-| `PromptSelect`, `PromptMultiSelect` | the list height plus `2` |
+```go
+func listSize(n int) int { return min(max(n, 1), 10) }
+```
+
+`WithShowErrors(false)` is what keeps a failed `Validate` from stacking. huh renders its error footer outside the region bubbletea's inline renderer accounts for, so the frame grows, the redraw moves up by the smaller count, and every attempt leaves its predecessor on screen. Neither a form height nor a group height changes that, because the footer is outside both.
+
+The error goes in the field's own description instead, which is inside the counted region, and the line is held open with a space so the frame never changes size.
+
+```go
+func Hint(value *string, validate func(string) error) func() string {
+    return func() string {
+        if *value == "" {
+            return " "
+        }
+        if err := validate(*value); err != nil {
+            return "! " + err.Error()
+        }
+        return " "
+    }
+}
+```
+
+```go
+huh.NewInput().Title("Port:").
+    Validate(validate).
+    DescriptionFunc(Hint(&value, validate), &value).
+    Value(&value)
+```
+
+The `Validate` stays on the field whatever the description says, since it is what stops the form advancing on a bad value.
 
 `Escape` cancels only once it is bound. huh's default keymap binds `Quit` to `ctrl+c` alone (`huh@v2.0.3 keymap.go:109`), and leaves `esc` on the disabled Back and Close actions, so an unbound Escape does nothing and the user presses Enter to escape a prompt they wanted to abandon.
 
