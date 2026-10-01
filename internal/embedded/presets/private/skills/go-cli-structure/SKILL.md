@@ -235,7 +235,7 @@ Run: func(cmd *cobra.Command, args []string) {
 
 Everywhere else `RunE` costs two things. `PrintFatal(msg, err)` carries a human label and the wrapped error separately, which is what lets the normal tier show the label alone while `--debug` shows the chain, and a returned `error` collapses both into one string. Cobra then prints `Error: <err>` followed by the entire usage block (`cobra@v1.10.2 command.go:1159-1167`), burying the message under a wall of flags.
 
-A tree that uses `RunE` anywhere sets both silences on the root and reports the error itself, which arrives back at `PrintFatal`:
+A tree that uses `RunE` anywhere sets both silences on the root and reports the error itself:
 
 ```go
 func init() {
@@ -245,10 +245,17 @@ func init() {
 
 func Execute() {
     if err := rootCmd.Execute(); err != nil {
-        u.PrintFatal("Command failed", err)
+        fmt.Fprintln(os.Stderr, err)
+        os.Exit(2)
     }
 }
 ```
+
+The error prints as itself rather than through `PrintFatal`. Cobra returns a parse failure from `Execute` on the same path as a `RunE` error, and `PrintError` renders only its label in the normal tier, so an unknown flag or a wrong argument count reports `Command failed` with the reason reachable only under `--debug`.
+
+A flag-parse failure also arrives before `setupLogs` has run, so the printer's output tiers are not set yet when it does.
+
+The exit code is distinct from the `1` that `PrintFatal` uses, which lets a caller tell a malformed invocation from a command that ran and failed.
 
 ## Subcommand Package
 

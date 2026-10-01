@@ -1,125 +1,51 @@
 ---
 name: go-cli-prompts
-description: Interactive input for Go CLI tools - when a prompt is the right channel at all, how a value resolves from a flag then stdin then a prompt, the shared stdin resolver behind a flag given -, the utils prompt helpers, and the ErrNoTerminal contract that keeps every command scriptable. Use when a command needs to ask the user something, when building or changing utils/input.go, when piping a secret or a file into a command, or when adding a password, free-text, or selection prompt. Triggers on PromptInput, PromptPassword, PromptTextArea, PromptSelect, PromptMultiSelect, ResolveStdin, MarkStdinLine, MarkStdinStream, SetAnnotation, ErrNoTerminal, StdinIsTerminal, a flag whose value is -, bubbletea textinput, and textarea.
+description: Interactive input for Go CLI tools - the symmetry rule that every prompted value also has a flag, the huh fields behind the utils prompt helpers, a masked secret that reveals its tail, grouped forms, and the ErrNoTerminal contract that keeps every command headless. Use when a command needs to ask the user something, when building or changing utils/input.go, or when adding a text, secret, confirm, selection, or multi-field prompt. Triggers on PromptInput, PromptPassword, PromptTextArea, PromptSelect, PromptMultiSelect, PromptConfirm, huh.NewInput, huh.NewSelect, huh.NewConfirm, huh.NewForm, ErrNoTerminal, StdinIsTerminal, and MarkFlagRequired on a prompted flag.
 user-invocable: false
 ---
 
 # Go CLI Prompts
 
-**A prompt is a convenience for someone at a keyboard, never the only way to supply a value.**
+**Every value a prompt collects also arrives through a flag, so the same command runs unattended, and a prompt that cannot open names the flag that would have replaced it.**
 
-Interactive input is the exception rather than the default channel. Reach for it only when the value is unreasonable to type on a command line, such as a choice among options the user has not seen yet, or a secret that would otherwise sit in shell history. Everything else is a flag.
+## The Symmetry Rule
 
-## The Rule
+A prompt exists only for a value that a flag also supplies. A tool driven from a script, a scheduler, or a chat interface has no terminal, so a value reachable only by a prompt is a value those callers cannot provide at all.
 
-Every prompt has a flag, or a positional argument, that supplies the same value and skips it. Without one the command is unusable from a script, a cron job, or an agent, and no amount of terminal polish makes up for that.
+The rule is one-directional. A flag needs no prompt, and most flags have none; what never exists is a prompt without its flag.
 
-A flag whose value has a prompt is never `MarkFlagRequired`. Cobra rejects the invocation before `Run` is reached, so the prompt never runs and the flag it was meant to make optional is mandatory after all. The resolution below enforces the requirement instead, and its failure message names every path that would have worked.
+A flag whose value has a prompt is never marked required. Cobra validates required flags at `command.go:1007` and reaches `c.Run` at `:1019` (`cobra@v1.10.2`), so the invocation is rejected before the prompt could run and the flag meant to be optional is mandatory after all. The requirement is enforced inside `Run` instead, at the point the value turns out to be missing.
 
-Every value that can arrive more than one way resolves in one order:
+A value resolves in two steps, and the absence of the flag is the whole trigger.
 
 | The flag holds | The value comes from |
 |---|---|
 | a value | the flag itself |
-| `-` | stdin, in the flag's marked mode |
-| nothing | the prompt, when one exists |
-| nothing, and no prompt exists or no terminal | an error naming every path that would have worked |
+| nothing | the prompt |
+| nothing, and there is no terminal | an error naming the flag that would have worked |
 
 ```go
-password := addFlags.password
-if password == "" {
-    entered, err := u.PromptPassword("Password:")
+account := launchFlags.account
+if account == "" {
+    idx, err := u.PromptSelect("Account", labels)
     if errors.Is(err, u.ErrNoTerminal) {
-        u.PrintFatal("add needs --password, or --password - to read it from stdin", nil)
+        u.PrintFatal("launch needs --account when there is no interactive terminal", nil)
     }
     if err != nil {
         u.PrintFatal("TUI error", err)
     }
-    password = entered
+    if idx < 0 {
+        return
+    }
+    account = accounts[idx]
 }
 ```
 
-The `-` case is absent from that body because the resolver has already replaced the flag's value by the time `Run` runs.
-
-## The Stdin Resolver
-
-One implementation in `utils` covers every stdin-eligible flag in the tool, so no command hand-rolls the reading and a review looks for the marking rather than for correct parsing.
-
-Eligibility is a pflag annotation carrying the read mode (`pflag@v1.0.9 flag.go:519`):
-
-```go
-const stdinAnnotation = "stdin"
-
-func MarkStdinLine(cmd *cobra.Command, name string) error {
-    return cmd.Flags().SetAnnotation(name, stdinAnnotation, []string{"line"})
-}
-
-func MarkStdinStream(cmd *cobra.Command, name string) error {
-    return cmd.Flags().SetAnnotation(name, stdinAnnotation, []string{"stream"})
-}
-```
-
-```go
-func ResolveStdin(cmd *cobra.Command) error {
-    var target *pflag.Flag
-    var mode string
-    var err error
-    cmd.Flags().VisitAll(func(f *pflag.Flag) {
-        modes, ok := f.Annotations[stdinAnnotation]
-        if !ok || len(modes) == 0 || !f.Changed || f.Value.String() != "-" {
-            return
-        }
-        if target != nil {
-            err = fmt.Errorf("only one flag can read stdin: --%s and --%s were both given -", target.Name, f.Name)
-            return
-        }
-        target, mode = f, modes[0]
-    })
-    if err != nil || target == nil {
-        return err
-    }
-    if StdinIsTerminal {
-        return fmt.Errorf("--%s was given - but nothing is piped into stdin", target.Name)
-    }
-
-    var value string
-    if mode == "line" {
-        line, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
-        if readErr != nil && !errors.Is(readErr, io.EOF) {
-            return readErr
-        }
-        value = strings.TrimRight(line, "\r\n")
-    } else {
-        data, readErr := io.ReadAll(os.Stdin)
-        if readErr != nil {
-            return readErr
-        }
-        value = strings.TrimRight(string(data), "\r\n")
-    }
-    if value == "" {
-        return fmt.Errorf("--%s was given - but stdin was empty", target.Name)
-    }
-    return target.Value.Set(value)
-}
-```
-
-`TrimRight` on the line endings rather than `TrimSpace`, because `echo` appends a newline that is not part of the value while a password may legitimately end in a space. An empty result is an error rather than an empty value, since storing nothing and reporting success is the failure nobody notices until they need the value back.
-
-One walk covers the whole invocation: `cmd.Flags()` holds the command's own flags and every persistent flag inherited from its parents, merged just before parsing (`cobra@v1.10.2 command.go:1877`).
-
-The resolver is wired once, on the root:
-
-```go
-rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-    return u.ResolveStdin(cmd)
-}
-```
-
-Cobra runs the closest `PersistentPreRunE` it finds walking up from the matched command and stops there (`cobra@v1.10.2 command.go:984-997`), so a subcommand defining its own hook turns the resolver off for its whole subtree and calls `u.ResolveStdin(cmd)` first thing inside that hook to put it back. Running before Cobra validates required flags and flag groups is what lets a value that arrived through the pipe count as present for both.
+Reading a value from a pipe is not part of this surface. A command that genuinely needs piped input reads it with a `bufio.Reader` in that command, as a decision local to the one tool that needs it.
 
 ## No Terminal
 
-Every helper checks stdin before opening a bubbletea program and returns `ErrNoTerminal` when there is not one, so a piped or backgrounded invocation fails immediately instead of hanging on a read nobody will satisfy.
+Every helper checks `StdinIsTerminal` before opening a program and returns `ErrNoTerminal` when there is not one, so a piped or backgrounded invocation fails immediately rather than hanging on a read nobody will satisfy.
 
 ```go
 var ErrNoTerminal = errors.New("no interactive terminal")
@@ -132,17 +58,9 @@ func PromptSelect(label string, options []string) (int, error) {
 }
 ```
 
-The command decides what that means. A prompt with a documented default takes it; a prompt without one fails naming the flag that would have supplied the answer, which is the whole message the caller needs:
+The message reads `<command> needs <flag> when there is no interactive terminal`. Naming the flag ends the problem in one line, where a message saying only that input was expected sends the caller to `--help` to work out which flag it was.
 
-```go
-picked, err := u.PromptMultiSelect("Presets", labels)
-if errors.Is(err, u.ErrNoTerminal) {
-    u.PrintFatal("apply-preset needs a preset name when there is no interactive terminal", nil)
-}
-if err != nil {
-    u.PrintFatal("TUI error", err)
-}
-```
+A prompt with a documented default takes that default instead of failing, since a default is an answer the command already has.
 
 A command that cannot work without a terminal at all, because it hands the session to another program, says so once at the top of `Run` rather than at each prompt.
 
@@ -150,202 +68,223 @@ A command that cannot work without a terminal at all, because it hands the sessi
 
 | Helper | Behavior | Returns |
 |---|---|---|
-| `PromptInput(prompt, placeholder)` | single-line textinput | `(string, error)` |
-| `PromptPassword(prompt)` | masked textinput | `(string, error)` |
-| `PromptTextArea(prompt, placeholder)` | multi-line textarea, Ctrl+D submits | `(string, error)` |
-| `PromptSelect(label, options)` | single-choice list | `(int, error)`, `-1` on cancel |
-| `PromptMultiSelect(label, options)` | multi-choice list, space toggles | `(map[int]bool, error)`, `nil` on cancel |
+| `PromptInput(prompt, placeholder)` | single-line text | `(string, error)` |
+| `PromptPassword(prompt)` | masked text, echoes a masked summary after entry | `(string, error)` |
+| `PromptTextArea(prompt, placeholder)` | multi-line text | `(string, error)` |
+| `PromptSelect(label, options)` | single choice | `(int, error)`, `-1` on cancel |
+| `PromptMultiSelect(label, options)` | multiple choices, space toggles | `(map[int]bool, error)`, `nil` on cancel |
+| `PromptConfirm(prompt)` | yes or no | `(bool, error)` |
 
-Every cancel path is a clean no-op abort: `idx < 0` from `PromptSelect` and a `nil` map from `PromptMultiSelect` mean the user pressed Escape, and treating that as an empty selection would run the operation they just declined.
+Every cancel path is a clean no-op abort. `idx < 0` from `PromptSelect` and a `nil` map from `PromptMultiSelect` mean the user pressed Escape, and treating that as an empty selection runs the operation they just declined.
 
-A password returned from `PromptPassword` never reaches a `Print` function, because the debug tier writes it into a log that outlives the session.
+Reusing these helpers rather than building a prompt per command is what keeps the key bindings identical across a tool: arrows or `j`/`k` to move, Enter to confirm, Escape to cancel, and space to toggle in the multi variant.
 
-## Single-Line Input
+## Building the Helpers
 
-One bubbletea model serves both `PromptInput` and `PromptPassword`; the password variant only sets `EchoMode`.
+Each helper wraps one `huh` field. A field constructed and run in one chain replaces a hand-written bubbletea model, and the model is where every divergence between two prompts in the same tool comes from.
 
 ```go
-type inputModel struct {
-    textInput textinput.Model
-    done      bool
-    value     string
-    initCmd   tea.Cmd
-}
-
-func (m inputModel) Init() tea.Cmd { return m.initCmd }
-
-func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    var cmd tea.Cmd
-    switch msg := msg.(type) {
-    case tea.KeyPressMsg:
-        switch msg.String() {
-        case "enter":
-            m.value = m.textInput.Value()
-            m.done = true
-            return m, tea.Quit
-        case "ctrl+c", "esc":
-            m.done = true
-            return m, tea.Quit
-        }
-    }
-    m.textInput, cmd = m.textInput.Update(msg)
-    return m, cmd
-}
-
-func (m inputModel) View() tea.View {
-    if m.done {
-        return tea.NewView("")
-    }
-    return tea.NewView(m.textInput.View())
-}
-
 func PromptInput(prompt, placeholder string) (string, error) {
     if !StdinIsTerminal {
         return "", ErrNoTerminal
     }
-    ti := textinput.New()
-    ti.Placeholder = placeholder
-    ti.Prompt = prompt + " "
-    m := inputModel{textInput: ti, initCmd: ti.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
-    if err != nil {
+    var value string
+    ok, err := runForm(huh.NewInput().Title(prompt).Placeholder(placeholder).Value(&value))
+    if err != nil || !ok {
         return "", err
     }
-    return strings.TrimSpace(final.(inputModel).value), nil
-}
-
-func PromptPassword(prompt string) (string, error) {
-    if !StdinIsTerminal {
-        return "", ErrNoTerminal
-    }
-    ti := textinput.New()
-    ti.Placeholder = "••••••••"
-    ti.Prompt = prompt + " "
-    ti.EchoMode = textinput.EchoPassword
-    m := inputModel{textInput: ti, initCmd: ti.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
-    if err != nil {
-        return "", err
-    }
-    return final.(inputModel).value, nil
+    return strings.TrimSpace(value), nil
 }
 ```
 
-`PromptPassword` skips the `TrimSpace` that `PromptInput` applies, since a trailing space can be part of a password and silently removing it produces an authentication failure nobody can explain.
-
-A secret also arrives from an environment variable, the config directory, or a pipe through `--password -`, and a prompt is the fallback for a first run rather than the only path.
-
-## Multi-Line Input
-
-`PromptTextArea` submits on Ctrl+D rather than Enter, because Enter has to stay available for the newlines that make the field multi-line.
+One `runForm` carries the theme, the key bindings, the width, and the error handling for every helper. `huh.Run(field)` wraps a bare field in a group and form with help suppressed (`huh@v2.0.3 run.go:4-8`) but exposes no hook for any of those, so the form is built directly.
 
 ```go
-func (m textAreaModel) View() tea.View {
-    if m.done {
-        return tea.NewView("")
-    }
-    return tea.NewView(m.textarea.View() + "\n(Ctrl+D to submit, Esc to cancel)")
+func Form(groups ...*huh.Group) *huh.Form {
+    return huh.NewForm(groups...).
+        WithTheme(theme()).
+        WithKeyMap(keymap()).
+        WithShowHelp(false).
+        WithShowErrors(false).
+        WithWidth(Width())
 }
 
-func PromptTextArea(prompt, placeholder string) (string, error) {
-    if !StdinIsTerminal {
-        return "", ErrNoTerminal
-    }
-    PrintInfo(prompt)
-
-    ta := textarea.New()
-    ta.Placeholder = placeholder
-    m := textAreaModel{textarea: ta, initCmd: ta.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
-    if err != nil {
-        return "", err
-    }
-    return strings.TrimSpace(final.(textAreaModel).value), nil
-}
-```
-
-The `Update` method mirrors `inputModel`, matching `"ctrl+d"` for submit instead of `"enter"`.
-
-A body of text that a script would supply comes through `--body-file`, given a path or `-`, rather than through this prompt, since a here-doc aimed at a TUI is not input the program can read.
-
-## Selection
-
-Both selectors share one model that tracks a cursor and, for the multi variant, a set of toggled indices. Reusing the shared helpers rather than hand-rolling a bubbletea model per command is what keeps the key bindings identical everywhere: arrows or `j`/`k` to move, Enter to confirm, Escape or Ctrl+C to cancel, and space to toggle in the multi variant.
-
-```go
-type selectModel struct {
-    label    string
-    options  []string
-    cursor   int
-    chosen   map[int]bool // nil for single-choice
-    multi    bool
-    done     bool
-    canceled bool
-}
-
-func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    key, ok := msg.(tea.KeyPressMsg)
-    if !ok {
-        return m, nil
-    }
-    switch key.String() {
-    case "up", "k":
-        m.cursor = max(m.cursor-1, 0)
-    case "down", "j":
-        m.cursor = min(m.cursor+1, len(m.options)-1)
-    case " ":
-        if m.multi {
-            m.chosen[m.cursor] = !m.chosen[m.cursor]
+func runForm(fields ...huh.Field) (bool, error) {
+    if err := Form(huh.NewGroup(fields...)).Run(); err != nil {
+        if errors.Is(err, huh.ErrUserAborted) {
+            return false, nil
         }
-    case "enter":
-        m.done = true
-        return m, tea.Quit
-    case "esc", "ctrl+c":
-        m.canceled = true
-        return m, tea.Quit
+        return false, err
     }
-    return m, nil
+    return true, nil
 }
+```
 
-// View renders the label, then one line per option: a "> " marker on the cursor
-// row, and for the multi variant a "[x]"/"[ ]" box reflecting m.chosen.
+The width comes from `term.GetSize` on stdout, then `COLUMNS`, then a default of 80, with 24 as the floor. huh otherwise pins every field to `defaultWidth = 80` (`huh@v2.0.3 form.go:20,130`), so a prompt on a 200-column terminal renders into the left 80 and wraps a value that had room to sit on one line.
+
+A list is sized to its contents, capped at ten rows. huh pads a `Height` larger than the option count with blank rows, so a three-option picker declaring ten leaves seven empty lines under it.
+
+```go
+func listSize(n int) int { return min(max(n, 1), 10) }
+```
+
+`WithShowErrors(false)` is what keeps a failed `Validate` from stacking. huh renders its error footer outside the region bubbletea's inline renderer accounts for, so the frame grows, the redraw moves up by the smaller count, and every attempt leaves its predecessor on screen. Neither a form height nor a group height changes that, because the footer is outside both.
+
+The error goes in the field's own description instead, which is inside the counted region, and the line is held open with a space so the frame never changes size.
+
+```go
+func Hint(value *string, validate func(string) error) func() string {
+    return func() string {
+        if *value == "" {
+            return " "
+        }
+        if err := validate(*value); err != nil {
+            return "! " + err.Error()
+        }
+        return " "
+    }
+}
 ```
 
 ```go
-func PromptSelect(label string, options []string) (int, error) {
-    if !StdinIsTerminal {
-        return -1, ErrNoTerminal
-    }
-    final, err := tea.NewProgram(selectModel{label: label, options: options}).Run()
-    if err != nil {
-        return -1, err
-    }
-    m := final.(selectModel)
-    if m.canceled {
-        return -1, nil
-    }
-    return m.cursor, nil
-}
+huh.NewInput().Title("Port:").
+    Validate(validate).
+    DescriptionFunc(Hint(&value, validate), &value).
+    Value(&value)
+```
 
-func PromptMultiSelect(label string, options []string) (map[int]bool, error) {
-    if !StdinIsTerminal {
-        return nil, ErrNoTerminal
-    }
-    final, err := tea.NewProgram(selectModel{
-        label: label, options: options, chosen: map[int]bool{}, multi: true,
-    }).Run()
-    if err != nil {
-        return nil, err
-    }
-    m := final.(selectModel)
-    if m.canceled {
-        return nil, nil
-    }
-    return m.chosen, nil
+The `Validate` stays on the field whatever the description says, since it is what stops the form advancing on a bad value.
+
+`Escape` cancels only once it is bound. huh's default keymap binds `Quit` to `ctrl+c` alone (`huh@v2.0.3 keymap.go:109`), and leaves `esc` on the disabled Back and Close actions, so an unbound Escape does nothing and the user presses Enter to escape a prompt they wanted to abandon.
+
+```go
+func keymap() *huh.KeyMap {
+    k := huh.NewDefaultKeyMap()
+    k.Quit = key.NewBinding(key.WithKeys("ctrl+c", "esc"))
+    return k
 }
 ```
 
-The flag behind a selector names the option rather than its position, because a positional index shifts the moment the option list grows and a script written against it then picks the wrong one.
+`ThemeBase16` is the closest theme to a tool's own colors, because the fields it overrides use ANSI indices which the user's terminal theme remaps, where `ThemeCharm` and `ThemeCatppuccin` carry hex values that override that theme and fight it. It is not wholly base16: it builds on `ThemeBase` (`huh@v2.0.3 theme.go:241`) and inherits whatever it does not set.
+
+The focused button is the one inherited style worth replacing. `ThemeBase16` leaves it light grey on magenta (`theme.go:259`), which is two bright colors with nothing between them, so the active choice in a confirm is the harder of the two to read.
+
+```go
+func theme() huh.Theme {
+    return huh.ThemeFunc(func(isDark bool) *huh.Styles {
+        s := huh.ThemeBase16(isDark)
+        s.Focused.FocusedButton = s.Focused.FocusedButton.
+            Foreground(lipgloss.Color("0")).Background(lipgloss.Color("5"))
+        s.Blurred.FocusedButton = s.Focused.FocusedButton
+        return s
+    })
+}
+```
+
+The field type follows the value being collected.
+
+| Helper | Field |
+|---|---|
+| `PromptInput` | `huh.NewInput()` |
+| `PromptPassword` | `huh.NewInput().EchoMode(huh.EchoModePassword)` |
+| `PromptTextArea` | `huh.NewText()` |
+| `PromptSelect` | `huh.NewSelect[int]()` |
+| `PromptMultiSelect` | `huh.NewMultiSelect[int]()` |
+| `PromptConfirm` | `huh.NewConfirm()` |
+
+A list longer than its visible window gets a filter field above it, and the matcher is the tool's own. huh's built-in `Filtering` matches one plain substring through an unexported method with no hook (`huh@v2.0.3 field_select.go:736-739`), so `fix front` finds nothing in a list full of `fix/frontend-border-revert`.
+
+```go
+func Matches(option, query string) bool {
+    if strings.TrimSpace(query) == "" {
+        return true
+    }
+    o := strings.ToLower(option)
+    for _, word := range strings.Fields(strings.ToLower(query)) {
+        if !strings.Contains(o, word) {
+            return false
+        }
+    }
+    return true
+}
+```
+
+Every whitespace-separated word matches as a substring in any order, which is how a user recalls an item they have seen rather than one they can spell from the left. The filter is an ordinary `huh.NewInput` bound to the query, and the list re-narrows through `OptionsFunc` with that query as its binding.
+
+```go
+filter := huh.NewInput().Title("Filter").Value(&query)
+field.OptionsFunc(func() []huh.Option[int] { return filtered(options, query) }, &query)
+```
+
+A rule about the value belongs on the field rather than in the caller, because a prompt that rejects a bad answer on the spot keeps the user in the one place they can fix it.
+
+```go
+huh.NewInput().
+    Title("Port:").
+    Validate(func(s string) error {
+        n, err := strconv.Atoi(s)
+        if err != nil || n < 1 || n > 65535 {
+            return errors.New("must be a port between 1 and 65535")
+        }
+        return nil
+    }).
+    Value(&port)
+```
+
+A multi-line value that a user will compose rather than paste takes `huh.NewText().ExternalEditor(true)`, which opens `$EDITOR` and reads the buffer back. A terminal textarea is the right surface for three lines and the wrong one for thirty.
+
+## Secrets
+
+A secret is masked while it is typed and echoed as a masked summary once it is submitted. A pasted credential is the common case and a silent, fully hidden field gives the user no way to tell a truncated paste from a complete one.
+
+```go
+func MaskSecret(s string) string {
+    if len(s) <= 8 {
+        return strings.Repeat("•", 8)
+    }
+    return strings.Repeat("•", 8) + s[len(s)-4:]
+}
+```
+
+The tail appears only above eight characters, so a short secret is never mostly revealed by its own confirmation.
+
+The masked form goes through `PrintGeneric`, and the value itself goes through no printer at all. Every other printer branches to the debug tier, which writes the string into a log that outlives the session.
+
+A flag carrying a secret says so in its help text, naming both that the value is prompted when the flag is absent and that passing it inline is visible in shell history and in `ps` output for the life of the process.
+
+```go
+cmd.Flags().StringVar(&flags.password, "password", "",
+    "Account password; prompted when omitted, and visible in shell history when passed inline")
+```
+
+## Forms
+
+A form collects several values belonging to one object in a single pass. A sequence of separate prompts is right for values a command gathers independently, and wrong for a set the user is filling in together, because each prompt closes before the next opens and nothing they typed stays on screen.
+
+```go
+var (
+    name    string
+    exec    string
+    restart string
+    enable  bool
+)
+
+form := huh.NewForm(
+    huh.NewGroup(
+        huh.NewInput().Title("Unit name:").Value(&name).Validate(nonEmpty),
+        huh.NewInput().Title("ExecStart:").Value(&exec).Validate(nonEmpty),
+        huh.NewSelect[string]().Title("Restart:").
+            Options(huh.NewOptions("no", "on-failure", "always")...).
+            Value(&restart),
+        huh.NewConfirm().Title("Enable at boot?").Value(&enable),
+    ),
+).WithTheme(huh.ThemeFunc(huh.ThemeBase16))
+
+if err := form.Run(); err != nil {
+    return err
+}
+```
+
+Every field in a form still answers to a flag of its own. A form is a convenience for someone at a keyboard, so a command offering one accepts the whole set as flags and skips the form when they are present.
+
+A form bound to values with `Value(&v)` needs no key lookups afterward. `form.GetString(key)` exists for a field declared with `Key`, and reaching for it when a pointer was already bound adds a second place the same value lives.
