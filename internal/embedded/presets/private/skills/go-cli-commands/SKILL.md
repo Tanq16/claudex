@@ -62,9 +62,24 @@ A flag whose value has an interactive prompt behind it is never marked required.
 An environment variable supplies a default rather than being read inside `Run`, which is what puts the flag above it in precedence and makes `--help` show the value the command will actually use. A variable the tool owns is namespaced with the tool's name; one belonging to another tool keeps that tool's name.
 
 ```go
-defaultToken := os.Getenv("GITHUB_TOKEN")
-cmd.Flags().StringVarP(&flags.token, "token", "t", defaultToken, "GitHub token (or GITHUB_TOKEN env)")
+defaultRegion := os.Getenv("AWS_REGION")
+cmd.Flags().StringVarP(&flags.region, "region", "r", defaultRegion, "AWS region (or AWS_REGION env)")
 ```
+
+A secret is the exception and never becomes a flag default. pflag appends `(default %q)` to a string flag's usage line whenever the default is non-empty (`pflag@v1.0.9 flag.go:753-757`), so `--help` prints the live credential into screenshots, terminal logs, and pasted output. The flag registers empty and the variable is read inside `Run`, where the value reaches no help text.
+
+```go
+cmd.Flags().StringVarP(&flags.token, "token", "t", "", "GitHub token (or GITHUB_TOKEN env)")
+```
+
+```go
+token := cmp.Or(flags.token, os.Getenv("GITHUB_TOKEN"))
+if token == "" {
+    u.PrintFatal("send needs --token, or GITHUB_TOKEN in the environment", nil)
+}
+```
+
+`cmp.Or` returns the first argument that is not the zero value, so the precedence reads as the one line it is rather than an if-else chain.
 
 Three markers state a relationship between flags that Cobra enforces at parse time, which is where the caller can still fix it (`cobra@v1.10.2 flag_groups.go`):
 
