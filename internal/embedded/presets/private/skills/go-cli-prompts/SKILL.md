@@ -89,26 +89,70 @@ func PromptInput(prompt, placeholder string) (string, error) {
         return "", ErrNoTerminal
     }
     var value string
-    field := huh.NewInput().Title(prompt).Placeholder(placeholder).Value(&value)
-    if err := runField(field); err != nil {
+    ok, err := runForm(2, huh.NewInput().Title(prompt).Placeholder(placeholder).Value(&value))
+    if err != nil || !ok {
         return "", err
     }
     return strings.TrimSpace(value), nil
 }
 ```
 
-One `runField` carries the theme for every helper. `huh.Run(field)` wraps a bare field in a group and form with help suppressed (`huh@v2.0.3 run.go:4-8`) and exposes no theme hook, so the form is built directly wherever styling matters.
+One `runForm` carries the theme, the key bindings, the width, and the height for every helper. `huh.Run(field)` wraps a bare field in a group and form with help suppressed (`huh@v2.0.3 run.go:4-8`) but exposes no hook for any of those, so the form is built directly.
 
 ```go
-func runField(field huh.Field) error {
-    return huh.NewForm(huh.NewGroup(field)).
-        WithTheme(huh.ThemeFunc(huh.ThemeBase16)).
+func runForm(height int, fields ...huh.Field) (bool, error) {
+    form := huh.NewForm(huh.NewGroup(fields...)).
+        WithTheme(theme()).
+        WithKeyMap(keymap()).
         WithShowHelp(false).
-        Run()
+        WithWidth(Width()).
+        WithHeight(height)
+    if err := form.Run(); err != nil {
+        if errors.Is(err, huh.ErrUserAborted) {
+            return false, nil
+        }
+        return false, err
+    }
+    return true, nil
 }
 ```
 
-`ThemeBase16` is the theme that matches a tool's own colors, because it styles with ANSI indices (`lipgloss.Color("0")` through `("8")` at `huh@v2.0.3 theme.go:121-123`) which the user's terminal theme remaps. `ThemeCharm` and `ThemeCatppuccin` carry hex values that override that theme and fight it.
+The width comes from `term.GetSize` on stdout, then `COLUMNS`, then a default of 80, with 24 as the floor. huh otherwise pins every field to `defaultWidth = 80` (`huh@v2.0.3 form.go:20,130`), so a prompt on a 200-column terminal renders into the left 80 and wraps a value that had room to sit on one line.
+
+The height is fixed rather than left to grow. huh adds a blank line and an error line when a `Validate` fails, and bubbletea's inline renderer moves the cursor up by the previous frame's line count, so the grown frame is only partly erased and each attempt stacks another copy on screen. A constant height makes every frame the same size and the redraw lands in place. A field with no `Validate` reserves no error line.
+
+| Helper | Height |
+|---|---|
+| `PromptInput`, `PromptPassword` | `2` |
+| the same with a `Validate` | `4` |
+| `PromptConfirm` | `3` |
+| `PromptSelect`, `PromptMultiSelect` | the list height plus `2` |
+
+`Escape` cancels only once it is bound. huh's default keymap binds `Quit` to `ctrl+c` alone (`huh@v2.0.3 keymap.go:109`), and leaves `esc` on the disabled Back and Close actions, so an unbound Escape does nothing and the user presses Enter to escape a prompt they wanted to abandon.
+
+```go
+func keymap() *huh.KeyMap {
+    k := huh.NewDefaultKeyMap()
+    k.Quit = key.NewBinding(key.WithKeys("ctrl+c", "esc"))
+    return k
+}
+```
+
+`ThemeBase16` is the closest theme to a tool's own colors, because the fields it overrides use ANSI indices which the user's terminal theme remaps, where `ThemeCharm` and `ThemeCatppuccin` carry hex values that override that theme and fight it. It is not wholly base16: it builds on `ThemeBase` (`huh@v2.0.3 theme.go:241`) and inherits whatever it does not set.
+
+The focused button is the one inherited style worth replacing. `ThemeBase16` leaves it light grey on magenta (`theme.go:259`), which is two bright colors with nothing between them, so the active choice in a confirm is the harder of the two to read.
+
+```go
+func theme() huh.Theme {
+    return huh.ThemeFunc(func(isDark bool) *huh.Styles {
+        s := huh.ThemeBase16(isDark)
+        s.Focused.FocusedButton = s.Focused.FocusedButton.
+            Foreground(lipgloss.Color("0")).Background(lipgloss.Color("5"))
+        s.Blurred.FocusedButton = s.Focused.FocusedButton
+        return s
+    })
+}
+```
 
 The field type follows the value being collected.
 
@@ -120,6 +164,30 @@ The field type follows the value being collected.
 | `PromptSelect` | `huh.NewSelect[int]()` |
 | `PromptMultiSelect` | `huh.NewMultiSelect[int]()` |
 | `PromptConfirm` | `huh.NewConfirm()` |
+
+A list longer than its visible window gets a filter field above it, and the matcher is the tool's own. huh's built-in `Filtering` matches one plain substring through an unexported method with no hook (`huh@v2.0.3 field_select.go:736-739`), so `fix front` finds nothing in a list full of `fix/frontend-border-revert`.
+
+```go
+func Matches(option, query string) bool {
+    if strings.TrimSpace(query) == "" {
+        return true
+    }
+    o := strings.ToLower(option)
+    for _, word := range strings.Fields(strings.ToLower(query)) {
+        if !strings.Contains(o, word) {
+            return false
+        }
+    }
+    return true
+}
+```
+
+Every whitespace-separated word matches as a substring in any order, which is how a user recalls an item they have seen rather than one they can spell from the left. The filter is an ordinary `huh.NewInput` bound to the query, and the list re-narrows through `OptionsFunc` with that query as its binding.
+
+```go
+filter := huh.NewInput().Title("Filter").Value(&query)
+field.OptionsFunc(func() []huh.Option[int] { return filtered(options, query) }, &query)
+```
 
 A rule about the value belongs on the field rather than in the caller, because a prompt that rejects a bad answer on the spot keeps the user in the one place they can fix it.
 
