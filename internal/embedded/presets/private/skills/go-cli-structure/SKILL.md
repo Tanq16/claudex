@@ -1,6 +1,6 @@
 ---
 name: go-cli-structure
-description: The shape of a Go CLI's command tree - main.go, the root command for each project type, Execute and the exit path, a command file, the Run body, Run against RunE, and subcommand packages. Use when scaffolding a Go CLI, writing or changing cmd/root.go, adding a command file or a subcommand package, wiring setupLogs and --debug, or deciding whether a command returns an error. Triggers on main.go, cmd/root.go, cobra.Command, rootCmd, Execute, AddCommand, cobra.OnInitialize, setupLogs, CompletionOptions, SetHelpCommand, SilenceErrors, SilenceUsage, Run, RunE, cmd/ packages, and AppVersion ldflags injection. Not for flag conventions, positional arguments, or a flag reading stdin.
+description: The shape of a Go CLI's command tree - main.go, the root command for each project type, Execute and the exit path, a command file, the Run body, Run against RunE, and subcommand packages. Use when scaffolding a Go CLI, writing or changing cmd/root.go, adding a command file or a subcommand package, wiring setupLogs and --debug, or deciding whether a command returns an error. Triggers on main.go, cmd/root.go, cobra.Command, rootCmd, Execute, AddCommand, cobra.OnInitialize, setupLogs, CompletionOptions, SetHelpCommand, SilenceErrors, SilenceUsage, Run, RunE, cmd/ packages, and AppVersion ldflags injection. Not for flag conventions or positional arguments.
 user-invocable: false
 ---
 
