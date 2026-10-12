@@ -42,12 +42,9 @@ Several checks invert by project type: the same construct is required in CLI Onl
 | Enum flags validate at parse time | Grep each `Run` for a switch or an `if` rejecting a flag value; that check belongs in a `pflag.Value` registered with `Var` |
 | Flag relationships | Grep for `MarkFlagRequired`, `MarkFlagsRequiredTogether`, `MarkFlagsOneRequired`, and `MarkFlagsMutuallyExclusive`; read each `Run` for hand-rolled validation that should be one of them |
 | A prompted flag is not required | For each flag with a prompt behind it, check the command does not call `MarkFlagRequired` on it |
-| `Run` against `RunE` | Grep `cmd/` for `RunE`; each one has a `defer` in its body, and the root sets `SilenceErrors` and `SilenceUsage` with `Execute` reporting through `PrintFatal` |
+| `Run` against `RunE` | Grep `cmd/` for `RunE`; each one has a `defer` in its body, and the root sets `SilenceErrors` and `SilenceUsage` with `Execute` printing the error to stderr and exiting 2 |
 | Every prompt has a flag | For each prompt call site, check the command registers a flag or accepts a positional supplying the same value |
-| Stdin is marked, never inferred | Grep for `os.Stdin`, `io.ReadAll`, and `bufio.NewScanner` outside the resolver; every read is reached through a marked flag whose value is `-`, never through a terminal check |
-| Read mode matches the value's shape | For each `MarkStdinLine` and `MarkStdinStream`, check `line` sits on a flag whose value is inherently single and `stream` only on a `<thing>-file` flag |
-| Multi-line values are `-file` flags | For each flag whose value can span lines, check the bare form is absent and only `<thing>-file` is registered |
-| The resolver is wired once | Grep for `ResolveStdin` and `PersistentPreRunE`; the root wires it, and any subcommand with its own hook calls it first |
+| Multi-line values are file flags | For each flag whose value can span lines, check it names a file to read rather than carrying the text |
 | `Run` shape | Read each `Run` body and trace where the work happens |
 | Subcommand package shape | Read each `cmd/*/` package: whether the parent is exported, whether it has a `Run`, whether children do |
 | Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, and `u.Print`, then compare against the type |
@@ -74,10 +71,12 @@ Skip when the project takes no interactive input.
 | Check | How to verify |
 |---|---|
 | Prompt helpers exist | Glob for `utils/input.go` and list its exported functions |
-| Every prompt guards on a terminal | Read each prompt function for a `StdinIsTerminal` guard returning `ErrNoTerminal` before any bubbletea program starts |
-| `ErrNoTerminal` is handled | Grep prompt call sites for `errors.Is`; check the message names every path that would have supplied the value, including `-` where the flag is stdin-eligible |
-| Resolution order | For each value reachable more than one way, read the call site for flag, then stdin, then prompt, then an error |
-| The resolver's own guards | Read `ResolveStdin` for the two-flag error, the terminal check, and the empty-input error |
+| Every prompt guards on a terminal | Read each prompt function for an `IsInteractive` guard, stdin and stdout both terminals, returning `ErrNoTerminal` before any bubbletea program or editor starts |
+| `ErrNoTerminal` is handled | Grep prompt call sites for `errors.Is`; check the message reads `<command> needs <flag> when there is no interactive terminal` |
+| Resolution order | For each prompted value, read the call site for the flag, then the prompt, then an error |
+| Prompts are one line | Grep `utils/input.go` for `textarea`; a value that spans lines is a file flag with `PromptEditor` behind it |
+| bubbletea version | Read `go.mod` for `charm.land/bubbletea/v2` at v2.1.0 or later; v2.0.9 leaves list rows on screen when a prompt settles |
+| Space toggles | Grep the list model for `case " "`; bubbletea v2 reports the key as `"space"` |
 | Prompts are the exception | For each prompt, judge whether a flag could carry the value instead |
 | Cancel paths | Grep call sites of the selectors for handling of the cancel return |
 | Password handling | Grep for the password prompt's return value reaching any `Print` call |

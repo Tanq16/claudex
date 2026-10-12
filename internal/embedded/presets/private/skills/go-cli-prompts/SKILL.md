@@ -1,351 +1,405 @@
 ---
 name: go-cli-prompts
-description: Interactive input for Go CLI tools - when a prompt is the right channel at all, how a value resolves from a flag then stdin then a prompt, the shared stdin resolver behind a flag given -, the utils prompt helpers, and the ErrNoTerminal contract that keeps every command scriptable. Use when a command needs to ask the user something, when building or changing utils/input.go, when piping a secret or a file into a command, or when adding a password, free-text, or selection prompt. Triggers on PromptInput, PromptPassword, PromptTextArea, PromptSelect, PromptMultiSelect, ResolveStdin, MarkStdinLine, MarkStdinStream, SetAnnotation, ErrNoTerminal, StdinIsTerminal, a flag whose value is -, bubbletea textinput, and textarea.
+description: Interactive input for Go CLI tools - the symmetry rule that every prompted value also has a flag, the utils prompt helpers built on one bubbletea text model and one list model, $EDITOR for a value that spans lines, a masked secret that reveals its tail, and the ErrNoTerminal contract that keeps every command headless. Use when a command needs to ask the user something, when building or changing utils/input.go, or when adding a text, secret, selection, or multi-line prompt. Triggers on PromptInput, PromptPassword, PromptSelect, PromptMultiSelect, PromptEditor, MaskSecret, IsInteractive, ErrNoTerminal, StdinIsTerminal, textinput, tea.NewProgram, $EDITOR, and MarkFlagRequired on a prompted flag.
 user-invocable: false
 ---
 
 # Go CLI Prompts
 
-**A prompt is a convenience for someone at a keyboard, never the only way to supply a value.**
+**Every value a prompt collects also arrives through a flag, every prompt is one line or one list, and a value longer than a line comes from a file or the user's editor.**
 
-Interactive input is the exception rather than the default channel. Reach for it only when the value is unreasonable to type on a command line, such as a choice among options the user has not seen yet, or a secret that would otherwise sit in shell history. Everything else is a flag.
+## The Symmetry Rule
 
-## The Rule
+A prompt exists only for a value that a flag also supplies. A tool driven from a script, a scheduler, or a chat interface has no terminal, so a value reachable only by a prompt is a value those callers cannot provide at all.
 
-Every prompt has a flag, or a positional argument, that supplies the same value and skips it. Without one the command is unusable from a script, a cron job, or an agent, and no amount of terminal polish makes up for that.
+The rule is one-directional, and most flags have no prompt. Every prompt is one more path that each later change to the command has to keep working.
 
-A flag whose value has a prompt is never `MarkFlagRequired`. Cobra rejects the invocation before `Run` is reached, so the prompt never runs and the flag it was meant to make optional is mandatory after all. The resolution below enforces the requirement instead, and its failure message names every path that would have worked.
+A flag whose value has a prompt is never marked required. Cobra validates required flags at `command.go:1007` and reaches `c.Run` at `:1019` (`cobra@v1.10.2`), so the invocation is rejected before the prompt could run and the flag meant to be optional is mandatory after all. The requirement is enforced inside `Run` instead, at the point the value turns out to be missing.
 
-Every value that can arrive more than one way resolves in one order:
+A value resolves in two steps, and the absence of the flag is the whole trigger.
 
 | The flag holds | The value comes from |
 |---|---|
 | a value | the flag itself |
-| `-` | stdin, in the flag's marked mode |
-| nothing | the prompt, when one exists |
-| nothing, and no prompt exists or no terminal | an error naming every path that would have worked |
+| nothing | the prompt |
+| nothing, and there is no terminal | an error naming the flag that would have worked |
 
 ```go
-password := addFlags.password
-if password == "" {
-    entered, err := u.PromptPassword("Password:")
+account := launchFlags.account
+if account == "" {
+    idx, err := u.PromptSelect("Account", labels)
     if errors.Is(err, u.ErrNoTerminal) {
-        u.PrintFatal("add needs --password, or --password - to read it from stdin", nil)
+        u.PrintFatal("launch needs --account when there is no interactive terminal", nil)
     }
     if err != nil {
         u.PrintFatal("TUI error", err)
     }
-    password = entered
+    if idx < 0 {
+        return
+    }
+    account = accounts[idx]
 }
 ```
 
-The `-` case is absent from that body because the resolver has already replaced the flag's value by the time `Run` runs.
-
-## The Stdin Resolver
-
-One implementation in `utils` covers every stdin-eligible flag in the tool, so no command hand-rolls the reading and a review looks for the marking rather than for correct parsing.
-
-Eligibility is a pflag annotation carrying the read mode (`pflag@v1.0.9 flag.go:519`):
-
-```go
-const stdinAnnotation = "stdin"
-
-func MarkStdinLine(cmd *cobra.Command, name string) error {
-    return cmd.Flags().SetAnnotation(name, stdinAnnotation, []string{"line"})
-}
-
-func MarkStdinStream(cmd *cobra.Command, name string) error {
-    return cmd.Flags().SetAnnotation(name, stdinAnnotation, []string{"stream"})
-}
-```
-
-```go
-func ResolveStdin(cmd *cobra.Command) error {
-    var target *pflag.Flag
-    var mode string
-    var err error
-    cmd.Flags().VisitAll(func(f *pflag.Flag) {
-        modes, ok := f.Annotations[stdinAnnotation]
-        if !ok || len(modes) == 0 || !f.Changed || f.Value.String() != "-" {
-            return
-        }
-        if target != nil {
-            err = fmt.Errorf("only one flag can read stdin: --%s and --%s were both given -", target.Name, f.Name)
-            return
-        }
-        target, mode = f, modes[0]
-    })
-    if err != nil || target == nil {
-        return err
-    }
-    if StdinIsTerminal {
-        return fmt.Errorf("--%s was given - but nothing is piped into stdin", target.Name)
-    }
-
-    var value string
-    if mode == "line" {
-        line, readErr := bufio.NewReader(os.Stdin).ReadString('\n')
-        if readErr != nil && !errors.Is(readErr, io.EOF) {
-            return readErr
-        }
-        value = strings.TrimRight(line, "\r\n")
-    } else {
-        data, readErr := io.ReadAll(os.Stdin)
-        if readErr != nil {
-            return readErr
-        }
-        value = strings.TrimRight(string(data), "\r\n")
-    }
-    if value == "" {
-        return fmt.Errorf("--%s was given - but stdin was empty", target.Name)
-    }
-    return target.Value.Set(value)
-}
-```
-
-`TrimRight` on the line endings rather than `TrimSpace`, because `echo` appends a newline that is not part of the value while a password may legitimately end in a space. An empty result is an error rather than an empty value, since storing nothing and reporting success is the failure nobody notices until they need the value back.
-
-One walk covers the whole invocation: `cmd.Flags()` holds the command's own flags and every persistent flag inherited from its parents, merged just before parsing (`cobra@v1.10.2 command.go:1877`).
-
-The resolver is wired once, on the root:
-
-```go
-rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
-    return u.ResolveStdin(cmd)
-}
-```
-
-Cobra runs the closest `PersistentPreRunE` it finds walking up from the matched command and stops there (`cobra@v1.10.2 command.go:984-997`), so a subcommand defining its own hook turns the resolver off for its whole subtree and calls `u.ResolveStdin(cmd)` first thing inside that hook to put it back. Running before Cobra validates required flags and flag groups is what lets a value that arrived through the pipe count as present for both.
+A value is validated once, after it resolves, whichever channel it came from. A check placed inside the prompt covers only the interactive path, and the flag then accepts what the prompt would have refused.
 
 ## No Terminal
 
-Every helper checks stdin before opening a bubbletea program and returns `ErrNoTerminal` when there is not one, so a piped or backgrounded invocation fails immediately instead of hanging on a read nobody will satisfy.
+Every helper, the editor included, starts only when both stdin and stdout are terminals, and returns `ErrNoTerminal` otherwise. With stdout redirected, a prompt draws into the file while the user types blind, and an editor writes its screen into the output.
 
 ```go
 var ErrNoTerminal = errors.New("no interactive terminal")
 
-func PromptSelect(label string, options []string) (int, error) {
-    if !StdinIsTerminal {
-        return -1, ErrNoTerminal
-    }
-    // ...
+func IsInteractive() bool {
+    return StdinIsTerminal && StdoutIsTerminal
 }
 ```
 
-The command decides what that means. A prompt with a documented default takes it; a prompt without one fails naming the flag that would have supplied the answer, which is the whole message the caller needs:
+The message reads `<command> needs <flag> when there is no interactive terminal`. Naming the flag ends the problem in one line, where a message saying only that input was expected sends the caller to `--help` to work out which flag it was.
 
-```go
-picked, err := u.PromptMultiSelect("Presets", labels)
-if errors.Is(err, u.ErrNoTerminal) {
-    u.PrintFatal("apply-preset needs a preset name when there is no interactive terminal", nil)
-}
-if err != nil {
-    u.PrintFatal("TUI error", err)
-}
-```
+A prompt with a documented default takes that default instead of failing, since a default is an answer the command already has.
 
-A command that cannot work without a terminal at all, because it hands the session to another program, says so once at the top of `Run` rather than at each prompt.
+A command that cannot work without a terminal at all, because it hands the session to another program, checks `IsInteractive` once at the top of `Run`. Checking at each prompt instead reaches the first one before failing, after the command may already have acted.
 
 ## The Helpers
 
 | Helper | Behavior | Returns |
 |---|---|---|
-| `PromptInput(prompt, placeholder)` | single-line textinput | `(string, error)` |
-| `PromptPassword(prompt)` | masked textinput | `(string, error)` |
-| `PromptTextArea(prompt, placeholder)` | multi-line textarea, Ctrl+D submits | `(string, error)` |
-| `PromptSelect(label, options)` | single-choice list | `(int, error)`, `-1` on cancel |
-| `PromptMultiSelect(label, options)` | multi-choice list, space toggles | `(map[int]bool, error)`, `nil` on cancel |
+| `PromptInput(prompt, placeholder)` | one line, scrolling sideways past the terminal edge | `(string, error)`, `""` on cancel |
+| `PromptPassword(prompt)` | one masked line | `(string, error)`, `""` on cancel |
+| `PromptSelect(label, options)` | single choice | `(int, error)`, `-1` on cancel |
+| `PromptMultiSelect(label, options)` | one or more choices, space toggles | `(map[int]bool, error)`, `nil` on cancel |
+| `PromptEditor(name, initial)` | the user's editor on a temporary file | `(string, error)`, `""` when saved empty |
 
-Every cancel path is a clean no-op abort: `idx < 0` from `PromptSelect` and a `nil` map from `PromptMultiSelect` mean the user pressed Escape, and treating that as an empty selection would run the operation they just declined.
+Every cancel path is a clean no-op abort. An empty string, `idx < 0`, and a `nil` map each mean the user pressed Escape, and treating that as an empty answer runs the operation they just declined.
 
-A password returned from `PromptPassword` never reaches a `Print` function, because the debug tier writes it into a log that outlives the session.
+No helper confirms an empty answer. Enter does nothing on a blank line or on a list with nothing toggled, so the empty return means cancel and nothing else, and a flag never has to express an empty value the prompt allowed.
 
-## Single-Line Input
+Reusing these helpers rather than building a prompt per command keeps the key bindings identical across a tool. Arrows or `j`/`k` move, Enter confirms, Escape or Ctrl+C cancels, and space toggles in the multi variant.
 
-One bubbletea model serves both `PromptInput` and `PromptPassword`; the password variant only sets `EchoMode`.
+A yes-or-no question is `PromptSelect` over `No` then `Yes`, with a boolean flag such as `--yes` supplying the answer. No sits under the cursor, so a reflexive Enter declines. A confirmation has no default, so without a terminal it fails naming `--yes`.
+
+The helpers are two bubbletea models over `bubbles/textinput` and lipgloss, and no form library. A form library brings its own theme, key map, width, and error rendering, and each one has to be overridden before a prompt looks and behaves like the rest of the tool.
+
+The models need `charm.land/bubbletea/v2` v2.1.0 or later. Under v2.0.9 the inline renderer does not return to the top of a frame that shrinks on exit, so a list collapsing to its answer leaves every row above the cursor on screen.
+
+## One Line
+
+`PromptInput` and `PromptPassword` share one model, and the secret variant only changes the echo and the settled line.
+
+The value is trimmed when Enter is pressed, and that one trimmed value is both what settles on screen and what is returned. textinput turns a pasted newline into a space (`bubbles@v2.2.1 textinput/textinput.go:301-302`), so an untrimmed secret settles showing a tail that differs from the one stored.
+
+An answered prompt settles into one line, clipped with `…` at the terminal width, and a cancelled one leaves nothing. Settling on the input's own view would show the scrolled window, and the middle of a long command reads as a different command. The settled line is the program's final frame rather than a printer call, so a secret never passes through a function that can branch to the debug log.
 
 ```go
 type inputModel struct {
-    textInput textinput.Model
-    done      bool
-    value     string
-    initCmd   tea.Cmd
+    input  textinput.Model
+    focus  tea.Cmd
+    secret bool
+    done   bool
+    value  string
 }
 
-func (m inputModel) Init() tea.Cmd { return m.initCmd }
+func (m inputModel) Init() tea.Cmd { return m.focus }
 
 func (m inputModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    var cmd tea.Cmd
-    switch msg := msg.(type) {
-    case tea.KeyPressMsg:
-        switch msg.String() {
+    if key, ok := msg.(tea.KeyPressMsg); ok {
+        switch key.String() {
         case "enter":
-            m.value = m.textInput.Value()
-            m.done = true
+            value := strings.TrimSpace(m.input.Value())
+            if value == "" {
+                return m, nil
+            }
+            m.done, m.value = true, value
             return m, tea.Quit
-        case "ctrl+c", "esc":
+        case "esc", "ctrl+c":
             m.done = true
             return m, tea.Quit
         }
     }
-    m.textInput, cmd = m.textInput.Update(msg)
+    var cmd tea.Cmd
+    m.input, cmd = m.input.Update(msg)
     return m, cmd
 }
 
 func (m inputModel) View() tea.View {
-    if m.done {
+    switch {
+    case !m.done:
+        return tea.NewView(m.input.View())
+    case m.value == "":
         return tea.NewView("")
+    case m.secret:
+        return tea.NewView(m.input.Prompt + MaskSecret(m.value) + "\n")
     }
-    return tea.NewView(m.textInput.View())
+    return tea.NewView(ansi.Truncate(m.input.Prompt+m.value, Width()-1, "…") + "\n")
 }
+```
 
-func PromptInput(prompt, placeholder string) (string, error) {
-    if !StdinIsTerminal {
+The input's width is the terminal's less the prompt, so a long paste scrolls sideways and its end stays in view. With no width set, the renderer clips the line at the terminal edge and hides the tail, which is where a truncated paste shows.
+
+`Width()` is the one terminal width in `utils`, shared with the progress meter: `term.GetSize` on stdout, then `COLUMNS` when it is 24 or more, then 80.
+
+The cursor is textinput's virtual one. The real terminal cursor would take the user's own shape, but `Cursor()` adds the position without subtracting the scroll offset (`textinput.go:924`), so after a long paste, moving left leaves it pinned at the right edge while the insertion point moves.
+
+The styles start from zero rather than textinput's defaults, with only the placeholder set. The defaults carry 256-color indices, such as `240` for the placeholder (`styles.go:18`), which the user's terminal theme does not remap.
+
+```go
+func runInput(prompt, placeholder string, secret bool) (string, error) {
+    if !IsInteractive() {
         return "", ErrNoTerminal
     }
     ti := textinput.New()
+    ti.Prompt = labelStyle.Render(prompt) + " "
     ti.Placeholder = placeholder
-    ti.Prompt = prompt + " "
-    m := inputModel{textInput: ti, initCmd: ti.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
-    if err != nil {
-        return "", err
+    ti.SetWidth(Width() - lipgloss.Width(ti.Prompt) - 1)
+    ti.SetStyles(textinput.Styles{Focused: textinput.StyleState{Placeholder: hintStyle}})
+    if secret {
+        ti.EchoMode = textinput.EchoPassword
+        ti.EchoCharacter = '•'
     }
-    return strings.TrimSpace(final.(inputModel).value), nil
-}
-
-func PromptPassword(prompt string) (string, error) {
-    if !StdinIsTerminal {
-        return "", ErrNoTerminal
-    }
-    ti := textinput.New()
-    ti.Placeholder = "••••••••"
-    ti.Prompt = prompt + " "
-    ti.EchoMode = textinput.EchoPassword
-    m := inputModel{textInput: ti, initCmd: ti.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
+    final, err := tea.NewProgram(inputModel{input: ti, focus: ti.Focus(), secret: secret}).Run()
     if err != nil {
         return "", err
     }
     return final.(inputModel).value, nil
 }
-```
 
-`PromptPassword` skips the `TrimSpace` that `PromptInput` applies, since a trailing space can be part of a password and silently removing it produces an authentication failure nobody can explain.
-
-A secret also arrives from an environment variable, the config directory, or a pipe through `--password -`, and a prompt is the fallback for a first run rather than the only path.
-
-## Multi-Line Input
-
-`PromptTextArea` submits on Ctrl+D rather than Enter, because Enter has to stay available for the newlines that make the field multi-line.
-
-```go
-func (m textAreaModel) View() tea.View {
-    if m.done {
-        return tea.NewView("")
-    }
-    return tea.NewView(m.textarea.View() + "\n(Ctrl+D to submit, Esc to cancel)")
+func PromptInput(prompt, placeholder string) (string, error) {
+    return runInput(prompt, placeholder, false)
 }
 
-func PromptTextArea(prompt, placeholder string) (string, error) {
-    if !StdinIsTerminal {
-        return "", ErrNoTerminal
-    }
-    PrintInfo(prompt)
-
-    ta := textarea.New()
-    ta.Placeholder = placeholder
-    m := textAreaModel{textarea: ta, initCmd: ta.Focus()}
-
-    final, err := tea.NewProgram(m).Run()
-    if err != nil {
-        return "", err
-    }
-    return strings.TrimSpace(final.(textAreaModel).value), nil
+func PromptPassword(prompt string) (string, error) {
+    return runInput(prompt, "", true)
 }
 ```
 
-The `Update` method mirrors `inputModel`, matching `"ctrl+d"` for submit instead of `"enter"`.
+## Lists
 
-A body of text that a script would supply comes through `--body-file`, given a path or `-`, rather than through this prompt, since a here-doc aimed at a TUI is not input the program can read.
+`PromptSelect` and `PromptMultiSelect` share one model that tracks a cursor, a window, and, in the multi variant, the set of toggled indices.
 
-## Selection
+A list shows at most ten rows, fewer when the terminal is shorter, and scrolls under the cursor. A frame taller than the terminal cannot be redrawn in place. The position prints beside the hint once the list overflows, which is what tells the user it continues past the window.
 
-Both selectors share one model that tracks a cursor and, for the multi variant, a set of toggled indices. Reusing the shared helpers rather than hand-rolling a bubbletea model per command is what keeps the key bindings identical everywhere: arrows or `j`/`k` to move, Enter to confirm, Escape or Ctrl+C to cancel, and space to toggle in the multi variant.
+Space matches as `"space"`. bubbletea v2 names the key rather than sending the character, so a `case " ":` never fires and the multi variant cannot toggle anything.
+
+An untoggled row is deleted from the set rather than stored as `false`, so the returned map holds only what was chosen.
+
+The four styles are ANSI indices, which the user's terminal theme remaps: the label in 12, the row under the cursor in 10, other rows in 15, and the hint in 8.
 
 ```go
+const listRows = 10
+
 type selectModel struct {
-    label    string
-    options  []string
-    cursor   int
-    chosen   map[int]bool // nil for single-choice
-    multi    bool
-    done     bool
-    canceled bool
+    label   string
+    options []string
+    rows    int
+    cursor  int
+    top     int
+    chosen  map[int]bool
+    multi   bool
+    done    bool
+    picked  bool
 }
+
+func (m selectModel) Init() tea.Cmd { return nil }
 
 func (m selectModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-    key, ok := msg.(tea.KeyPressMsg)
-    if !ok {
-        return m, nil
-    }
-    switch key.String() {
-    case "up", "k":
-        m.cursor = max(m.cursor-1, 0)
-    case "down", "j":
-        m.cursor = min(m.cursor+1, len(m.options)-1)
-    case " ":
-        if m.multi {
-            m.chosen[m.cursor] = !m.chosen[m.cursor]
+    switch msg := msg.(type) {
+    case tea.WindowSizeMsg:
+        m.rows = max(min(listRows, msg.Height-2), 1)
+    case tea.KeyPressMsg:
+        switch msg.String() {
+        case "esc", "ctrl+c":
+            m.done = true
+            return m, tea.Quit
+        case "enter":
+            if m.multi && len(m.chosen) == 0 {
+                return m, nil
+            }
+            m.done, m.picked = true, true
+            return m, tea.Quit
+        case "up", "k":
+            m.cursor = max(m.cursor-1, 0)
+        case "down", "j":
+            m.cursor = min(m.cursor+1, len(m.options)-1)
+        case "space":
+            if m.multi && m.chosen[m.cursor] {
+                delete(m.chosen, m.cursor)
+            } else if m.multi {
+                m.chosen[m.cursor] = true
+            }
         }
-    case "enter":
-        m.done = true
-        return m, tea.Quit
-    case "esc", "ctrl+c":
-        m.canceled = true
-        return m, tea.Quit
     }
+    m.top = min(m.top, m.cursor)
+    m.top = max(m.top, m.cursor-m.rows+1)
     return m, nil
 }
 
-// View renders the label, then one line per option: a "> " marker on the cursor
-// row, and for the multi variant a "[x]"/"[ ]" box reflecting m.chosen.
+func (m selectModel) View() tea.View {
+    if m.done && !m.picked {
+        return tea.NewView("")
+    }
+    if m.done {
+        return tea.NewView(labelStyle.Render(m.label) + " " + m.answer() + "\n")
+    }
+    var b strings.Builder
+    b.WriteString(labelStyle.Render(m.label) + "\n")
+    for i := m.top; i < min(m.top+m.rows, len(m.options)); i++ {
+        marker, style := "  ", optionStyle
+        if i == m.cursor {
+            marker, style = "› ", activeStyle
+        }
+        row := m.options[i]
+        if m.multi && m.chosen[i] {
+            row = "[x] " + row
+        } else if m.multi {
+            row = "[ ] " + row
+        }
+        b.WriteString(style.Render(marker+row) + "\n")
+    }
+    hint := "enter select · esc cancel"
+    if m.multi {
+        hint = "space toggle · enter confirm · esc cancel"
+    }
+    if len(m.options) > m.rows {
+        hint = fmt.Sprintf("%d/%d · %s", m.cursor+1, len(m.options), hint)
+    }
+    b.WriteString(hintStyle.Render(hint))
+    return tea.NewView(b.String())
+}
+
+func (m selectModel) answer() string {
+    if !m.multi {
+        return m.options[m.cursor]
+    }
+    var names []string
+    for i, opt := range m.options {
+        if m.chosen[i] {
+            names = append(names, opt)
+        }
+    }
+    return strings.Join(names, ", ")
+}
 ```
 
 ```go
+func runSelect(m selectModel) (selectModel, error) {
+    m.rows = listRows
+    final, err := tea.NewProgram(m).Run()
+    if err != nil {
+        return m, err
+    }
+    return final.(selectModel), nil
+}
+
 func PromptSelect(label string, options []string) (int, error) {
-    if !StdinIsTerminal {
+    if !IsInteractive() {
         return -1, ErrNoTerminal
     }
-    final, err := tea.NewProgram(selectModel{label: label, options: options}).Run()
-    if err != nil {
+    m, err := runSelect(selectModel{label: label, options: options})
+    if err != nil || !m.picked {
         return -1, err
-    }
-    m := final.(selectModel)
-    if m.canceled {
-        return -1, nil
     }
     return m.cursor, nil
 }
 
 func PromptMultiSelect(label string, options []string) (map[int]bool, error) {
-    if !StdinIsTerminal {
+    if !IsInteractive() {
         return nil, ErrNoTerminal
     }
-    final, err := tea.NewProgram(selectModel{
-        label: label, options: options, chosen: map[int]bool{}, multi: true,
-    }).Run()
-    if err != nil {
+    m, err := runSelect(selectModel{label: label, options: options, chosen: map[int]bool{}, multi: true})
+    if err != nil || !m.picked {
         return nil, err
-    }
-    m := final.(selectModel)
-    if m.canceled {
-        return nil, nil
     }
     return m.chosen, nil
 }
 ```
 
-The flag behind a selector names the option rather than its position, because a positional index shifts the moment the option list grows and a script written against it then picks the wrong one.
+## Long Values
+
+A value that can span lines arrives through a flag naming a file, and the prompt behind that flag is the user's editor. An editor is the right surface for composing text, and a terminal widget is not.
+
+Both paths trim, so the same text stored from a file and from the editor is the same value.
+
+```go
+var body string
+if sendFlags.bodyFile != "" {
+    data, err := os.ReadFile(sendFlags.bodyFile)
+    if err != nil {
+        u.PrintFatal("cannot read --body-file", err)
+    }
+    body = strings.TrimSpace(string(data))
+} else {
+    edited, err := u.PromptEditor("body.md", "")
+    if errors.Is(err, u.ErrNoTerminal) {
+        u.PrintFatal("send needs --body-file when there is no interactive terminal", nil)
+    }
+    if err != nil {
+        u.PrintFatal("editor failed", err)
+    }
+    if edited == "" {
+        return
+    }
+    body = edited
+}
+```
+
+The editor resolves as `$VISUAL`, then `$EDITOR`, then `vi`, and runs through the shell, which is the order and the interpretation git documents for its own editor (`git help var`). A value such as `code --wait` carries arguments that only a shell splits.
+
+`name` becomes the temporary file's suffix, so `body.md` opens in the editor's Markdown mode. `initial` is the current value when a command edits something that already exists.
+
+A buffer saved empty is a cancel, as it is for `git commit`. The user who opened the editor by mistake quits without writing, and the command stops rather than storing nothing.
+
+```go
+func PromptEditor(name, initial string) (string, error) {
+    if !IsInteractive() {
+        return "", ErrNoTerminal
+    }
+    f, err := os.CreateTemp("", "*-"+name)
+    if err != nil {
+        return "", err
+    }
+    defer os.Remove(f.Name())
+    if _, err := f.WriteString(initial); err != nil {
+        f.Close()
+        return "", err
+    }
+    if err := f.Close(); err != nil {
+        return "", err
+    }
+    editor := cmp.Or(os.Getenv("VISUAL"), os.Getenv("EDITOR"), "vi")
+    cmd := exec.Command("sh", "-c", editor+` "$1"`, "sh", f.Name())
+    cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
+    if err := cmd.Run(); err != nil {
+        return "", err
+    }
+    data, err := os.ReadFile(f.Name())
+    if err != nil {
+        return "", err
+    }
+    return strings.TrimSpace(string(data)), nil
+}
+```
+
+## Secrets
+
+A secret is masked while it is typed and settles as a masked summary once it is submitted. A pasted credential is the common case, and a fully hidden field gives the user no way to tell a truncated paste from a complete one.
+
+The tail appears only above eight characters, so a short secret is never mostly revealed by its own confirmation.
+
+```go
+func MaskSecret(s string) string {
+    if len(s) <= 8 {
+        return strings.Repeat("•", 8)
+    }
+    return strings.Repeat("•", 8) + s[len(s)-4:]
+}
+```
+
+The value itself goes through no printer at all. The structured printers branch to the debug tier, which writes the string into a log that outlives the session.
+
+A flag carrying a secret says so in its help text, naming both that the value is prompted when the flag is absent and that passing it inline is visible in shell history and in `ps` output for the life of the process.
+
+```go
+cmd.Flags().StringVar(&flags.password, "password", "",
+    "Account password; prompted when omitted, and visible in shell history and ps output when passed inline")
+```
