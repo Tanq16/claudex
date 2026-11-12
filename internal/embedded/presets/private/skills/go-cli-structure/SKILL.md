@@ -1,6 +1,6 @@
 ---
 name: go-cli-structure
-description: The shape of a Go CLI's command tree - main.go, the root command for each project type, Execute and the exit path, a command file, the Run body, Run against RunE, and subcommand packages. Use when scaffolding a Go CLI, writing or changing cmd/root.go, adding a command file or a subcommand package, wiring setupLogs and --debug, or deciding whether a command returns an error. Triggers on main.go, cmd/root.go, cobra.Command, rootCmd, Execute, AddCommand, cobra.OnInitialize, setupLogs, CompletionOptions, SetHelpCommand, SilenceErrors, SilenceUsage, Run, RunE, cmd/ packages, and AppVersion ldflags injection. Not for flag conventions or positional arguments.
+description: The shape of a Go CLI's command tree - main.go, the root command for each project type, Execute and the exit path, a command file, the Run body, Run against RunE, and subcommand packages. Use when scaffolding a Go CLI, writing or changing cmd/root.go, adding a command file, a subcommand package, or a serve command, wiring setupLogs and --debug, or deciding whether a command returns an error. Triggers on main.go, cmd/root.go, cmd/serve.go, cobra.Command, rootCmd, Execute, AddCommand, cobra.OnInitialize, setupLogs, CompletionOptions, SetHelpCommand, SilenceErrors, SilenceUsage, Run, RunE, cmd/ packages, and AppVersion ldflags injection. Not for flag conventions or positional arguments.
 user-invocable: false
 ---
 
@@ -9,6 +9,8 @@ user-invocable: false
 **How a Cobra command tree is put together: the entry point, the root, the commands hanging off it, and where a command's work goes.**
 
 CLI Only projects and Web Only projects use different roots, and a CLI + Web hybrid uses the CLI Only root plus a `serve` command.
+
+A tool's web server runs under `serve` in every project type, and `serve` logs through zerolog alone. It runs under a supervisor or in a container, where nobody reads a styled line. The hybrid's other commands keep the `utils` printers.
 
 | Aspect | CLI Only | Web Only |
 |---|---|---|
@@ -174,11 +176,9 @@ A command without subcommands is defined directly in `cmd/`, with its own flag s
 package cmd
 
 import (
-    "fmt"
-
+    "github.com/rs/zerolog/log"
     "github.com/spf13/cobra"
     "github.com/[GITHUB_USER]/REPO_NAME/internal/server"
-    u "github.com/[GITHUB_USER]/REPO_NAME/utils"
 )
 
 var serveFlags struct {
@@ -189,14 +189,15 @@ var serveFlags struct {
 var serveCmd = &cobra.Command{
     Use:   "serve",
     Short: "Start the web server",
+    Args:  cobra.NoArgs,
     Run: func(cmd *cobra.Command, args []string) {
         srv := server.New(serveFlags.host, serveFlags.port)
         if err := srv.Setup(); err != nil {
-            u.PrintFatal("Failed to set up server", err)
+            log.Fatal().Err(err).Msg("failed to set up server")
         }
-        u.PrintInfo(fmt.Sprintf("Starting server on %s:%d", serveFlags.host, serveFlags.port))
+        log.Info().Str("host", serveFlags.host).Int("port", serveFlags.port).Msg("starting server")
         if err := srv.Run(); err != nil {
-            u.PrintFatal("Server error", err)
+            log.Fatal().Err(err).Msg("server error")
         }
     },
 }
@@ -206,8 +207,6 @@ func init() {
     serveCmd.Flags().StringVarP(&serveFlags.host, "host", "H", "0.0.0.0", "Host to bind to")
 }
 ```
-
-The same command in a Web Only project swaps `u.PrintFatal(msg, err)` for `log.Fatal().Err(err).Msg(msg)` and `u.PrintInfo` for `log.Info()`, and drops the `utils` import.
 
 ## Run Function Shape
 

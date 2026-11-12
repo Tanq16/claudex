@@ -52,11 +52,8 @@ The expected pattern for every check lives in those skills. This file states wha
 
 | Check | How to verify |
 |---|---|
-| Modes offered | Read `internal/auth/` for the flows present and `cmd/login.go` for the flags exposed; check they agree |
-| No fallback chain | Read the mode dispatch |
-| Device support matches the provider | Read the device auth URL against the provider being used |
-| State validation | Read the callback handler for the state comparison, and the manual flow for what it does with state |
-| Browser open failure | Read whether the browser launcher returns an error and what the caller does with it |
+| One login flow | Read `internal/auth/` for a single flow that prints the URL and reads the pasted redirect address through `PromptInput`, and `cmd/login.go` for no mode flags |
+| Pasted address parsed | Read `extractCode` for `url.Parse` accepting both a full redirect address and a bare code |
 | Token and directory permissions | Grep for the token write and the config directory creation, and read their mode arguments |
 | Refresh on load | Read the authenticated-client entry point |
 | Output tiers | Read which printer each URL, code, instruction, and terminal message goes through |

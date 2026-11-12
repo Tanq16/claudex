@@ -48,15 +48,12 @@ import (
 
 var GlobalDebugFlag bool
 
-var (
-    StdinIsTerminal  = term.IsTerminal(os.Stdin.Fd())
-    StdoutIsTerminal = term.IsTerminal(os.Stdout.Fd())
-)
+var StdoutIsTerminal = term.IsTerminal(os.Stdout.Fd())
 ```
 
-`term.IsTerminal` rather than `os.ModeCharDevice`: `/dev/null` is a character device, so the mode bit reports a terminal for the one stream that most certainly has nobody at it, and a prompt gated on it then opens a TUI into the void. The module already ships under the bubbletea and lipgloss stack, so using it directly adds no build.
+`term.IsTerminal` rather than `os.ModeCharDevice`, because `/dev/null` is a character device and the mode bit reports it as a terminal. The module already ships under lipgloss, so using it directly adds no build.
 
-Both are evaluated once at package init, since neither stream is replaced underneath a running process.
+It is evaluated once at package init, since stdout is not replaced underneath a running process.
 
 ## The Print Shape
 

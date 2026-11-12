@@ -6,7 +6,6 @@
 - `[SKILLS_DIR]/go-cli-structure/SKILL.md`
 - `[SKILLS_DIR]/go-cli-commands/SKILL.md`
 - `[SKILLS_DIR]/go-cli-output/SKILL.md`
-- `[SKILLS_DIR]/go-cli-prompts/SKILL.md`
 - `[SKILLS_DIR]/go-cli-progress/SKILL.md`
 
 The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
@@ -47,13 +46,13 @@ Several checks invert by project type: the same construct is required in CLI Onl
 | Multi-line values are file flags | For each flag whose value can span lines, check it names a file to read rather than carrying the text |
 | `Run` shape | Read each `Run` body and trace where the work happens |
 | Subcommand package shape | Read each `cmd/*/` package: whether the parent is exported, whether it has a `Run`, whether children do |
-| Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, and `u.Print`, then compare against the type |
+| Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, and `u.Print`, then compare against the type; `cmd/serve.go` logs through zerolog alone in every type |
 
 ## Category 3: Output Tiers
 
 | Check | How to verify |
 |---|---|
-| `globals.go` | Read `utils/globals.go` for `GlobalDebugFlag` and the terminal checks |
+| `globals.go` | Read `utils/globals.go` for `GlobalDebugFlag` and `StdoutIsTerminal` |
 | Printer branch order and completeness | Read `utils/printer.go`; check every structured printer for the same two-way branch, debug first |
 | Printers write through the color profile | Grep `utils/printer.go` for `fmt.Print`; content goes out through `lipgloss.Println` and only cursor escapes use `fmt.Print` |
 | `PrintGeneric` carries no prefix or style | Read `utils/printer.go` |
@@ -70,16 +69,15 @@ Skip when the project takes no interactive input.
 
 | Check | How to verify |
 |---|---|
-| Prompt helpers exist | Glob for `utils/input.go` and list its exported functions |
-| Every prompt guards on a terminal | Read each prompt function for an `IsInteractive` guard, stdin and stdout both terminals, returning `ErrNoTerminal` before any bubbletea program or editor starts |
-| `ErrNoTerminal` is handled | Grep prompt call sites for `errors.Is`; check the message reads `<command> needs <flag> when there is no interactive terminal` |
-| Resolution order | For each prompted value, read the call site for the flag, then the prompt, then an error |
-| Prompts are one line | Grep `utils/input.go` for `textarea`; a value that spans lines is a file flag with `PromptEditor` behind it |
-| bubbletea version | Read `go.mod` for `charm.land/bubbletea/v2` at v2.1.0 or later; v2.0.9 leaves list rows on screen when a prompt settles |
-| Space toggles | Grep the list model for `case " "`; bubbletea v2 reports the key as `"space"` |
+| Prompt helpers | Read `utils/input.go` for `PromptInput` and `PromptSelect` and nothing else exported |
+| One reader on stdin | Grep the module for `bufio.NewReader(os.Stdin)` and `bufio.NewScanner(os.Stdin)`; one package-level `bufio.Reader` is expected, since a second reader loses piped answers and a `Scanner` rejects a line past 64 KiB |
+| No terminal UI for input | Grep `utils/input.go` and `go.mod` for bubbletea, bubbles, `ReadPassword`, and `MakeRaw` |
+| Resolution order | For each prompted value, read the call site for the flag, then the prompt |
+| A failed read names the flag | Read each prompt call site's error branch for a fatal message reading `<command> needs <flag>` |
+| `serve` never prompts | Grep `cmd/serve.go` for `Prompt` |
+| Selection is numbered | Read `PromptSelect` for a numbered `PrintTable` and an out-of-range answer returned as an error |
 | Prompts are the exception | For each prompt, judge whether a flag could carry the value instead |
-| Cancel paths | Grep call sites of the selectors for handling of the cancel return |
-| Password handling | Grep for the password prompt's return value reaching any `Print` call |
+| Secret handling | Grep for a prompted secret reaching any `Print` call |
 
 ## Category 5: Progress
 

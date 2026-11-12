@@ -89,9 +89,8 @@ The LSP is already wired into every session for Go, Python, TypeScript, and Java
 |---|---|
 | Any Go code | `go-project-layout`, `go-idioms` |
 | The command tree: `main.go`, the root, command files, subcommand packages | `go-cli-structure` |
-| Flags, positional arguments, enum values, a flag naming a file | `go-cli-commands` |
+| Flags, positional arguments, enum values, a flag naming a file, prompts and numbered selection on stdin | `go-cli-commands` |
 | Printing, tables, `--debug`, terminal colors | `go-cli-output` |
-| Interactive prompts, secrets, selection lists, opening `$EDITOR` | `go-cli-prompts` |
 | Progress meters, running/done lifecycles, terminal width | `go-cli-progress` |
 | `internal/` package structure, error boundaries, storage | `go-package-architecture` |
 | `net/http` server, embedded static serving, middleware | `go-http-server` |
