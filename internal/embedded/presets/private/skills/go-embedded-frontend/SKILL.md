@@ -56,9 +56,9 @@ Every asset is pinned to an exact version. A floating `@latest` makes two builds
 | JetBrains Mono Nerd Font Mono | nerd-fonts `v3.5.1`, opt-in | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
 
-The three fonts are always downloaded, so the asset step is the same everywhere. Everything below them in the table is downloaded when the project uses it. Marked, Highlight.js, and Mermaid are pinned by the skills that own them.
+The three fonts are always downloaded, so the asset step is the same everywhere. The rest of the table is downloaded when the project uses it. Marked, Highlight.js, and Mermaid are pinned by the skills that own them.
 
-Web fonts are woff2, never ttf. woff2 is roughly half the bytes of the same ttf and every browser here supports it, and Google Fonts already serves woff2.
+Web fonts are woff2, never ttf, since woff2 is roughly half the bytes and every browser here supports it.
 
 Only the `latin` and `latin-ext` blocks of each Google Fonts stylesheet are kept. The endpoint declares every subset the family has, twenty-five files for Google Sans, and `//go:embed` compiles all of them into the binary regardless.
 
@@ -81,7 +81,7 @@ rm -f fontawesome/css/all.min.css.bak
 
 Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, since a page fetching a font from a third party leaks every visitor's IP and stops rendering offline.
 
-The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, so it is downloaded as ttf and compressed to woff2, costing two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs: a Powerline separator, a private-use file-type icon, or terminal output carrying them. An icon Lucide or Font Awesome already has is not a reason.
+The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, costing two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs: a Powerline separator, a private-use file-type icon, or terminal output carrying them. An icon Lucide or Font Awesome already has is not a reason.
 
 Switching is a Makefile variable, not a page change. The nerd target writes the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name.
 
@@ -147,7 +147,7 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
       }
     </style>
 </head>
-<body class="bg-crust text-subtext0 min-h-screen font-sans">
+<body class="bg-crust text-subtext0 min-h-dvh font-sans">
     <nav class="bg-crust border-b border-surface0 px-4 py-3">
         <div class="max-w-6xl mx-auto flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -181,7 +181,7 @@ A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, and a real `var(--co
 
 `@theme` maps each name onto a `--ctp-*` variable rather than a literal hex. The utility resolves the variable at paint time, so redefining the `--ctp-*` set under a selector re-themes the page without a second `@theme` or a class change. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--color-mauve) 50%, transparent)` rather than substituting a value.
 
-`@import "tailwindcss";` is omitted, because the browser build injects it when no `@import` appears anywhere in the block. Writing one takes over the whole import graph and drops the base styles unless you add it back yourself.
+`@import "tailwindcss";` is omitted, because the browser build injects it when no `@import` appears in the block. Writing one takes over the import graph and drops the base styles.
 
 ## Layering
 
@@ -200,8 +200,6 @@ Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast rat
 Text runs the same way. Body copy takes `subtext0`, headings and the one value a row exists to show take `text`, and metadata takes `overlay1`. Defaulting body copy to `text` makes every word shout and leaves nothing louder for a heading to be.
 
 Structure never borrows from the accent ramp. The neutral steps carry it, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing means neither is signal.
-
-The tokens are assigned by what a surface does, so a layout this skill has never seen still lands on the right step.
 
 ## Theme
 
@@ -239,7 +237,7 @@ Everything else is a class. A hand-written rule that duplicates a utility is a s
 
 The custom CSS that remains lives in inline `<style>` blocks rather than `css/`, so the asset step can wipe and re-download `css/` without touching anything a person wrote.
 
-An existing project's working CSS is not ripped out to impose this, since the rule governs what you write.
+An existing project's working CSS stays, since the rule governs what you write.
 
 The browser build compiles utility classes at run time, which Tailwind documents as development-only. It is fine for an embedded tool or a dashboard, and an app needing a small payload moves to a build step emitting a static `tailwind.css`.
 
@@ -296,7 +294,9 @@ Add PWA support when the app is used often on a phone, when offline behavior is 
 
 The page carries no `apple-mobile-web-app-status-bar-style` tag. Without it, iOS draws an opaque status bar in the page's color and starts the page below it. `black-translucent` instead lays a blur over the top of the page that no CSS removes, and WebKit has deprecated it.
 
-iOS reads the status bar style only when the app is added to the Home Screen. Removing the tag reaches an existing install only after the user removes the app and adds it again.
+iOS reads the status bar style only at install, so an existing install keeps the blur until the app is removed and added again.
+
+The body takes `min-h-dvh`, because a Home Screen app without the status bar tag computes `100vh` incorrectly and the page scrolls (WebKit bug 316008).
 
 `static/sw.js` is a no-op worker:
 
@@ -306,10 +306,10 @@ self.addEventListener('fetch', () => {});
 
 It caches nothing, so the app behaves like a normal tab. A caching worker serves stale assets after a deploy and gives users a version they cannot refresh away.
 
-The worker is not what makes the app installable, since the manifest, the two icon sizes, and HTTPS are. It earns its line by controlling the app's pages, which later offline or push behavior needs.
+The manifest, the two icon sizes, and HTTPS make the app installable, not the worker. The worker earns its line by controlling the app's pages, which later offline or push behavior needs.
 
-A worker's scope is the directory it is served from, so one served at `/static/sw.js` controls `/static/` and never the app at `/`. It registers without error and reports that narrow scope, so nothing fails loudly enough to notice. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
+A worker's scope is the directory it is served from, so one served at `/static/sw.js` controls `/static/` and never the app at `/`. It registers without error, so nothing signals the narrow scope. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
 
 The file stays under `static/` so `//go:embed static` picks it up, and a route at `/sw.js` serves it from the embedded FS through `http.ServeFileFS` with a `text/javascript` content type.
 
-Drop the manifest, the worker, its route, the registration script, and the PWA meta tags together when not building a PWA. The manifest alone is enough to prompt an install, which an app that gains nothing from being installed should not do.
+Drop the manifest, the worker, its route, the registration script, and the PWA meta tags together when not building a PWA. The manifest alone prompts an install, which an app gaining nothing from one should not offer.
