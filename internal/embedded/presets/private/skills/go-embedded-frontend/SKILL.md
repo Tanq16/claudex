@@ -102,7 +102,6 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#11111b">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="APP_NAME">
 
     <link rel="stylesheet" href="/static/css/inter.css">
@@ -294,6 +293,10 @@ Add PWA support when the app is used often on a phone, when offline behavior is 
   ]
 }
 ```
+
+The page carries no `apple-mobile-web-app-status-bar-style` tag. Without it, iOS draws an opaque status bar in the page's color and starts the page below it. `black-translucent` instead lays a blur over the top of the page that no CSS removes, and WebKit has deprecated it.
+
+iOS reads the status bar style only when the app is added to the Home Screen. Removing the tag reaches an existing install only after the user removes the app and adds it again.
 
 `static/sw.js` is a no-op worker:
 
