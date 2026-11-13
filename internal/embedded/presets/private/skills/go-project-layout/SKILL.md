@@ -14,7 +14,7 @@ Every other Go convention keys off the project type, so settling the type is the
 
 | Type | What it is | Defining markers |
 |---|---|---|
-| CLI Only | Terminal tool for users | `cobra`, `utils/`, zerolog, lipgloss/bubbletea/bubbles v2; multi-platform binaries; no Docker |
+| CLI Only | Terminal tool for users | `cobra`, `utils/`, zerolog, lipgloss v2; multi-platform binaries; no Docker |
 | Web Only | Web app served from a Go binary, with no real CLI beyond `serve` | `cobra` with a lone `serve` command, embedded frontend at `internal/server/static/`, Docker, no `utils/` |
 | CLI + Web | A real CLI tool that also serves a web app from one `serve` subcommand | The full CLI Only stack for the command surface, plus `internal/server/static/` and a `serve` command; Docker |
 | Headless API Service | REST or gRPC backend with no frontend | `internal/server` handlers with no `static/`, Docker, no `utils/`; `cobra` only when it needs more than `serve` |

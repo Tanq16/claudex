@@ -1,35 +1,27 @@
 ---
 name: go-cli-commands
-description: The surface a Go CLI command exposes - the baseline every tool starts at, the two purchases on top of it, flag conventions, positional arguments, enum flags, a file-shaped value, and a flag that reads stdin. Use when adding or changing a flag, deciding whether a value should be a flag, a prompt, or a pipe, naming a value that spans lines, declaring Args, or validating a fixed set of allowed values. Triggers on PersistentFlags, BoolVar, StringVarP, SortFlags, cobra.NoArgs, ExactArgs, RangeArgs, pflag.Value, MarkFlagRequired, MarkFlagsOneRequired, MarkFlagsRequiredTogether, MarkFlagsMutuallyExclusive, MarkStdinLine, MarkStdinStream, and a flag whose value is -. Not for the shape of the command tree itself.
+description: The surface a Go CLI command exposes - the baseline every tool starts at, flag conventions and precedence, positional arguments, enum flags, and the one-line stdin prompt a tool may buy for an absent flag. Use when adding or changing a flag, deciding where a value enters a command, registering a flag at the right level, declaring Args, validating a fixed set of allowed values, or asking the user for a value or a choice. Triggers on PersistentFlags, BoolVar, StringVarP, SortFlags, cobra.NoArgs, ExactArgs, RangeArgs, pflag.Value, MarkFlagRequired, MarkFlagsOneRequired, MarkFlagsRequiredTogether, MarkFlagsMutuallyExclusive, utils/input.go, PromptInput, PromptSelect, PromptPassword, PromptMultiSelect, bufio.NewReader, and os.Stdin. Not for the shape of the command tree itself.
 user-invocable: false
 ---
 
 # Go CLI Commands
 
-**What a command offers its caller: the arguments it takes, the flags it reads, and the ways a value reaches it.**
+**What a command offers its caller: the arguments it takes, the flags it reads, and, where a tool buys it, the one line it reads from stdin when a flag is absent.**
 
 ## The Command Surface
 
-Every tool starts at one baseline and buys anything past it deliberately. The baseline is `tool <command> <args> --flags`: arguments name what is acted on, flags change how, and that is the whole surface a command gets without anyone asking for more. A `<thing>-file` flag is part of that baseline, so a command that reads its value out of a file, or that can work through many of them, registers one without asking.
+Every tool starts at one baseline and buys anything past it deliberately. The baseline is `tool <command> <args> --flags`: arguments name what is acted on, flags change how, and a value the command needs and did not get is an error naming the flag.
 
-Two extras sit on top. Neither is built unless the user asked for it, or it was offered while the surface was being designed and accepted.
+One purchase sits on top: asking for a value whose flag is absent. It is decided per tool while the surface is designed rather than discovered halfway through an implementation, because it adds a path every later change has to keep working. `serve` never buys it, since a server runs under a supervisor or in a container with nobody at its stdin.
 
-| Purchase | What it adds |
-|---|---|
-| An interactive prompt | a value the user types when the flag is absent |
-| Stdin eligibility | a flag reading its value from a pipe when given `-` |
-
-Each purchase adds a path every later change has to keep working, so it is proposed while the surface is being designed rather than discovered halfway through an implementation. A command that looks like it wants one is raised as an offer. Both purchases can sit on a `<thing>-file` flag: `--url-file` exists on its own, while `--url-file -` and a prompt behind it are bought.
-
-Three channels carry a value into a command, and which one a given value uses is a decision rather than a preference.
+Two channels carry a value into a command, and which one a given value uses is a decision rather than a preference.
 
 | Channel | Carries | Where it lives |
 |---|---|---|
 | Config and environment | credentials, endpoints, anything set once and reused | `~/.config/[APP_NAME]/`, and `[APP_NAME]_*` variables |
 | Flags | everything else a single run needs | `init()` on the command that reads them |
-| Prompts | a choice among options the user has not seen yet, or a secret that would land in shell history | a `utils` prompt helper |
 
-Precedence, highest first: an explicit flag, then the environment, then the config file, then the built-in default. The flag wins because it is the most specific thing the caller said in this invocation. A value piped in belongs to the flag tier rather than to a tier of its own, since it arrives as that flag's value.
+Precedence, highest first: an explicit flag, then the environment, then the config file, then the built-in default. The flag wins because it is the most specific thing the caller said in this invocation.
 
 ## Flags
 
@@ -52,6 +44,12 @@ Flag names stay unique across the whole tree, and Cobra does not catch a collisi
 
 `SortFlags` stays at its default of `true` (`pflag@v1.0.9 flag.go:1270`), so `--help` lists flags alphabetically. A reader hunting one flag in the help output finds it faster than a reader reconstructing the order they were declared in.
 
+A value that can span lines takes a flag naming a file to read it from rather than carrying the text itself, because a multi-line value passed as a flag argument survives one shell's quoting rules and not the next one's.
+
+```go
+cmd.Flags().StringVarP(&flags.bodyFile, "body-file", "f", "", "Read the body from this file")
+```
+
 `MarkFlagRequired` states a requirement Cobra enforces before `Run` is reached, which produces a usage message rather than a nil dereference:
 
 ```go
@@ -62,9 +60,24 @@ cmd.MarkFlagRequired("input")
 An environment variable supplies a default rather than being read inside `Run`, which is what puts the flag above it in precedence and makes `--help` show the value the command will actually use. A variable the tool owns is namespaced with the tool's name; one belonging to another tool keeps that tool's name.
 
 ```go
-defaultToken := os.Getenv("GITHUB_TOKEN")
-cmd.Flags().StringVarP(&flags.token, "token", "t", defaultToken, "GitHub token (or GITHUB_TOKEN env)")
+defaultRegion := os.Getenv("AWS_REGION")
+cmd.Flags().StringVarP(&flags.region, "region", "r", defaultRegion, "AWS region (or AWS_REGION env)")
 ```
+
+A secret is the exception and never becomes a flag default. pflag appends `(default %q)` to a string flag's usage line whenever the default is non-empty (`pflag@v1.0.9 flag.go:753-757`), so `--help` prints the live credential into screenshots, terminal logs, and pasted output. The flag registers empty and the variable is read inside `Run`, where the value reaches no help text.
+
+```go
+cmd.Flags().StringVarP(&flags.token, "token", "t", "", "GitHub token (or GITHUB_TOKEN env)")
+```
+
+```go
+token := cmp.Or(flags.token, os.Getenv("GITHUB_TOKEN"))
+if token == "" {
+    u.PrintFatal("send needs --token, or GITHUB_TOKEN in the environment", nil)
+}
+```
+
+`cmp.Or` returns the first argument that is not the zero value, so the precedence reads as the one line it is rather than an if-else chain.
 
 Three markers state a relationship between flags that Cobra enforces at parse time, which is where the caller can still fix it (`cobra@v1.10.2 flag_groups.go`):
 
@@ -118,58 +131,80 @@ launchCmd.Flags().Var(&launchFlags.mcp, "mcp", "Which MCP sources to load")
 
 `Type()` is what `--help` prints beside the flag, so naming the allowed set there documents the flag without a second sentence of help text.
 
-## Values from Stdin
+## Input
 
-Stdin eligibility is a purchase and is off by default. A flag reads stdin only once it has been marked, and no command infers a read from stdin not being a terminal. Inferring it means a run with stdin on `/dev/null`, closed, or inherited from a scheduler stores an empty value and reports success, which is the failure nobody notices until they need the value back.
+A command that buys a prompt reads one line from stdin through two helpers in `utils/input.go`. There is no terminal UI behind them: what is typed echoes, a secret included, and a pipe feeds the same reader a terminal does, so `echo "$TOKEN" | tool login` needs nothing extra.
 
-A marked flag given the value `-` takes its value from stdin. The flag keeps the name of the thing it carries, so the invocation says which value came from the pipe without a second flag to point at it.
-
-```
-pwmgr add github --password -        # from the pipe
-pwmgr add github --password hunter2  # inline, and now in shell history
-pwmgr add github                     # prompts, and needs a terminal
-```
-
-Exactly one flag may be `-` in a single invocation, and two is an error naming both. There is one stream and no way to say where the first value ends, and an ordering contract to split it would be paid for by every invocation to serve the few that pipe anything at all.
-
-Two read modes, fixed by the marking rather than by what arrives:
-
-| Mode | Marked on | Reads |
+| Helper | Reads | Returns |
 |---|---|---|
-| `line` | a single-value flag such as `--password` | the first line, discarding the rest |
-| `stream` | a `<thing>-file` flag | all of stdin to EOF |
-
-Which flag gets marked follows the shape of the value rather than convenience:
-
-| The value is | Marked | Mode |
-|---|---|---|
-| inherently single, such as a password or a token | the bare flag | `line` |
-| one or many by nature, such as a URL or a host | the `<thing>-file` flag only | `stream` |
-
-A value that could be one or many never gets stdin eligibility on its bare flag. `--url` stays a single URL typed inline and a list arrives as `cat urls.txt | tool probe --url-file -`, because marking `--url` itself lets `cat urls.txt | tool probe --url -` read one URL and drop the other four, which is the one way this design produces a quietly wrong result instead of an error.
+| `PromptInput(prompt)` | one line, trimmed | `(string, error)` |
+| `PromptSelect(headers, rows)` | a serial number typed against a numbered table | `(int, error)`, the 0-based row |
 
 ```go
-func init() {
-    addCmd.Flags().StringVar(&addFlags.password, "password", "", "Password, or - to read it from stdin")
-    u.MarkStdinLine(addCmd, "password")
+package utils
 
-    probeCmd.Flags().StringVar(&probeFlags.urlFile, "url-file", "", "File of URLs, one per line, or - for stdin")
-    u.MarkStdinStream(probeCmd, "url-file")
+import (
+    "bufio"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
+)
+
+var stdin = bufio.NewReader(os.Stdin)
+
+func PromptInput(prompt string) (string, error) {
+    fmt.Print(prompt + " ")
+    line, err := stdin.ReadString('\n')
+    if line == "" && err != nil {
+        return "", err
+    }
+    return strings.TrimSpace(line), nil
+}
+
+func PromptSelect(headers []string, rows [][]string) (int, error) {
+    numbered := make([][]string, len(rows))
+    for i, row := range rows {
+        numbered[i] = append([]string{strconv.Itoa(i + 1)}, row...)
+    }
+    PrintTable(append([]string{"#"}, headers...), numbered)
+    answer, err := PromptInput(fmt.Sprintf("Choose 1-%d:", len(rows)))
+    if err != nil {
+        return -1, err
+    }
+    n, err := strconv.Atoi(answer)
+    if err != nil || n < 1 || n > len(rows) {
+        return -1, fmt.Errorf("%q is not a number from 1 to %d", answer, len(rows))
+    }
+    return n - 1, nil
 }
 ```
 
-Marking is all a command does. The reading, the one-flag check, the terminal check, and the empty-input check live in the shared resolver in `utils`.
+One `bufio.Reader` wraps stdin for the whole process. It reads ahead in 4096-byte chunks (`bufio.go:19`), so a second reader on `os.Stdin` starts after whatever the first one buffered, and the second of two piped answers disappears.
 
-An inline secret is a convenience that leaks: it lands in shell history and is visible in `ps` output for the life of the process. `-` is the path a script takes, and the help text of a secret-bearing flag says so.
+The reader is `ReadString` rather than `bufio.Scanner`, whose 64 KiB token limit (`scan.go:82`) rejects a long pasted assertion that `ReadString` returns whole. A last line with no trailing newline still counts as an answer, and only an empty read at the end of input is an error.
 
-## File-Shaped Values
+A terminal holds less than a pipe. macOS caps a line in canonical mode at 1024 bytes (`MAX_CANON` in `sys/syslimits.h`), and a longer paste never reaches the reader, so a value that can pass about a thousand characters, such as a SAML assertion, is piped in: `pbpaste | tool login`.
 
-A value that can span lines never gets a bare flag. It gets `<thing>-file`, and one suffix covers both a list of single-line values and a single multi-line blob, with the flag's help text saying which the command expects. The suffix needs no offer behind it, so the flag is registered as soon as the command can take that input from a file.
+A prompted value resolves from its flag first and asks only when the flag is empty. A failed read, which is what an exhausted pipe or Ctrl+D produces, ends the command with a message naming the flag that would have supplied the value.
 
-| The value | The flags |
-|---|---|
-| one URL, or a list of them | `--url` and `--url-file` |
-| an SSH public key, one line | `--ssh-pub-key` |
-| an SSH private key, many lines | `--ssh-key-file` only |
+```go
+account := launchFlags.account
+if account == "" {
+    idx, err := u.PromptSelect([]string{"Account", "Plan"}, rows)
+    if err != nil {
+        u.PrintFatal("launch needs --account", err)
+    }
+    account = accounts[idx].Name
+}
+```
 
-`--ssh-key` is not offered at all, because a multi-line value passed as a flag argument survives one shell's quoting rules and not the next one's.
+A flag with a prompt behind it is never marked required. Cobra validates required flags at `command.go:1007` and reaches `c.Run` at `:1019` (`cobra@v1.10.2`), so the invocation is rejected before the prompt could run.
+
+A value is validated once, after it resolves, whichever channel it came from. A check placed beside the prompt covers only the interactive path, and the flag then accepts what the prompt would have refused.
+
+A choice is a numbered table and a typed serial number, with no cursor and no key handling. An answer outside the range is an error rather than a second question, which keeps the helper to one read.
+
+A confirmation is `PromptInput("Proceed? [y/N]")`, where only `y` or `yes` proceeds, and a `--yes` flag skips it. A reflexive Enter then declines.
+
+A secret read at a prompt never reaches a printer. The structured printers branch to the debug tier, which writes the string into a log that outlives the session.

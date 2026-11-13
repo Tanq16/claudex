@@ -6,7 +6,6 @@
 - `[SKILLS_DIR]/go-cli-structure/SKILL.md`
 - `[SKILLS_DIR]/go-cli-commands/SKILL.md`
 - `[SKILLS_DIR]/go-cli-output/SKILL.md`
-- `[SKILLS_DIR]/go-cli-prompts/SKILL.md`
 - `[SKILLS_DIR]/go-cli-progress/SKILL.md`
 
 The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
@@ -42,21 +41,18 @@ Several checks invert by project type: the same construct is required in CLI Onl
 | Enum flags validate at parse time | Grep each `Run` for a switch or an `if` rejecting a flag value; that check belongs in a `pflag.Value` registered with `Var` |
 | Flag relationships | Grep for `MarkFlagRequired`, `MarkFlagsRequiredTogether`, `MarkFlagsOneRequired`, and `MarkFlagsMutuallyExclusive`; read each `Run` for hand-rolled validation that should be one of them |
 | A prompted flag is not required | For each flag with a prompt behind it, check the command does not call `MarkFlagRequired` on it |
-| `Run` against `RunE` | Grep `cmd/` for `RunE`; each one has a `defer` in its body, and the root sets `SilenceErrors` and `SilenceUsage` with `Execute` reporting through `PrintFatal` |
+| `Run` against `RunE` | Grep `cmd/` for `RunE`; each one has a `defer` in its body, and the root sets `SilenceErrors` and `SilenceUsage` with `Execute` printing the error to stderr and exiting 2 |
 | Every prompt has a flag | For each prompt call site, check the command registers a flag or accepts a positional supplying the same value |
-| Stdin is marked, never inferred | Grep for `os.Stdin`, `io.ReadAll`, and `bufio.NewScanner` outside the resolver; every read is reached through a marked flag whose value is `-`, never through a terminal check |
-| Read mode matches the value's shape | For each `MarkStdinLine` and `MarkStdinStream`, check `line` sits on a flag whose value is inherently single and `stream` only on a `<thing>-file` flag |
-| Multi-line values are `-file` flags | For each flag whose value can span lines, check the bare form is absent and only `<thing>-file` is registered |
-| The resolver is wired once | Grep for `ResolveStdin` and `PersistentPreRunE`; the root wires it, and any subcommand with its own hook calls it first |
+| Multi-line values are file flags | For each flag whose value can span lines, check it names a file to read rather than carrying the text |
 | `Run` shape | Read each `Run` body and trace where the work happens |
 | Subcommand package shape | Read each `cmd/*/` package: whether the parent is exported, whether it has a `Run`, whether children do |
-| Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, and `u.Print`, then compare against the type |
+| Output calls | Grep `cmd/` for `fmt.Println`, `fmt.Printf`, `utils.Print`, and `u.Print`, then compare against the type; `cmd/serve.go` logs through zerolog alone in every type |
 
 ## Category 3: Output Tiers
 
 | Check | How to verify |
 |---|---|
-| `globals.go` | Read `utils/globals.go` for `GlobalDebugFlag` and the terminal checks |
+| `globals.go` | Read `utils/globals.go` for `GlobalDebugFlag` and `StdoutIsTerminal` |
 | Printer branch order and completeness | Read `utils/printer.go`; check every structured printer for the same two-way branch, debug first |
 | Printers write through the color profile | Grep `utils/printer.go` for `fmt.Print`; content goes out through `lipgloss.Println` and only cursor escapes use `fmt.Print` |
 | `PrintGeneric` carries no prefix or style | Read `utils/printer.go` |
@@ -73,14 +69,15 @@ Skip when the project takes no interactive input.
 
 | Check | How to verify |
 |---|---|
-| Prompt helpers exist | Glob for `utils/input.go` and list its exported functions |
-| Every prompt guards on a terminal | Read each prompt function for a `StdinIsTerminal` guard returning `ErrNoTerminal` before any bubbletea program starts |
-| `ErrNoTerminal` is handled | Grep prompt call sites for `errors.Is`; check the message names every path that would have supplied the value, including `-` where the flag is stdin-eligible |
-| Resolution order | For each value reachable more than one way, read the call site for flag, then stdin, then prompt, then an error |
-| The resolver's own guards | Read `ResolveStdin` for the two-flag error, the terminal check, and the empty-input error |
+| Prompt helpers | Read `utils/input.go` for `PromptInput` and `PromptSelect` and nothing else exported |
+| One reader on stdin | Grep the module for `bufio.NewReader(os.Stdin)` and `bufio.NewScanner(os.Stdin)`; one package-level `bufio.Reader` is expected, since a second reader loses piped answers and a `Scanner` rejects a line past 64 KiB |
+| No terminal UI for input | Grep `utils/input.go` and `go.mod` for bubbletea, bubbles, `ReadPassword`, and `MakeRaw` |
+| Resolution order | For each prompted value, read the call site for the flag, then the prompt |
+| A failed read names the flag | Read each prompt call site's error branch for a fatal message reading `<command> needs <flag>` |
+| `serve` never prompts | Grep `cmd/serve.go` for `Prompt` |
+| Selection is numbered | Read `PromptSelect` for a numbered `PrintTable` and an out-of-range answer returned as an error |
 | Prompts are the exception | For each prompt, judge whether a flag could carry the value instead |
-| Cancel paths | Grep call sites of the selectors for handling of the cancel return |
-| Password handling | Grep for the password prompt's return value reaching any `Print` call |
+| Secret handling | Grep for a prompted secret reaching any `Print` call |
 
 ## Category 5: Progress
 
