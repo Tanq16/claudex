@@ -195,6 +195,7 @@ jobs:
         run: gh release delete "${{ needs.create-release.outputs.version }}" --yes
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
 ```
 
 `fetch-depth: 0` in `create-release` fetches the full history and its tags, which the version calculation reads. The default shallow clone has no tags and every run would compute `v0.0.1`.
@@ -202,6 +203,8 @@ jobs:
 Both build jobs run `make assets` rather than restoring a cached tree, because the asset directories are not in the repository and the Makefile is the only definition of what they contain.
 
 `cleanup-on-failure` guards on `release_created` so a failure in the version step, before any draft exists, does not try to delete one.
+
+`cleanup-on-failure` sets `GH_REPO` because it is the only job with no checkout, and `gh` otherwise resolves the repository from the local git directory. Without it `gh release delete` fails with `not a git repository`, and the stale draft blocks the next run, which computes the same version.
 
 The docker job builds `linux/amd64` and `linux/arm64` into one manifest. `build-push-action` is used rather than `make docker-push` because the buildx driver and the registry cache belong to the runner rather than to the Makefile, and a plain `docker build` on the runner would publish an amd64 image that an arm64 host cannot run.
 
