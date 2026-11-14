@@ -179,7 +179,7 @@ Catppuccin Mocha is the default for a new frontend in this style, declared once 
       }
     </style>
 </head>
-<body class="bg-crust text-subtext0 min-h-screen font-sans">
+<body class="bg-crust text-subtext0 min-h-dvh font-sans">
     <header class="flex items-center justify-between px-4 py-3 bg-crust border-b border-surface0">
         <span class="font-display font-semibold text-text">APP_NAME</span>
         <span id="status" class="text-sm text-overlay1">connecting...</span>

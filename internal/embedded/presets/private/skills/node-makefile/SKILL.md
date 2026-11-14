@@ -32,6 +32,8 @@ Three families are downloaded by default and all three come from Google Fonts as
 
 Only the `latin` and `latin-ext` blocks of each stylesheet are kept. Google Fonts declares every subset it has, which for Google Sans is twenty-five files covering scripts the page never renders, and the release bundle carries all of them. Filtering leaves six woff2 files across the three families.
 
+Each font file is saved as `<slug>-N.woff2` rather than under its URL's basename. Google Fonts sometimes serves `https://fonts.gstatic.com/l/font?kit=...` instead of a path ending in a file name. A stylesheet pointing at `/fonts/font?kit=...` makes the browser request `/fonts/font`, which 404s and falls back to a system font silently.
+
 The Nerd Font variant is off by default. It exists only for a page that renders Nerd Font glyphs, and it costs two megabytes and roughly ten seconds of woff2 compression against sixty kilobytes and half a second for the plain family. Set `NERDFONT := 1` in the Makefile when a page needs the glyphs; the target then fills the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name, so no page changes either way.
 
 ## Toolchain
@@ -122,13 +124,17 @@ font:
 	@curl -sfL -H "User-Agent: $(UA)" \
 	  "https://fonts.googleapis.com/css2?family=$(FAMILY):wght@$(WEIGHTS)&display=swap" \
 	  -o "$(CSS_DIR)/$(SLUG).raw"
-	@awk '/^\/\* /{keep = ($$0 ~ /^\/\* latin(-ext)? \*\/$$/)} keep' \
-	  "$(CSS_DIR)/$(SLUG).raw" > "$(CSS_DIR)/$(SLUG).css"
+	@awk -v slug="$(SLUG)" -v css="$(CSS_DIR)/$(SLUG).css" ' \
+	  /^\/\* /{keep = ($$0 ~ /^\/\* latin(-ext)? \*\/$$/)} \
+	  !keep {next} \
+	  match($$0, /https:\/\/fonts\.gstatic\.com\/[^)]*/) { \
+	    url = substr($$0, RSTART, RLENGTH); \
+	    if (!(url in name)) { name[url] = slug "-" (++n) ".woff2"; print url, name[url] } \
+	    $$0 = substr($$0, 1, RSTART - 1) "/fonts/" name[url] substr($$0, RSTART + RLENGTH) \
+	  } \
+	  {print > css}' "$(CSS_DIR)/$(SLUG).raw" \
+	  | xargs -P 8 -n 2 sh -c 'curl -sfL "$$1" -o "$(FONTS_DIR)/$$2"' _
 	@rm -f "$(CSS_DIR)/$(SLUG).raw"
-	@grep -o 'https://fonts.gstatic.com/[^)]*' "$(CSS_DIR)/$(SLUG).css" | sort -u \
-	  | xargs -P 8 -I{} sh -c 'curl -sfL "$$1" -o "$(FONTS_DIR)/$$(basename "$$1")"' _ {}
-	@sed -i.bak -E 's|https://fonts\.gstatic\.com/[^)]*/([^/)]+)|/fonts/\1|g' "$(CSS_DIR)/$(SLUG).css"
-	@rm -f "$(CSS_DIR)/$(SLUG).css.bak"
 
 # The Nerd Font variant carries the extra glyphs and is not on Google Fonts, so it
 # comes from the nerd-fonts release as ttf and is compressed to woff2 here.
