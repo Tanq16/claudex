@@ -27,9 +27,15 @@ func runConfigure(cmd *cobra.Command, args []string) {
 		u.PrintFatal("--label only applies with -A; without it, labels are auto-derived per account", nil)
 	}
 
+	defaultsFile := u.DefaultsFile()
+	defaults, err := accounts.LoadDefaults(defaultsFile)
+	if err != nil {
+		u.PrintFatal("failed to read the defaults", err)
+	}
+
 	if configureFlags.account != "" {
 		dir := u.ResolveConfigDir(configureFlags.account)
-		paths, err := accounts.Configure(dir, configureFlags.label, embedded.StatuslineScript)
+		paths, err := accounts.Configure(dir, configureFlags.label, embedded.StatuslineScript, defaults)
 		if err != nil {
 			u.PrintFatal("failed to configure account", err)
 		}
@@ -37,7 +43,7 @@ func runConfigure(cmd *cobra.Command, args []string) {
 	} else {
 		configured := 0
 		for _, dir := range u.DiscoverAccountPaths() {
-			paths, err := accounts.Configure(dir, "", embedded.StatuslineScript)
+			paths, err := accounts.Configure(dir, "", embedded.StatuslineScript, defaults)
 			if err != nil {
 				u.PrintWarn("Skipped "+u.AbbreviatePath(dir), err)
 				continue
@@ -49,6 +55,11 @@ func runConfigure(cmd *cobra.Command, args []string) {
 			u.PrintWarn("No accounts configured; laying down global defaults only", nil)
 		}
 	}
+
+	if err := defaults.Save(defaultsFile); err != nil {
+		u.PrintFatal("failed to save "+u.AbbreviatePath(defaultsFile), err)
+	}
+	u.PrintSuccess(fmt.Sprintf("Applied %d default keys from %s", len(defaults.Settings), u.AbbreviatePath(defaultsFile)))
 
 	applyGlobalDefaults()
 }

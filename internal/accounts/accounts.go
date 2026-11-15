@@ -4,8 +4,10 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/tanq16/claudex/internal/fsutil"
@@ -16,7 +18,7 @@ type Paths struct {
 	Settings   string
 }
 
-func Configure(dir, label string, statusline []byte) (Paths, error) {
+func Configure(dir, label string, statusline []byte, d *Defaults) (Paths, error) {
 	var paths Paths
 
 	info, err := os.Stat(dir)
@@ -39,17 +41,20 @@ func Configure(dir, label string, statusline []byte) (Paths, error) {
 		return paths, fmt.Errorf("read settings.json: %w", err)
 	}
 
-	applyPreferred(settings)
-
+	for _, key := range d.stale(dir) {
+		deletePath(settings, key)
+	}
+	for key, value := range d.Settings {
+		setPath(settings, key, value)
+	}
+	for key, value := range owned {
+		setPath(settings, key, value)
+	}
 	command := paths.Statusline
 	if label != "" {
 		command += " " + shellQuote(label)
 	}
-	settings["statusLine"] = map[string]any{
-		"type":    "command",
-		"command": command,
-		"padding": 0,
-	}
+	setPath(settings, statuslineKey, command)
 
 	out, err := json.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
@@ -59,24 +64,8 @@ func Configure(dir, label string, statusline []byte) (Paths, error) {
 	if err := fsutil.WriteFileAtomic(paths.Settings, out, 0o644); err != nil {
 		return paths, fmt.Errorf("write settings.json: %w", err)
 	}
+	d.Written[dir] = slices.Sorted(maps.Keys(d.Settings))
 	return paths, nil
-}
-
-func applyPreferred(settings map[string]any) {
-	settings["attribution"] = map[string]any{"commit": ""}
-	settings["effortLevel"] = "xhigh"
-	settings["tui"] = "fullscreen"
-	settings["autoMemoryEnabled"] = false
-	settings["skipDangerousModePermissionPrompt"] = true
-	settings["outputStyle"] = "Concise"
-
-	env, ok := settings["env"].(map[string]any)
-	if !ok {
-		env = map[string]any{}
-	}
-	env["DISABLE_AUTOUPDATER"] = "1"
-	env["ENABLE_CLAUDEAI_MCP_SERVERS"] = "false"
-	settings["env"] = env
 }
 
 func shellQuote(s string) string {

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>claudex</title>
+
+    <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
+    <link rel="apple-touch-icon" href="/static/icons/logo.svg">
+    <meta name="theme-color" content="#11111b">
+
+    <link rel="stylesheet" href="/static/css/inter.css">
+    <link rel="stylesheet" href="/static/css/google-sans.css">
+    <link rel="stylesheet" href="/static/css/jetbrains-mono.css">
+    <link rel="stylesheet" href="/static/fontawesome/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/github-dark.min.css">
+
+    <script src="/static/js/lucide.min.js"></script>
+    <script src="/static/js/tailwind.js"></script>
+    <script src="/static/js/marked.umd.js"></script>
+    <script src="/static/js/purify.min.js"></script>
+    <script src="/static/js/highlight.min.js"></script>
+    <style>
+      /* Catppuccin Mocha */
+      :root {
+        --ctp-rosewater: #f5e0dc; --ctp-flamingo: #f2cdcd; --ctp-pink: #f5c2e7;
+        --ctp-mauve: #cba6f7;     --ctp-red: #f38ba8;      --ctp-maroon: #eba0ac;
+        --ctp-peach: #fab387;     --ctp-yellow: #f9e2af;   --ctp-green: #a6e3a1;
+        --ctp-teal: #94e2d5;      --ctp-sky: #89dceb;      --ctp-sapphire: #74c7ec;
+        --ctp-blue: #89b4fa;      --ctp-lavender: #b4befe; --ctp-text: #cdd6f4;
+        --ctp-subtext1: #bac2de;  --ctp-subtext0: #a6adc8; --ctp-overlay2: #9399b2;
+        --ctp-overlay1: #7f849c;  --ctp-overlay0: #6c7086; --ctp-surface2: #585b70;
+        --ctp-surface1: #45475a;  --ctp-surface0: #313244; --ctp-base: #1e1e2e;
+        --ctp-mantle: #181825;    --ctp-crust: #11111b;
+      }
+
+      * { scrollbar-width: none; }
+      *::-webkit-scrollbar { display: none; }
+      ::selection { background: color-mix(in oklab, var(--ctp-mauve) 35%, transparent); color: var(--ctp-text); }
+
+      @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes pop-in { from { opacity: 0; transform: translateY(6px) scale(0.98); } to { opacity: 1; transform: none; } }
+      @keyframes sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+      @keyframes toast-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+      .markdown-body {
+        background-color: transparent !important;
+        font-family: 'Inter', sans-serif !important;
+        color: var(--ctp-subtext1) !important;
+        line-height: 1.75;
+        font-size: 16px;
+        max-width: 78ch;
+      }
+      .markdown-body > :first-child { margin-top: 0; }
+      .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+        margin-top: 32px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        line-height: 1.25;
+        padding-bottom: 0.3em;
+        font-family: 'Google Sans', sans-serif;
+      }
+      .markdown-body h1 { font-size: 2em;     color: var(--ctp-lavender) !important; border-bottom: 1px solid var(--ctp-surface0); }
+      .markdown-body h2 { font-size: 1.5em;   color: var(--ctp-mauve) !important; border-bottom: 1px solid color-mix(in oklab, var(--ctp-surface0) 50%, transparent); }
+      .markdown-body h3 { font-size: 1.25em;  color: var(--ctp-blue) !important; }
+      .markdown-body h4 { font-size: 1em;     color: var(--ctp-text); font-weight: 600; margin: 24px 0 12px; }
+      .markdown-body h5 { font-size: 0.875em; color: var(--ctp-text); font-weight: 600; }
+      .markdown-body h6 { font-size: 0.85em;  color: var(--ctp-subtext0); }
+      .markdown-body p { margin-bottom: 16px; }
+      .markdown-body strong { color: var(--ctp-text); }
+      .markdown-body a { color: var(--ctp-blue); text-decoration: none; }
+      .markdown-body a:hover { text-decoration: underline; }
+      .markdown-body ul, .markdown-body ol { padding-left: 2em; margin-bottom: 16px; }
+      .markdown-body ul { list-style-type: disc; }
+      .markdown-body ol { list-style-type: decimal; }
+      .markdown-body li { margin-bottom: 0.25em; }
+      .markdown-body li::marker { color: var(--ctp-overlay1); }
+      .markdown-body code {
+        font-family: 'JetBrains Mono', monospace;
+        color: var(--ctp-peach) !important;
+        background-color: var(--ctp-surface0) !important;
+        border-radius: 6px;
+        padding: 0.2em 0.4em;
+        font-size: 0.875em;
+      }
+      .markdown-body pre {
+        position: relative;
+        background-color: var(--ctp-base) !important;
+        border-radius: 1rem;
+        padding: 1rem 1.25rem !important;
+        margin-bottom: 16px;
+        overflow: auto;
+        line-height: 1.6;
+      }
+      .markdown-body pre code {
+        color: inherit !important;
+        background-color: transparent !important;
+        padding: 0;
+        font-size: 0.875em;
+      }
+      .markdown-body table {
+        display: table !important;
+        width: 100% !important;
+        border-collapse: separate;
+        border-spacing: 0;
+        border: 1px solid color-mix(in oklab, var(--ctp-surface1) 50%, transparent);
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 1.5rem;
+      }
+      .markdown-body table thead { background-color: color-mix(in oklab, var(--ctp-mauve) 10%, transparent); }
+      .markdown-body table tr { background-color: transparent !important; border: none !important; }
+      .markdown-body table tr:nth-child(2n) { background-color: color-mix(in oklab, var(--ctp-surface0) 30%, transparent) !important; }
+      .markdown-body table th {
+        color: var(--ctp-mauve) !important;
+        font-weight: 600;
+        border: none !important;
+        border-bottom: 1px solid color-mix(in oklab, var(--ctp-surface1) 50%, transparent) !important;
+        border-right: 1px solid color-mix(in oklab, var(--ctp-surface0) 50%, transparent);
+        padding: 12px 16px !important;
+        text-align: left;
+      }
+      .markdown-body table td {
+        border: none !important;
+        border-bottom: 1px solid color-mix(in oklab, var(--ctp-surface0) 30%, transparent) !important;
+        border-right: 1px solid color-mix(in oklab, var(--ctp-surface0) 30%, transparent);
+        color: var(--ctp-subtext0) !important;
+        padding: 12px 16px !important;
+        text-align: left;
+      }
+      .markdown-body table th:last-child, .markdown-body table td:last-child { border-right: none; }
+      .markdown-body table tr:last-child td { border-bottom: none !important; }
+      .markdown-body blockquote {
+        border-left: 0.25em solid color-mix(in oklab, var(--ctp-surface1) 50%, transparent);
+        padding: 0 1em;
+        color: var(--ctp-subtext0);
+        margin-bottom: 16px;
+      }
+      .markdown-body hr { border: none; border-top: 1px solid var(--ctp-surface0); margin: 1.5em 0; }
+      .markdown-body img { max-width: 100%; border-radius: 0.75rem; }
+
+      .copy-code-btn {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+        padding: 0.5rem;
+        background-color: color-mix(in oklab, var(--ctp-surface0) 95%, transparent);
+        border-radius: 9999px;
+        color: var(--ctp-subtext0);
+        cursor: pointer;
+        opacity: 0;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10;
+      }
+      pre:hover .copy-code-btn { opacity: 1; }
+      .copy-code-btn:hover { background-color: var(--ctp-surface1); color: var(--ctp-mauve); }
+      .copy-code-btn.copied { color: var(--ctp-green); }
+
+      .callout {
+        padding: 1rem;
+        border-radius: 1rem;
+        margin-bottom: 1rem;
+        display: flex;
+        gap: 0.75rem;
+        align-items: flex-start;
+        background-color: color-mix(in oklab, var(--ctp-surface0) 20%, transparent);
+      }
+      .callout-icon { display: inline-flex; align-items: center; flex-shrink: 0; line-height: 1; padding-top: 0.3em; }
+      .callout-icon svg { width: 1em; height: 1em; }
+      .callout-content { flex: 1; }
+      .callout-content p { margin: 0 !important; }
+      .callout.tip     { background-color: color-mix(in oklab, var(--ctp-green) 10%, transparent); }
+      .callout.tip     .callout-icon { color: var(--ctp-green); }
+      .callout.info    { background-color: color-mix(in oklab, var(--ctp-blue) 10%, transparent); }
+      .callout.info    .callout-icon { color: var(--ctp-blue); }
+      .callout.danger  { background-color: color-mix(in oklab, var(--ctp-red) 10%, transparent); }
+      .callout.danger  .callout-icon { color: var(--ctp-red); }
+      .callout.warning { background-color: color-mix(in oklab, var(--ctp-peach) 10%, transparent); }
+      .callout.warning .callout-icon { color: var(--ctp-peach); }
+      .callout.note    { background-color: color-mix(in oklab, var(--ctp-mauve) 10%, transparent); }
+      .callout.note    .callout-icon { color: var(--ctp-mauve); }
+    </style>
+    <style type="text/tailwindcss">
+      @theme {
+        --color-rosewater: var(--ctp-rosewater); --color-flamingo: var(--ctp-flamingo);
+        --color-pink: var(--ctp-pink);           --color-mauve: var(--ctp-mauve);
+        --color-red: var(--ctp-red);             --color-maroon: var(--ctp-maroon);
+        --color-peach: var(--ctp-peach);         --color-yellow: var(--ctp-yellow);
+        --color-green: var(--ctp-green);         --color-teal: var(--ctp-teal);
+        --color-sky: var(--ctp-sky);             --color-sapphire: var(--ctp-sapphire);
+        --color-blue: var(--ctp-blue);           --color-lavender: var(--ctp-lavender);
+        --color-text: var(--ctp-text);           --color-subtext1: var(--ctp-subtext1);
+        --color-subtext0: var(--ctp-subtext0);   --color-overlay2: var(--ctp-overlay2);
+        --color-overlay1: var(--ctp-overlay1);   --color-overlay0: var(--ctp-overlay0);
+        --color-surface2: var(--ctp-surface2);   --color-surface1: var(--ctp-surface1);
+        --color-surface0: var(--ctp-surface0);   --color-base: var(--ctp-base);
+        --color-mantle: var(--ctp-mantle);       --color-crust: var(--ctp-crust);
+
+        --font-sans: 'Inter', sans-serif;
+        --font-display: 'Google Sans', sans-serif;
+        --font-mono: 'JetBrains Mono', monospace;
+
+        --breakpoint-3xl: 120rem;
+      }
+    </style>
+</head>
+<body class="bg-crust text-subtext0 h-dvh overflow-hidden flex flex-col font-sans antialiased">
+    <header class="shrink-0 flex items-center gap-3 px-4 pt-4 sm:px-6 lg:px-10 lg:pt-6">
+        <a href="#/" data-action="app-home" aria-label="claudex" title="Dashboard (refreshes)" class="flex items-center gap-2.5 font-display text-xl font-medium text-text">
+            <img src="/static/icons/logo.svg" alt="" class="size-11 sm:size-13">
+            <span class="max-sm:hidden">claudex</span>
+        </a>
+        <span id="nav-status" class="text-overlay1"></span>
+        <nav id="nav-links" class="ml-auto flex gap-1 rounded-full bg-mantle p-1"></nav>
+    </header>
+
+    <main id="view" class="flex-1 min-h-0 px-4 py-4 sm:px-6 lg:px-10 lg:py-6"></main>
+
+    <div id="layer-root"></div>
+
+    <script src="/static/app.js"></script>
+    <script src="/static/api.js"></script>
+    <script src="/static/views/dashboard.js"></script>
+    <script src="/static/views/new-session.js"></script>
+    <script src="/static/views/project.js"></script>
+    <script src="/static/views/settings.js"></script>
+    <script>app.start();</script>
+</body>
+</html>

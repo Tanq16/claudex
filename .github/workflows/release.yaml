@@ -22,6 +22,9 @@ jobs:
         with:
           go-version: '1.27'
 
+      - name: Download Assets
+        run: make assets
+
       - name: Run Tests
         run: go test ./...
 
@@ -76,6 +79,9 @@ jobs:
         with:
           go-version: '1.27'
 
+      - name: Download Assets
+        run: make assets
+
       - name: Build Binary
         run: make build-for GOOS=${{ matrix.os }} GOARCH=${{ matrix.arch }} VERSION=${{ needs.create-release.outputs.version }}
 
@@ -115,3 +121,4 @@ jobs:
           gh release delete "${{ needs.create-release.outputs.version }}" --yes
         env:
           GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}

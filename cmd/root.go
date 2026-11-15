@@ -17,7 +17,7 @@ var debugFlag bool
 
 var rootCmd = &cobra.Command{
 	Use:     "claudex",
-	Short:   "Monitor Claude Code usage across accounts",
+	Short:   "Run Claude Code across accounts and projects from a CLI and a local web UI",
 	Version: AppVersion,
 	CompletionOptions: cobra.CompletionOptions{
 		HiddenDefaultCmd: true,
@@ -51,8 +51,6 @@ func init() {
 
 	cobra.OnInitialize(setupLogs)
 
-	rootCmd.AddCommand(statusCmd)
-	rootCmd.AddCommand(oauthTokenCmd)
 	rootCmd.AddCommand(switchCmd)
 	rootCmd.AddCommand(launchCmd)
 	rootCmd.AddCommand(configureCmd)
@@ -61,4 +59,5 @@ func init() {
 	rootCmd.AddCommand(createPresetCmd)
 	rootCmd.AddCommand(pullPresetCmd)
 	rootCmd.AddCommand(cleanCwdCmd)
+	rootCmd.AddCommand(serveCmd)
 }

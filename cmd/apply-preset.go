@@ -1,9 +1,7 @@
 package cmd
 
 import (
-	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,9 +15,9 @@ var applyPresetFlags struct {
 }
 
 var applyPresetCmd = &cobra.Command{
-	Use:   "apply-preset [name...]",
-	Short: "Add a preset's skills and its AGENTS.md section on top of the base layout",
-	Args:  cobra.ArbitraryArgs,
+	Use:   "apply-preset <name>...",
+	Short: "Add a preset's skills, its AGENTS.md section, and its MCP servers on top of the base layout",
+	Args:  cobra.MinimumNArgs(1),
 	Run:   runApplyPreset,
 }
 
@@ -31,17 +29,6 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	skills, agents := presetParts(applyPresetFlags.skills, applyPresetFlags.agents)
 
 	local, remote := presetsDir(), remotePresetsDir()
-	available := workspace.ListPresets(local, remote)
-	if len(available) == 0 {
-		u.PrintFatal("no presets found in "+u.AbbreviatePath(local)+" or "+u.AbbreviatePath(remote), nil)
-	}
-
-	selected := args
-	if len(selected) == 0 {
-		if selected = choosePresets(available); len(selected) == 0 {
-			return
-		}
-	}
 
 	pruned, err := workspace.PruneDeadSkillLinks(root)
 	if err != nil {
@@ -51,12 +38,12 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 		u.PrintInfo("Removed dead skill links: " + strings.Join(pruned, ", "))
 	}
 
-	presets := make([]*workspace.Preset, 0, len(selected))
+	presets := make([]*workspace.Preset, 0, len(args))
 	var conflicts []workspace.Conflict
 	if agents {
 		conflicts = append(conflicts, workspace.PreflightAgentsFile(root)...)
 	}
-	for _, ref := range selected {
+	for _, ref := range args {
 		p, err := workspace.FindPreset(local, remote, ref)
 		if err != nil {
 			u.PrintFatal("preset not found: "+ref, err)
@@ -85,6 +72,14 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 			}
 		}
 
+		var servers []string
+		if skills && agents {
+			var err error
+			if servers, err = workspace.MergePresetMCP(root, p); err != nil {
+				u.PrintFatal("failed to merge the MCP servers of preset "+p.Ref, err)
+			}
+		}
+
 		u.PrintSuccess("Applied preset: " + p.Ref)
 		if skills {
 			u.PrintGeneric(fmt.Sprintf("  skills: %d linked into .agents/skills", len(p.Skills)))
@@ -96,6 +91,9 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 				u.PrintGeneric("  agents: this preset carries no section")
 			}
 		}
+		if len(servers) > 0 {
+			u.PrintGeneric("  mcp:    " + strings.Join(servers, ", ") + " merged into " + workspace.MCPFile)
+		}
 	}
 }
 
@@ -104,39 +102,6 @@ func presetParts(skillsFlag, agentsFlag bool) (skills, agents bool) {
 		return true, true
 	}
 	return skillsFlag, agentsFlag
-}
-
-func choosePresets(available []workspace.Preset) []string {
-	labels := make([]string, len(available))
-	for i, p := range available {
-		labels[i] = p.Ref
-		if p.Description != "" {
-			labels[i] += " - " + u.Truncate(p.Description, 70)
-		}
-	}
-
-	picked, err := u.PromptMultiSelect("Presets", labels)
-	if errors.Is(err, u.ErrNoTerminal) {
-		u.PrintFatal("apply-preset needs a preset name when there is no interactive terminal", nil)
-	}
-	if err != nil {
-		u.PrintFatal("TUI error", err)
-	}
-
-	// Deselecting leaves a false entry behind, and map order is random.
-	var indices []int
-	for i, on := range picked {
-		if on {
-			indices = append(indices, i)
-		}
-	}
-	slices.Sort(indices)
-
-	names := make([]string, len(indices))
-	for i, idx := range indices {
-		names[i] = available[idx].Name
-	}
-	return names
 }
 
 func init() {

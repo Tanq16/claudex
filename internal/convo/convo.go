@@ -22,8 +22,12 @@ type RawHistoryEntry struct {
 }
 
 func EncodeProjectPath(absPath string) string {
-	// Claude names its on-disk project dir by replacing every "/" in the abs path with "-".
-	return strings.ReplaceAll(absPath, "/", "-")
+	return strings.Map(func(r rune) rune {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return r
+		}
+		return '-'
+	}, absPath)
 }
 
 func ProjectDir(configDir, projectPath string) string {
@@ -82,17 +86,6 @@ func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {
 		w.WriteByte('\n')
 	}
 	return w.Flush()
-}
-
-func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, rest []RawHistoryEntry) {
-	for _, e := range entries {
-		if e.Parsed.SessionID == sessionID {
-			matching = append(matching, e)
-		} else {
-			rest = append(rest, e)
-		}
-	}
-	return
 }
 
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {

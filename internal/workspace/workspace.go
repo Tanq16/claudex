@@ -18,6 +18,7 @@ const (
 	AgentsDir  = ".agents"
 	ClaudeDir  = ".claude"
 	SkillsDir  = "skills"
+	MCPFile    = ".mcp.json"
 
 	openPrefix   = "<!-- claudex:"
 	closePrefix  = "<!-- /claudex:"
@@ -113,6 +114,10 @@ func Clean(root string) error {
 	}
 	os.Remove(filepath.Join(root, ClaudeDir))
 	if err := cleanAgentsFile(root); err != nil {
+		return err
+	}
+	if _, err := os.Lstat(filepath.Join(root, MCPFile)); err == nil {
+		_, _, err := WriteGitExclude(root)
 		return err
 	}
 	return StripGitExclude(root)
@@ -220,6 +225,7 @@ func WriteGitExclude(root string) (string, bool, error) {
 		prefix + ClaudeFile,
 		prefix + AgentsDir + "/",
 		prefix + ClaudeDir + "/" + SkillsDir,
+		prefix + MCPFile,
 	}, "\n") + "\n" + excludeEnd + "\n"
 
 	body := stripExcludeBlock(readFile(path))

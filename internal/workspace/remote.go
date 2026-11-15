@@ -234,3 +234,17 @@ func slugify(s string) string {
 	}
 	return strings.Trim(b.String(), "-")
 }
+
+func RemoveRemotePreset(dir, ref string) error {
+	slug, name, ok := strings.Cut(ref, "/")
+	if !ok || !validName(slug) || !validName(name) {
+		return fmt.Errorf("%q is not a remote preset reference; use <owner-repo>/<preset>", ref)
+	}
+	if err := os.RemoveAll(filepath.Join(dir, slug, name)); err != nil {
+		return err
+	}
+	if entries, err := os.ReadDir(filepath.Join(dir, slug)); err == nil && len(entries) == 0 {
+		return os.Remove(filepath.Join(dir, slug))
+	}
+	return nil
+}
