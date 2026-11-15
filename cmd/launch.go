@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json/v2"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/accounts"
 	"github.com/tanq16/claudex/internal/plugins"
+	"github.com/tanq16/claudex/internal/session"
 	u "github.com/tanq16/claudex/utils"
 )
 
@@ -201,12 +201,7 @@ func applyMCPMode(mode string, cliArgs, summary []string) ([]string, []string) {
 	case "mcps":
 		summary = append(summary, "mcp: on")
 	case "connectors":
-		settingsJSON, _ := json.Marshal(map[string]any{
-			"env": map[string]string{
-				"ENABLE_CLAUDEAI_MCP_SERVERS": "true",
-			},
-		})
-		cliArgs = append(cliArgs, "--settings", string(settingsJSON))
+		cliArgs = append(cliArgs, "--settings", session.ConnectorsSettings())
 		summary = append(summary, "mcp: on", "connectors: on")
 	case "none":
 		cliArgs = append(cliArgs, "--strict-mcp-config")

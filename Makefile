@@ -106,15 +106,15 @@ verify-assets: ## Fail early if the embedded tree is missing an asset
 # =============================================================================
 # Build
 # =============================================================================
-build: ## Build binary for current platform
+build: assets verify-assets ## Build binary for current platform
 	@go build -ldflags="-s -w -X '$(MODULE)/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)$(NC)"
 
-build-for: ## Build binary for specified GOOS/GOARCH
+build-for: verify-assets ## Build binary for specified GOOS/GOARCH
 	@CGO_ENABLED=0 GOOS=$(GOOS) GOARCH=$(GOARCH) go build -ldflags="-s -w -X '$(MODULE)/cmd.AppVersion=$(VERSION)'" -o $(APP_NAME)-$(GOOS)-$(GOARCH) .
 	@echo "$(GREEN)Built: ./$(APP_NAME)-$(GOOS)-$(GOARCH)$(NC)"
 
-build-all: ## Build all platform binaries
+build-all: assets verify-assets ## Build all platform binaries
 	@$(MAKE) build-for GOOS=linux GOARCH=amd64
 	@$(MAKE) build-for GOOS=linux GOARCH=arm64
 	@$(MAKE) build-for GOOS=darwin GOARCH=amd64

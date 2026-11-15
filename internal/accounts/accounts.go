@@ -39,17 +39,14 @@ func Configure(dir, label string, statusline []byte) (Paths, error) {
 		return paths, fmt.Errorf("read settings.json: %w", err)
 	}
 
-	applyPreferred(settings)
-
+	for key, value := range defaults {
+		setPath(settings, key, value)
+	}
 	command := paths.Statusline
 	if label != "" {
 		command += " " + shellQuote(label)
 	}
-	settings["statusLine"] = map[string]any{
-		"type":    "command",
-		"command": command,
-		"padding": 0,
-	}
+	setPath(settings, statuslineKey, command)
 
 	out, err := json.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
@@ -60,23 +57,6 @@ func Configure(dir, label string, statusline []byte) (Paths, error) {
 		return paths, fmt.Errorf("write settings.json: %w", err)
 	}
 	return paths, nil
-}
-
-func applyPreferred(settings map[string]any) {
-	settings["attribution"] = map[string]any{"commit": ""}
-	settings["effortLevel"] = "xhigh"
-	settings["tui"] = "fullscreen"
-	settings["autoMemoryEnabled"] = false
-	settings["skipDangerousModePermissionPrompt"] = true
-	settings["outputStyle"] = "Concise"
-
-	env, ok := settings["env"].(map[string]any)
-	if !ok {
-		env = map[string]any{}
-	}
-	env["DISABLE_AUTOUPDATER"] = "1"
-	env["ENABLE_CLAUDEAI_MCP_SERVERS"] = "false"
-	settings["env"] = env
 }
 
 func shellQuote(s string) string {
