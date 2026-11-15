@@ -141,7 +141,7 @@
             ${ui.iconButton('arrow-left', { title: 'Back to dashboard', action: 'project-back' })}
             ${ui.iconButton(treeIcon, { title: mobile ? 'Files' : 'Toggle file tree', action: 'project-toggle-tree' })}
             <div class="flex min-w-0 flex-1 items-center gap-2.5 px-1">
-                <h1 class="truncate font-display text-xl text-text md:text-2xl">${ui.esc(p.name)}</h1>
+                <h1 class="truncate font-display text-xl text-text md:text-2xl">${ui.esc(p.rcName)}</h1>
                 <span class="hidden shrink-0 sm:inline-flex">${ui.status(p.active)}</span>
                 <span title="${p.active ? 'Active' : 'Inactive'}" class="size-2 shrink-0 rounded-full sm:hidden ${p.active ? 'bg-green' : 'bg-overlay0'}"></span>
             </div>
@@ -951,7 +951,7 @@
     ui.on('project-restart', restart);
     ui.on('project-stop', async () => {
         const p = project();
-        const yes = await ui.confirm({ title: `Stop ${p.name}?`, icon: 'square', danger: true, confirmLabel: 'Stop session', message: `Closes the <span class="font-mono text-text">claudex:${ui.esc(p.rcName)}</span> tmux window. The conversation stays on disk, so Continue picks it up later.` });
+        const yes = await ui.confirm({ title: `Stop ${p.rcName}?`, icon: 'square', danger: true, confirmLabel: 'Stop session', message: `Closes the <span class="font-mono text-text">claudex:${ui.esc(p.rcName)}</span> tmux window. The conversation stays on disk, so Continue picks it up later.` });
         if (!yes) return;
         const r = await runBusy('stop', 'Stop', () => api.stop(p.name), { success: `Stopped ${p.rcName}` });
         if (r.ok) app.go('#/');
