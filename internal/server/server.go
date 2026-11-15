@@ -141,7 +141,7 @@ func (s *Server) Setup() error {
 func (s *Server) Run() error {
 	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
 	log.Info().Str("addr", addr).Str("root", s.root).Msg("starting")
-	return http.ListenAndServe(addr, s.mux)
+	return http.ListenAndServe(addr, http.NewCrossOriginProtection().Handler(s.mux))
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

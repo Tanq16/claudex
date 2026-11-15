@@ -410,7 +410,7 @@
             initMarked();
             body.innerHTML = `
                 <div class="flex justify-center gap-12 px-5 py-6 md:px-10 md:py-8 3xl:gap-16 3xl:px-16 3xl:py-12">
-                    <article data-p-markdown class="markdown-body min-w-0 flex-1 3xl:text-[17px]!">${marked.parse(f.content)}</article>
+                    <article data-p-markdown class="markdown-body min-w-0 flex-1 3xl:text-[17px]!">${DOMPurify.sanitize(marked.parse(f.content))}</article>
                     <nav data-p-outline aria-label="Outline" class="sticky top-0 hidden w-56 shrink-0 self-start 3xl:w-72"></nav>
                 </div>`;
             const article = body.querySelector('[data-p-markdown]');
