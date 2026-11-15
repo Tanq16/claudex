@@ -29,13 +29,6 @@ func DiscoverAccountPaths() []string {
 	return paths.DiscoverAccounts(HomeDir())
 }
 
-func ResolveAccountPaths(account string) []string {
-	if account != "" {
-		return []string{ExpandPath(account)}
-	}
-	return DiscoverAccountPaths()
-}
-
 func AbbreviatePath(path string) string {
 	return paths.Abbreviate(HomeDir(), path)
 }

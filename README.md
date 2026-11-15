@@ -16,7 +16,7 @@ It exists for juggling several Claude subscriptions, and everything except accou
 
 | Category | Commands | Description |
 |----------|----------|-------------|
-| Accounts | `configure`, `status`, `switch` | Provision every account, read its usage, move a project between accounts |
+| Accounts | `configure`, `switch` | Provision every account, move a project between accounts |
 | Sessions | `launch`, `serve` | Exec `claude` under one account, or manage tmux sessions from a web UI |
 | Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
 | Presets | `create-preset`, `pull-preset` | Scaffold your own bundle of skills and rules, or pull one from a repository |
@@ -181,10 +181,6 @@ The new-session dialog starts from an existing directory under the root, a new e
 The defaults editor lists every key in Claude Code's published settings schema (https://json.schemastore.org/claude-code-settings.json), cached at `~/.config/claudex/settings-schema.json` and refreshed from the page. A key is either active, meaning it is in your defaults, or default, meaning Anthropic's own value applies. Accept copies Anthropic's default into your defaults, and Edit sets your own value. Add key covers settings and environment variables the schema does not list yet.
 
 `serve` has no authentication and binds to `127.0.0.1` by default. Exposing it beyond the machine is a reverse proxy's job.
-
-### status
-
-Per account, the 5h session window and the 7d windows as bars with their reset times. It reads the account's OAuth token from the macOS Keychain or from `.credentials.json` and queries Anthropic's usage endpoint, so an expired token shows as a prompt to open Claude Code on that account. `--json` prints the raw numbers, `-A` limits it to one account.
 
 ### switch
 

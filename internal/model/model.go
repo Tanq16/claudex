@@ -1,28 +1,10 @@
 package model
 
-import "time"
-
 type AccountInfo struct {
 	Email        string `json:"email"`
 	Organization string `json:"organization"`
 	DisplayName  string `json:"displayName"`
 	ConfigDir    string `json:"configDir"`
-}
-
-type UsageWindow struct {
-	Kind        string    `json:"kind"`
-	Scope       string    `json:"scope,omitempty"`
-	Utilization float64   `json:"utilization"`
-	ResetsAt    time.Time `json:"resetsAt"`
-}
-
-type AccountUsage struct {
-	Account      AccountInfo   `json:"account"`
-	Windows      []UsageWindow `json:"windows,omitzero"`
-	TokenExpired bool          `json:"tokenExpired,omitempty"`
-	APIError     string        `json:"apiError,omitempty"`
-	Unavailable  string        `json:"unavailable,omitempty"`
-	Err          error         `json:"-"`
 }
 
 type HistoryEntry struct {
