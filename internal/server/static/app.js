@@ -556,12 +556,13 @@ const ui = {
     scrollbar(el) {
         if (el._scrollbar) return;
         el._scrollbar = true;
+        const host = el.parentElement;
         if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
+        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
         const thumb = document.createElement('span');
         thumb.setAttribute('aria-hidden', 'true');
-        thumb.className = 'absolute right-0.5 z-20 w-1.5 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,background-color] duration-300 hover:w-2 hover:bg-overlay1 cursor-default';
-        thumb.style.top = '0px';
-        el.appendChild(thumb);
+        thumb.className = 'absolute top-0 z-20 w-1.5 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,background-color] duration-300 hover:w-2 hover:bg-overlay1 cursor-default';
+        host.appendChild(thumb);
         let hideTimer;
         let dragging = null;
 
@@ -574,7 +575,8 @@ const ui = {
             }
             thumb.style.display = '';
             const h = Math.max(28, (clientHeight / scrollHeight) * clientHeight - 8);
-            const top = scrollTop + 4 + (scrollTop / overflow) * (clientHeight - h - 8);
+            const top = el.offsetTop + 4 + (scrollTop / overflow) * (clientHeight - h - 8);
+            thumb.style.right = `${host.clientWidth - el.offsetLeft - el.clientWidth + 2}px`;
             thumb.style.height = `${h}px`;
             thumb.style.transform = `translateY(${top}px)`;
             return true;
@@ -588,10 +590,7 @@ const ui = {
         el.addEventListener('scroll', show, { passive: true });
         el.addEventListener('pointerenter', show);
         new ResizeObserver(() => place()).observe(el);
-        new MutationObserver(() => {
-            if (thumb.parentNode !== el) el.appendChild(thumb);
-            place();
-        }).observe(el, { childList: true, subtree: true });
+        new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
         thumb.addEventListener('pointerdown', (e) => {
             e.preventDefault();
