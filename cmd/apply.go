@@ -49,6 +49,11 @@ func init() {
 
 func runApply(cmd *cobra.Command, args []string) {
 	root := currentDir()
+	if applyFlags.restoreResume {
+		if _, err := os.Stat(u.ResumeStash(root)); err != nil {
+			u.PrintFatal("no stashed resume file for this directory", err)
+		}
+	}
 	oldFiles := clearForeign(root)
 	if conflicts := workspace.PreflightBase(root); len(conflicts) > 0 {
 		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
@@ -58,17 +63,12 @@ func runApply(cmd *cobra.Command, args []string) {
 	if err != nil {
 		u.PrintFatal("failed to apply the layout", err)
 	}
-	if oldFiles != nil {
-		if err := workspace.WriteOldFiles(root, oldFiles); err != nil {
-			u.PrintFatal("failed to write .agents/"+workspace.OldFilesZip, err)
-		}
-	}
 
 	u.PrintSuccess("Applied to " + u.AbbreviatePath(root))
 	u.PrintGeneric("  agents:  AGENTS.md, CLAUDE.md -> AGENTS.md")
 	u.PrintGeneric("  skills:  .agents/skills (" + strings.Join(names, ", ") + "), .claude/skills -> ../.agents/skills")
-	if oldFiles != nil {
-		u.PrintGeneric("  old:     .agents/" + workspace.OldFilesZip)
+	if oldFiles != "" {
+		u.PrintGeneric("  old:     " + oldFiles)
 	}
 	path, ok, err := workspace.WriteGitExclude(root)
 	switch {
@@ -83,10 +83,10 @@ func runApply(cmd *cobra.Command, args []string) {
 	u.PrintGeneric("  presets: claudex apply-preset")
 }
 
-func clearForeign(root string) []byte {
+func clearForeign(root string) string {
 	found := workspace.Foreign(root)
 	if len(found) == 0 {
-		return nil
+		return ""
 	}
 	if applyFlags.foreign == "" {
 		u.PrintError("cannot apply to "+u.AbbreviatePath(root)+": it holds AI files claudex did not create; nothing was written", nil)
@@ -98,7 +98,11 @@ func clearForeign(root string) []byte {
 	}
 	oldFiles, err := workspace.ClearForeign(root, found, applyFlags.foreign == "preserve")
 	if err != nil {
-		u.PrintFatal("failed to clear the existing AI files", err)
+		msg := "failed to clear the existing AI files"
+		if oldFiles != "" {
+			msg += "; they are zipped in " + oldFiles
+		}
+		u.PrintFatal(msg, err)
 	}
 	return oldFiles
 }

@@ -44,18 +44,36 @@ func Foreign(root string) []string {
 	return found
 }
 
-func ClearForeign(root string, found []string, preserve bool) ([]byte, error) {
-	var zipped []byte
-	if preserve {
-		var err error
-		if zipped, err = zipPaths(root, found); err != nil {
-			return nil, err
-		}
+func ClearForeign(root string, found []string, preserve bool) (string, error) {
+	if !preserve {
+		return "", removeForeign(root, found)
 	}
+	zipped, err := zipPaths(root, found)
+	if err != nil {
+		return "", err
+	}
+	staged := "." + OldFilesZip
+	if err := writeFileAtomic(filepath.Join(root, staged), zipped, projectModes.file); err != nil {
+		return "", err
+	}
+	if err := removeForeign(root, found); err != nil {
+		return staged, err
+	}
+	final := filepath.Join(AgentsDir, OldFilesZip)
+	if err := os.MkdirAll(filepath.Join(root, AgentsDir), projectModes.dir); err != nil {
+		return staged, err
+	}
+	if err := os.Rename(filepath.Join(root, staged), filepath.Join(root, final)); err != nil {
+		return staged, err
+	}
+	return final, nil
+}
+
+func removeForeign(root string, found []string) error {
 	if err := removePaths(root, found); err != nil {
-		return nil, err
+		return err
 	}
-	return zipped, Clean(root)
+	return Clean(root)
 }
 
 func removePaths(root string, rels []string) error {
@@ -134,8 +152,4 @@ func addToZip(zw *zip.Writer, root, path string, d fs.DirEntry) error {
 	defer f.Close()
 	_, err = io.Copy(w, f)
 	return err
-}
-
-func WriteOldFiles(root string, data []byte) error {
-	return writeFileAtomic(filepath.Join(root, AgentsDir, OldFilesZip), data, projectModes.file)
 }

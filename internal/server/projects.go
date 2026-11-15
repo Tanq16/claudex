@@ -5,6 +5,7 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"fmt"
 	"io/fs"
 	"net/http"
 	"os"
@@ -226,7 +227,6 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 		return nil, err
 	}
 
-	var oldFiles []byte
 	var foreign []string
 	if !tracked {
 		foreign = workspace.Foreign(dir)
@@ -239,18 +239,16 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 		if choice != "preserve" && choice != "clean" {
 			return nil, fail(http.StatusConflict, "%s holds files claudex did not create (%s); choose preserve or clean", req.Name, strings.Join(foreign, ", "))
 		}
-		if oldFiles, err = workspace.ClearForeign(dir, foreign, choice == "preserve"); err != nil {
+		if zipped, err := workspace.ClearForeign(dir, foreign, choice == "preserve"); err != nil {
+			if zipped != "" {
+				return nil, fmt.Errorf("the old files are zipped in %s: %w", zipped, err)
+			}
 			return nil, err
 		}
 	}
 
 	if len(req.Presets) > 0 {
 		if err := s.applyPresets(st, dir, req.Presets); err != nil {
-			return nil, err
-		}
-	}
-	if oldFiles != nil {
-		if err := workspace.WriteOldFiles(dir, oldFiles); err != nil {
 			return nil, err
 		}
 	}
