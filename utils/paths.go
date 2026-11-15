@@ -59,3 +59,7 @@ func RemotePresetsDir() string {
 func ResumeStash(projectDir string) string {
 	return paths.ResumeStash(HomeDir(), projectDir)
 }
+
+func DefaultsFile() string {
+	return paths.DefaultsFile(HomeDir())
+}

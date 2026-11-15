@@ -1,6 +1,7 @@
 views.settings = (() => {
     const sections = [
         { id: 'accounts', label: 'Accounts', icon: 'users-round', hint: 'Discovered from ~/.claude and ~/.claudeN' },
+        { id: 'defaults', label: 'Defaults', icon: 'sliders-horizontal', hint: 'Active keys are written to every account on apply' },
         { id: 'presets', label: 'Presets', icon: 'package', hint: 'Tracked presets update automatically on every apply' },
         { id: 'mcp', label: 'MCP library', icon: 'server', hint: "Credentials are stored inline in claudex's config dir" },
     ];
@@ -10,6 +11,10 @@ views.settings = (() => {
         section: 'accounts',
         data: null,
         error: '',
+        defaults: null,
+        defaultsError: '',
+        dfilter: 'active',
+        dquery: '',
         loading: Promise.resolve(),
         scroll: {},
         revealed: new Set(),
@@ -36,9 +41,10 @@ views.settings = (() => {
         return { tone: 'green', icon: 'shield-check', text: 'Matches defaults' };
     };
 
-    const counts = () => (s.data
-        ? { accounts: s.data.accounts.length, presets: s.data.presets.builtin.length + s.data.presets.remote.length, mcp: s.data.mcpLibrary.length }
-        : {});
+    const counts = () => ({
+        ...(s.data ? { accounts: s.data.accounts.length, presets: s.data.presets.builtin.length + s.data.presets.remote.length, mcp: s.data.mcpLibrary.length } : {}),
+        ...(s.defaults ? { defaults: s.defaults.rows.filter((r) => r.active).length } : {}),
+    });
 
     const pageHead = () => {
         const c = counts();
@@ -93,14 +99,73 @@ views.settings = (() => {
             <span class="min-w-0 flex-1 truncate text-right font-mono text-sm text-text">${esc(s.data.root)}</span>
             <span title="Read-only" class="text-overlay0">${icon('lock', 'size-3.5')}</span>
         </p>
-        <ul class="grid items-start gap-3 xl:grid-cols-2 3xl:grid-cols-1">${s.data.accounts.map(accountCard).join('')}</ul>
-        <section class="flex flex-col gap-2">
-            ${groupHeader('Configure defaults', undefined, ui.chip('read-only', { icon: 'lock' }))}
-            <p class="px-1 text-sm text-overlay1">Each account's settings.json is checked against these keys.</p>
-            <dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 rounded-2xl bg-base px-4 py-3 font-mono text-xs">
-                ${Object.entries(s.data.configureDefaults).map(([k, v]) => `<dt class="break-all text-overlay1">${esc(k)}</dt><dd class="break-all text-right text-text">${esc(fmt(v))}</dd>`).join('')}
-            </dl>
-        </section>`;
+        <a href="#/settings/defaults" data-action="settings-section" data-section="defaults" class="flex items-center gap-3 rounded-2xl bg-base px-4 py-3 transition-colors hover:bg-surface0 3xl:hidden">
+            <i data-lucide="sliders-horizontal" class="size-4 shrink-0 text-overlay1"></i>
+            <span class="${ui.cls.label}">Defaults</span>
+            <span class="min-w-0 flex-1 text-right text-sm text-text">${plural(s.data.defaultsCount, 'active key')}</span>
+            <i data-lucide="chevron-right" class="size-4 shrink-0 text-overlay0"></i>
+        </a>
+        <ul class="grid items-start gap-3 xl:grid-cols-2 3xl:grid-cols-1">${s.data.accounts.map(accountCard).join('')}</ul>`;
+
+    const listLimit = 100;
+    const valueText = (v) => (v === '' ? '""' : fmt(v));
+
+    const schemaLine = (sc) => (sc.error
+        ? `<p class="flex items-center gap-2 rounded-2xl bg-red/10 px-4 py-3 text-sm text-red">${icon('cloud-off', 'size-4')}<span class="min-w-0 flex-1">${esc(sc.error)}</span></p>`
+        : `<p class="flex items-center gap-2 px-1 text-xs text-overlay1">${icon('file-json', 'size-3.5')}<span class="min-w-0 flex-1 truncate">${plural(sc.keys, 'key')} in the schema, fetched ${ui.timeAgo(sc.fetchedAt)}</span></p>`);
+
+    const defaultCard = (r) => {
+        const attrs = `data-key="${esc(r.key)}"`;
+        const pending = busy(`default:${r.key}`);
+        const hasDefault = r.default != null;
+        const actions = r.active
+            ? `${ui.iconButton('pencil', { title: 'Edit', size: 'sm', action: 'settings-default-edit', disabled: pending, attrs })}
+               ${ui.iconButton(pending ? 'loader-circle' : 'rotate-ccw', { title: 'Reset', size: 'sm', action: 'settings-default-reset', spin: pending, disabled: pending, attrs })}`
+            : `${hasDefault ? ui.button('Accept', { icon: pending ? 'loader-circle' : 'check', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-default-accept', attrs }) : ''}
+               ${ui.iconButton('pencil', { title: 'Edit', size: 'sm', action: 'settings-default-edit', disabled: pending, attrs })}`;
+        return `<li class="flex flex-col gap-2 rounded-2xl bg-base p-3">
+            <header class="flex items-start gap-2">
+                <h4 class="min-w-0 flex-1 pt-1.5 font-mono text-sm break-all text-text">${esc(r.key)}</h4>
+                ${r.inSchema ? '' : `<span class="pt-1">${ui.chip('custom', { icon: 'pencil-line' })}</span>`}
+                ${actions}
+            </header>
+            ${r.active
+                ? `<p class="line-clamp-6 rounded-xl bg-mantle px-3 py-2 font-mono text-xs break-all text-green">${esc(valueText(r.value))}</p>`
+                : `<p class="px-1 font-mono text-xs break-all text-overlay1">${hasDefault ? `default ${esc(valueText(r.default))}` : 'no default'}</p>`}
+            ${r.description ? `<p title="${esc(r.description)}" class="line-clamp-2 px-1 text-xs text-subtext0">${esc(r.description)}</p>` : ''}
+        </li>`;
+    };
+
+    const defaultsBody = () => {
+        const d = s.defaults;
+        if (!d && s.defaultsError) {
+            return ui.empty({ icon: 'circle-alert', title: 'Could not load defaults', hint: esc(s.defaultsError), action: ui.button('Retry', { icon: 'refresh-cw', action: 'settings-retry' }) });
+        }
+        if (!d) return `<p class="flex flex-1 items-center justify-center text-overlay1">${icon('loader-circle', 'size-5 animate-spin')}</p>`;
+        const active = d.rows.filter((r) => r.active);
+        const inactive = d.rows.filter((r) => !r.active);
+        const q = s.dquery.trim().toLowerCase();
+        const matched = (s.dfilter === 'active' ? active : inactive)
+            .filter((r) => !q || r.key.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q));
+        const shown = matched.slice(0, listLimit);
+        return `${schemaLine(d.schema)}
+            <div class="flex flex-wrap items-center gap-2">
+                ${ui.segmented({ name: 'defaults-filter', value: s.dfilter, options: [{ value: 'active', label: `Active ${active.length}` }, { value: 'default', label: `Default ${inactive.length}` }] })}
+                <label class="relative min-w-40 flex-1">
+                    <span class="sr-only">Filter keys</span>
+                    <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
+                    <input data-field="defaults.query" value="${esc(s.dquery)}" placeholder="Filter keys" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
+                </label>
+            </div>
+            ${shown.length
+                ? `<ul class="flex flex-col gap-2">${shown.map(defaultCard).join('')}</ul>
+                   ${matched.length > shown.length ? `<p class="px-1 text-center text-xs text-overlay1">Showing ${shown.length} of ${matched.length}; filter to narrow</p>` : ''}`
+                : ui.empty({ icon: 'search-x', title: q ? 'No matching keys' : s.dfilter === 'active' ? 'No active keys' : 'Every schema key is active' })}
+            ${s.dfilter === 'active' && !q ? `<section class="flex flex-col gap-2">
+                ${groupHeader('Managed by claudex', d.owned.length, ui.chip('per account', { icon: 'lock' }))}
+                <p class="flex flex-wrap gap-2 px-1">${d.owned.map((k) => ui.chip(k, { mono: true })).join('')}</p>
+            </section>` : ''}`;
+    };
 
     const builtinCard = (p) => `<li class="flex flex-col gap-3 rounded-2xl bg-base p-4">
         <header class="flex items-center gap-3">
@@ -203,6 +268,7 @@ views.settings = (() => {
     };
 
     const body = (id) => {
+        if (id === 'defaults') return defaultsBody();
         if (!s.data && s.error) {
             return ui.empty({ icon: 'circle-alert', title: 'Could not load settings', hint: esc(s.error), action: ui.button('Retry', { icon: 'refresh-cw', action: 'settings-retry' }) });
         }
@@ -218,13 +284,15 @@ views.settings = (() => {
                 <p class="text-sm text-overlay1">${x.hint}</p>
             </hgroup>
             ${x.id === 'mcp' && s.data?.mcpLibrary.length ? ui.button('Add server', { icon: 'plus', size: 'sm', action: 'settings-mcp-add', collapse: true }) : ''}
+            ${x.id === 'defaults' ? `${ui.iconButton(busy('schema') ? 'loader-circle' : 'cloud-download', { title: 'Refresh upstream schema', size: 'sm', variant: 'secondary', action: 'settings-schema-refresh', spin: busy('schema'), disabled: busy('schema') })}
+                ${ui.button('Add key', { icon: 'plus', size: 'sm', action: 'settings-default-add', collapse: true })}` : ''}
         </header>
         <div data-scroll data-scroll-key="${x.id}" class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pb-5 md:px-6 md:pb-6">${body(x.id)}</div>
     </section>`;
 
     const view = () => `<section aria-label="Settings" class="flex h-full flex-col gap-4 3xl:gap-6">
         ${pageHead()}
-        <div class="flex min-h-0 flex-1 flex-col 3xl:grid 3xl:grid-cols-3 3xl:grid-rows-1 3xl:gap-6">${sections.map(panel).join('')}</div>
+        <div class="flex min-h-0 flex-1 flex-col 3xl:grid 3xl:grid-cols-4 3xl:grid-rows-1 3xl:gap-6">${sections.map(panel).join('')}</div>
     </section>`;
 
     const render = () => {
@@ -250,7 +318,7 @@ views.settings = (() => {
         }
     };
 
-    const load = async () => {
+    const loadSettings = async () => {
         try {
             s.data = await api.settings();
             s.error = '';
@@ -260,6 +328,19 @@ views.settings = (() => {
         }
         render();
     };
+
+    const loadDefaults = async () => {
+        try {
+            s.defaults = await api.defaults();
+            s.defaultsError = '';
+        } catch (err) {
+            if (s.defaults) ui.toast(`Defaults refresh failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
+            else s.defaultsError = err.message;
+        }
+        render();
+    };
+
+    const load = () => Promise.all([loadSettings(), loadDefaults()]);
 
     const update = () => {
         s.loading = load();
@@ -453,9 +534,144 @@ views.settings = (() => {
         if (!ui.media.mobile()) ed.form.querySelector('[data-field="name"]').focus();
     };
 
+    const valueField = (kind, value, options) => {
+        switch (kind) {
+        case 'boolean':
+            return ui.segmented({ name: 'default-value', value: String(value === true), options: [{ value: 'true', label: 'true' }, { value: 'false', label: 'false' }] });
+        case 'enum':
+            return ui.select({ name: 'default-value', value: value ?? '', options: options.map((v) => ({ value: v, label: v })), placeholder: 'Pick a value' });
+        case 'string':
+        case 'number':
+        case 'integer':
+            return `<input data-default-input value="${esc(value)}" ${kind === 'string' ? '' : 'inputmode="decimal"'} aria-label="Value" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">`;
+        default:
+            return `<textarea data-default-input rows="10" aria-label="Value" spellcheck="false" class="${ui.cls.input} min-h-40 resize-y font-mono leading-relaxed">${esc(value === undefined ? '' : JSON.stringify(value, null, 2))}</textarea>`;
+        }
+    };
+
+    const readValue = (root, kind) => {
+        if (kind === 'boolean') return { value: ui.value(root, 'default-value') === 'true' };
+        if (kind === 'enum') {
+            const v = ui.value(root, 'default-value');
+            return v ? { value: v } : { error: 'Pick a value' };
+        }
+        const raw = root.querySelector('[data-default-input]').value;
+        if (kind === 'string') return { value: raw };
+        if (kind === 'number' || kind === 'integer') {
+            const n = Number(raw.trim());
+            if (raw.trim() === '' || !Number.isFinite(n)) return { error: 'Enter a number' };
+            if (kind === 'integer' && !Number.isInteger(n)) return { error: 'Enter a whole number' };
+            return { value: n };
+        }
+        try {
+            return { value: JSON.parse(raw) };
+        } catch (err) {
+            return { error: `Not valid JSON: ${err.message}` };
+        }
+    };
+
+    const openDefault = (row) => {
+        const ed = { kind: row?.kind ?? 'string', saving: false };
+        const initial = row ? (row.active ? row.value : row.default) : undefined;
+        const m = ui.modal.open({
+            title: row ? row.key : 'Add a key',
+            icon: 'sliders-horizontal',
+            body: `<form id="settings-default-form" novalidate class="flex flex-col gap-5 pt-1">
+                ${row
+                    ? (row.description ? `<p class="text-sm leading-relaxed text-subtext0">${esc(row.description)}</p>` : '')
+                    : `<label class="flex flex-col gap-1.5">
+                        <span class="px-1 ${ui.cls.label}">Key</span>
+                        <input data-default-key placeholder="env.MY_VARIABLE" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">
+                    </label>
+                    <div class="flex flex-col items-start gap-1.5">
+                        <span class="px-1 ${ui.cls.label}">Type</span>
+                        ${ui.segmented({ name: 'default-kind', value: ed.kind, options: [{ value: 'string', label: 'Text' }, { value: 'json', label: 'JSON' }] })}
+                    </div>`}
+                <div class="flex flex-col gap-1.5">
+                    <span class="px-1 ${ui.cls.label}">Value</span>
+                    <div data-default-field class="flex flex-col">${valueField(ed.kind, initial, row?.enum)}</div>
+                </div>
+                <p data-default-error role="alert" class="hidden px-1 text-sm text-red"></p>
+            </form>`,
+            footer: ' ',
+        });
+        const form = m.el.querySelector('form');
+        const error = form.querySelector('[data-default-error]');
+        const footer = m.el.querySelector('[data-modal-footer]');
+        const renderFooter = () => {
+            footer.innerHTML = `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-default-cancel' })}
+                ${ui.button(ed.saving ? 'Saving' : 'Save', { icon: ed.saving ? 'loader-circle' : 'check', spin: ed.saving, disabled: ed.saving, variant: 'primary', type: 'submit', attrs: 'form="settings-default-form"' })}`;
+            ui.icons(footer);
+        };
+        const showError = (msg) => {
+            error.textContent = msg;
+            error.classList.toggle('hidden', !msg);
+        };
+        renderFooter();
+        footer.addEventListener('click', (e) => {
+            if (e.target.closest('[data-default-cancel]')) m.close();
+        });
+        m.el.addEventListener('ui-change', (e) => {
+            if (e.detail.name !== 'default-kind') return;
+            ed.kind = e.detail.value;
+            const field = form.querySelector('[data-default-field]');
+            field.innerHTML = valueField(ed.kind, undefined);
+            showError('');
+        });
+        form.addEventListener('input', () => showError(''));
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (ed.saving) return;
+            const key = row ? row.key : form.querySelector('[data-default-key]').value.trim();
+            const res = readValue(form, ed.kind);
+            const msg = key ? res.error : 'Enter a key';
+            if (msg) {
+                showError(msg);
+                return;
+            }
+            ed.saving = true;
+            renderFooter();
+            const out = await app.act('Save default', () => api.setDefault(key, res.value), { success: `${key} is active` });
+            await s.loading;
+            if (out.ok) m.close();
+            else {
+                ed.saving = false;
+                renderFooter();
+                showError(out.error.message);
+            }
+        });
+        if (!ui.media.mobile()) form.querySelector('[data-default-key], [data-default-input]')?.focus();
+    };
+
+    const rowOf = (el) => s.defaults.rows.find((r) => r.key === el.dataset.key);
+
+    ui.on('settings-default-add', () => openDefault(null));
+    ui.on('settings-default-edit', (el) => openDefault(rowOf(el)));
+
+    ui.on('settings-default-accept', (el) => {
+        const row = rowOf(el);
+        run(`default:${row.key}`, 'Accept default', () => api.setDefault(row.key, row.default), `${row.key} is active`);
+    });
+
+    ui.on('settings-default-reset', async (el) => {
+        const key = el.dataset.key;
+        const ok = await ui.confirm({
+            title: `Reset ${key}?`,
+            icon: 'rotate-ccw',
+            confirmLabel: 'Reset',
+            message: `Takes <span class="font-mono text-text">${esc(key)}</span> out of the active set. The next apply removes it from every account claudex wrote it to.`,
+        });
+        if (ok) await run(`default:${key}`, 'Reset default', () => api.resetDefault(key), `${key} reset`);
+    });
+
+    ui.on('settings-schema-refresh', () => {
+        run('schema', 'Refresh schema', () => api.refreshSchema(), (r) => `Schema refreshed: ${plural(r.keys, 'key')}`);
+    });
+
     ui.on('settings-section', (el) => show(el.dataset.section));
     ui.on('settings-retry', () => {
         s.error = '';
+        s.defaultsError = '';
         render();
         update();
     });
@@ -470,7 +686,7 @@ views.settings = (() => {
             confirmLabel: 'Apply defaults',
             message: account.settingsFound
                 ? `Sets ${plural(account.drift.length, 'drifted key')} in ${target} to the configure defaults.`
-                : `Creates ${target} with the ${Object.keys(s.data.configureDefaults).length} configure defaults.`,
+                : `Creates ${target} with the ${plural(s.data.defaultsCount, 'active default')}.`,
         });
         if (ok) await run(`apply:${dir}`, 'Apply defaults', () => api.applyDefaults(dir), `${dir} matches the defaults`);
     });
@@ -537,6 +753,11 @@ views.settings = (() => {
             s.listeners = [
                 ['input', (e) => {
                     const key = e.target.dataset.field;
+                    if (key === 'defaults.query') {
+                        s.dquery = e.target.value;
+                        render();
+                        return;
+                    }
                     if (!key?.startsWith('track.')) return;
                     s.track[key.slice(6)] = e.target.value;
                     if (s.track.error) {
@@ -551,6 +772,10 @@ views.settings = (() => {
                 }],
                 ['ui-change', (e) => {
                     if (e.detail.name === 'settings-section') show(e.detail.value);
+                    if (e.detail.name === 'defaults-filter') {
+                        s.dfilter = e.detail.value;
+                        render();
+                    }
                 }],
             ];
             s.listeners.forEach(([type, fn]) => el.addEventListener(type, fn));

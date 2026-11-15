@@ -107,10 +107,14 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	defaults, err := s.loadDefaults()
+	if err != nil {
+		return nil, err
+	}
 	var views []accountSettings
 	for _, a := range s.accounts() {
 		dir := paths.Expand(s.home, a.Dir)
-		found, drift := accounts.Compliance(dir)
+		found, drift := accounts.Compliance(dir, defaults)
 		for i := range drift {
 			drift[i].Expected = s.abbrev(drift[i].Expected)
 			drift[i].Actual = s.abbrev(drift[i].Actual)
@@ -124,11 +128,11 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 		views = append(views, accountSettings{accountView: a, SettingsFound: found, Drift: drift, Projects: count})
 	}
 	return map[string]any{
-		"root":              s.abbrev(s.root),
-		"accounts":          views,
-		"configureDefaults": accounts.Defaults(),
-		"presets":           s.presets(st),
-		"mcpLibrary":        lib,
+		"root":          s.abbrev(s.root),
+		"accounts":      views,
+		"defaultsCount": len(defaults.Settings),
+		"presets":       s.presets(st),
+		"mcpLibrary":    lib,
 	}, nil
 }
 
@@ -145,8 +149,15 @@ func (s *Server) handleApplyDefaults(r *http.Request) (any, error) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, err := accounts.Configure(dir, "", embedded.StatuslineScript); err != nil {
+	defaults, err := s.loadDefaults()
+	if err != nil {
+		return nil, err
+	}
+	if _, err := accounts.Configure(dir, "", embedded.StatuslineScript, defaults); err != nil {
 		return nil, fail(http.StatusConflict, "%v", err)
+	}
+	if err := defaults.Save(paths.DefaultsFile(s.home)); err != nil {
+		return nil, err
 	}
 	return map[string]string{"dir": s.abbrev(dir)}, nil
 }

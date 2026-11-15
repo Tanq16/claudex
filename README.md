@@ -54,7 +54,7 @@ make build
 
 Provisions every discovered account, then lays down the global defaults once.
 
-Per account it writes `statusline.sh` into the account directory and points `settings.json` at it. The statusline shows the account label, the model, the working directory, the git branch, context used, and the 5h and 7d rate-limit percentages. It also merges these keys into the existing `settings.json`, leaving every other key alone:
+Per account it writes `statusline.sh` into the account directory and points `settings.json` at it. The statusline shows the account label, the model, the working directory, the git branch, context used, and the 5h and 7d rate-limit percentages. It also merges the default keys from `~/.config/claudex/defaults.json` into the existing `settings.json`, leaving every other key alone. The file starts with these keys:
 
 | Key | Value |
 |-----|-------|
@@ -68,7 +68,7 @@ Per account it writes `statusline.sh` into the account directory and points `set
 | `env.DISABLE_AUTOUPDATER` | `1` |
 | `env.ENABLE_CLAUDEAI_MCP_SERVERS` | `false` |
 
-An account whose `settings.json` is not valid JSON is skipped rather than overwritten.
+A key taken out of the defaults is deleted from each account the next time `configure` or the web UI applies them, but only from accounts ClaudeX wrote it to. The `statusLine` keys are always set by ClaudeX. An account whose `settings.json` is not valid JSON is skipped rather than overwritten.
 
 The global defaults are a Claude Code plugin at `~/.config/claudex/global/`, carrying an `.lsp.json` that wires `gopls`, `pyright-langserver`, and `typescript-language-server`, plus the built-in presets extracted into `~/.config/claudex/presets/`.
 
@@ -163,7 +163,9 @@ claudex serve --root ~/code --host 0.0.0.0 -p 9000
 
 Each session is a window in a tmux session named `claudex`, running `claude --remote-control <name>` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Sessions outlive `serve`, since tmux is its own process. A project shows as active while its window runs and inactive otherwise, and Continue restarts it with `claude --continue`.
 
-The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the `configure` defaults, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
+The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
+
+The defaults editor lists every key in Claude Code's published settings schema (https://json.schemastore.org/claude-code-settings.json), cached at `~/.config/claudex/settings-schema.json` and refreshed from the page. A key is either active, meaning it is in your defaults, or default, meaning Anthropic's own value applies. Accept copies Anthropic's default into your defaults, and Edit sets your own value. Add key covers settings and environment variables the schema does not list yet.
 
 `serve` has no authentication and binds to `127.0.0.1` by default. Exposing it beyond the machine is a reverse proxy's job.
 

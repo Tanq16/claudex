@@ -89,6 +89,14 @@ func MCPLibraryFile(home string) string {
 	return filepath.Join(ConfigDir(home), "mcp-library.json")
 }
 
+func DefaultsFile(home string) string {
+	return filepath.Join(ConfigDir(home), "defaults.json")
+}
+
+func SettingsSchemaFile(home string) string {
+	return filepath.Join(ConfigDir(home), "settings-schema.json")
+}
+
 func ProjectsDir(home string) string {
 	return filepath.Join(ConfigDir(home), "projects")
 }

@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
 	"github.com/tanq16/claudex/internal/embedded"
@@ -34,12 +35,13 @@ type Config struct {
 }
 
 type Server struct {
-	cfg      Config
-	home     string
-	root     string
-	launcher session.Launcher
-	mu       sync.Mutex
-	mux      *http.ServeMux
+	cfg         Config
+	home        string
+	root        string
+	launcher    session.Launcher
+	mu          sync.Mutex
+	mux         *http.ServeMux
+	schemaTried atomic.Bool
 }
 
 func New(cfg Config) *Server {
@@ -119,6 +121,10 @@ func (s *Server) Setup() error {
 
 	s.mux.HandleFunc("GET /api/settings", s.api(s.handleSettings))
 	s.mux.HandleFunc("POST /api/accounts/apply-defaults", s.api(s.handleApplyDefaults))
+	s.mux.HandleFunc("GET /api/defaults", s.api(s.handleDefaults))
+	s.mux.HandleFunc("PUT /api/defaults", s.api(s.handleSetDefault))
+	s.mux.HandleFunc("DELETE /api/defaults", s.api(s.handleResetDefault))
+	s.mux.HandleFunc("POST /api/defaults/refresh", s.api(s.handleRefreshSchema))
 	s.mux.HandleFunc("POST /api/presets/remote", s.api(s.handleAddRemotePreset))
 	s.mux.HandleFunc("POST /api/presets/remote/update", s.api(s.handleUpdateRemotePreset))
 	s.mux.HandleFunc("POST /api/presets/remote/remove", s.api(s.handleRemoveRemotePreset))

@@ -59,6 +59,10 @@ const api = (() => {
 
         settings: () => get('/api/settings'),
         applyDefaults: (dir) => post('/api/accounts/apply-defaults', { dir }),
+        defaults: () => get('/api/defaults'),
+        setDefault: (key, value) => put('/api/defaults', { key, value }),
+        resetDefault: (key) => del(`/api/defaults?key=${enc(key)}`),
+        refreshSchema: () => post('/api/defaults/refresh'),
         addRemotePreset: (repo, path) => post('/api/presets/remote', { repo, path }),
         updateRemotePreset: (name) => post('/api/presets/remote/update', { name }),
         removeRemotePreset: (name) => post('/api/presets/remote/remove', { name }),
