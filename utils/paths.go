@@ -55,3 +55,7 @@ func PresetsDir() string {
 func RemotePresetsDir() string {
 	return paths.RemotePresetsDir(HomeDir())
 }
+
+func ResumeStash(projectDir string) string {
+	return paths.ResumeStash(HomeDir(), projectDir)
+}

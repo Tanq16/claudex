@@ -89,17 +89,6 @@ func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {
 	return w.Flush()
 }
 
-func FilterBySession(entries []RawHistoryEntry, sessionID string) (matching, rest []RawHistoryEntry) {
-	for _, e := range entries {
-		if e.Parsed.SessionID == sessionID {
-			matching = append(matching, e)
-		} else {
-			rest = append(rest, e)
-		}
-	}
-	return
-}
-
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 	if err := os.MkdirAll(dstProjectDir, 0700); err != nil {
 		return fmt.Errorf("creating target directory: %w", err)

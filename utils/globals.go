@@ -8,7 +8,4 @@ import (
 
 var GlobalDebugFlag bool
 
-var (
-	StdinIsTerminal  = term.IsTerminal(os.Stdin.Fd())
-	StdoutIsTerminal = term.IsTerminal(os.Stdout.Fd())
-)
+var StdoutIsTerminal = term.IsTerminal(os.Stdout.Fd())

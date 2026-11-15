@@ -26,7 +26,7 @@ type Launcher struct {
 	PluginDir      string
 }
 
-func ConnectorsSettings() string {
+func connectorsSettings() string {
 	data, _ := json.Marshal(map[string]any{
 		"env": map[string]string{"ENABLE_CLAUDEAI_MCP_SERVERS": "true"},
 	})
@@ -84,15 +84,22 @@ func (l Launcher) prepare(x Launch) ([]string, error) {
 		}
 	}
 	argv = append(argv, claude)
+	return append(argv, Args(x, l.PluginDir)...), nil
+}
+
+func Args(x Launch, pluginDir string) []string {
+	var args []string
 	if x.Continue {
-		argv = append(argv, "--continue")
+		args = append(args, "--continue")
 	}
-	argv = append(argv, "--remote-control", x.RCName)
+	if x.RCName != "" {
+		args = append(args, "--remote-control", x.RCName)
+	}
 	if x.Connectors {
-		argv = append(argv, "--settings", ConnectorsSettings())
+		args = append(args, "--settings", connectorsSettings())
 	}
-	if l.PluginDir != "" {
-		argv = append(argv, "--plugin-dir", l.PluginDir)
+	if pluginDir != "" {
+		args = append(args, "--plugin-dir", pluginDir)
 	}
-	return append(argv, "--dangerously-skip-permissions"), nil
+	return append(args, "--dangerously-skip-permissions")
 }

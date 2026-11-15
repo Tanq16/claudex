@@ -81,6 +81,9 @@ func Apply(cfg ApplyConfig) error {
 		if err := UpsertSection(cfg.Root, p.Ref, p.Partial()); err != nil {
 			return fmt.Errorf("preset %s: %w", p.Ref, err)
 		}
+		if _, err := MergePresetMCP(cfg.Root, p); err != nil {
+			return fmt.Errorf("preset %s: %w", p.Ref, err)
+		}
 	}
 	return nil
 }
@@ -119,10 +122,14 @@ func removePreset(cfg ApplyConfig, ref string) error {
 		}
 	}
 
-	if p, err := FindPreset(cfg.LocalPresets, cfg.RemotePresets, ref); err == nil {
-		return unlinkSkills(cfg.Root, p)
+	p, err := FindPreset(cfg.LocalPresets, cfg.RemotePresets, ref)
+	if err != nil {
+		return nil
 	}
-	return nil
+	if err := unlinkSkills(cfg.Root, p); err != nil {
+		return err
+	}
+	return removePresetMCP(cfg.Root, p)
 }
 
 func unlinkSkills(root string, p *Preset) error {

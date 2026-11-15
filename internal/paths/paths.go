@@ -1,6 +1,8 @@
 package paths
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"slices"
@@ -87,6 +89,11 @@ func MCPLibraryFile(home string) string {
 	return filepath.Join(ConfigDir(home), "mcp-library.json")
 }
 
-func ResumeStashDir(home string) string {
-	return filepath.Join(ConfigDir(home), "resume-stash")
+func ProjectsDir(home string) string {
+	return filepath.Join(ConfigDir(home), "projects")
+}
+
+func ResumeStash(home, projectDir string) string {
+	sum := sha256.Sum256([]byte(projectDir))
+	return filepath.Join(ConfigDir(home), "resume-stash", filepath.Base(projectDir)+"-"+hex.EncodeToString(sum[:6])+".md")
 }

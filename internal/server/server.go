@@ -53,6 +53,12 @@ func (s *Server) Setup() error {
 	}
 	s.home = home
 
+	if s.cfg.Root == "" {
+		s.cfg.Root = paths.ProjectsDir(home)
+		if err := os.MkdirAll(s.cfg.Root, 0o700); err != nil {
+			return fmt.Errorf("creating the projects directory: %w", err)
+		}
+	}
 	root, err := filepath.Abs(s.cfg.Root)
 	if err == nil {
 		root, err = filepath.EvalSymlinks(root)

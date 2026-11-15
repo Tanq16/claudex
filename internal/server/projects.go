@@ -2,8 +2,6 @@ package server
 
 import (
 	"cmp"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -153,8 +151,7 @@ func fileExists(path string) bool {
 }
 
 func (s *Server) stashPath(dir string) string {
-	sum := sha256.Sum256([]byte(dir))
-	return filepath.Join(paths.ResumeStashDir(s.home), filepath.Base(dir)+"-"+hex.EncodeToString(sum[:6])+".md")
+	return paths.ResumeStash(s.home, dir)
 }
 
 func (s *Server) handleDirectories(r *http.Request) (any, error) {
@@ -239,19 +236,10 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 		if choice == "" && req.Source == "clone" {
 			choice = "preserve"
 		}
-		switch choice {
-		case "preserve":
-			if oldFiles, err = workspace.ZipPaths(dir, foreign); err != nil {
-				return nil, err
-			}
-		case "clean":
-		default:
+		if choice != "preserve" && choice != "clean" {
 			return nil, fail(http.StatusConflict, "%s holds files claudex did not create (%s); choose preserve or clean", req.Name, strings.Join(foreign, ", "))
 		}
-		if err := workspace.RemovePaths(dir, foreign); err != nil {
-			return nil, err
-		}
-		if err := workspace.Clean(dir); err != nil {
+		if oldFiles, err = workspace.ClearForeign(dir, foreign, choice == "preserve"); err != nil {
 			return nil, err
 		}
 	}

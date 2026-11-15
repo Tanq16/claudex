@@ -44,7 +44,21 @@ func Foreign(root string) []string {
 	return found
 }
 
-func RemovePaths(root string, rels []string) error {
+func ClearForeign(root string, found []string, preserve bool) ([]byte, error) {
+	var zipped []byte
+	if preserve {
+		var err error
+		if zipped, err = zipPaths(root, found); err != nil {
+			return nil, err
+		}
+	}
+	if err := removePaths(root, found); err != nil {
+		return nil, err
+	}
+	return zipped, Clean(root)
+}
+
+func removePaths(root string, rels []string) error {
 	for _, rel := range rels {
 		if err := os.RemoveAll(filepath.Join(root, strings.TrimSuffix(rel, "/"))); err != nil {
 			return err
@@ -53,7 +67,7 @@ func RemovePaths(root string, rels []string) error {
 	return nil
 }
 
-func ZipPaths(root string, rels []string) ([]byte, error) {
+func zipPaths(root string, rels []string) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := zip.NewWriter(&buf)
 	for _, rel := range rels {

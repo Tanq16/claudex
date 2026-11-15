@@ -30,5 +30,5 @@ var serveCmd = &cobra.Command{
 func init() {
 	serveCmd.Flags().StringVarP(&serveFlags.host, "host", "H", "127.0.0.1", "Host to bind to")
 	serveCmd.Flags().IntVarP(&serveFlags.port, "port", "p", 8080, "Port to listen on")
-	serveCmd.Flags().StringVarP(&serveFlags.root, "root", "r", ".", "Directory whose subdirectories are the projects")
+	serveCmd.Flags().StringVarP(&serveFlags.root, "root", "r", "", "Directory whose subdirectories are the projects (default ~/.config/claudex/projects)")
 }

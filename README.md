@@ -8,16 +8,16 @@
 
 ---
 
-ClaudeX is a companion CLI for Claude Code that finds every Claude account on the machine and configures them identically, writes an `AGENTS.md` and skills layout into a project, and launches a session under the account you pick.
+ClaudeX is a companion CLI and local web UI for Claude Code. It configures every Claude account on the machine identically, writes an `AGENTS.md` and skills layout into a project, and runs Claude sessions under the account you pick, either in your terminal or in tmux behind Remote Control.
 
-It exists for juggling several Claude subscriptions, and everything except the account picker works the same with one. It does not replace `claude`, which `launch` execs.
+It exists for juggling several Claude subscriptions, and everything except account selection works the same with one. It does not replace `claude`, which it execs or runs in tmux.
 
 ## Capabilities
 
 | Category | Commands | Description |
 |----------|----------|-------------|
-| Accounts | `configure`, `status`, `switch`, `oauth-token` | Provision every account, read its usage, move a project between accounts |
-| Sessions | `launch` | Pick the account and the session, then exec `claude` |
+| Accounts | `configure`, `status`, `switch` | Provision every account, read its usage, move a project between accounts |
+| Sessions | `launch`, `serve` | Exec `claude` under one account, or manage tmux sessions from a web UI |
 | Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
 | Presets | `create-preset`, `pull-preset` | Scaffold your own bundle of skills and rules, or pull one from a repository |
 
@@ -48,7 +48,7 @@ make build
 
 ## Usage
 
-`--debug` is on every command and swaps the styled output for zerolog: a timestamped console line in a terminal, and JSON when stdout is not one. Color and cursor redraws drop automatically off a terminal too, so piping any command gives plain text with no flag. `-A/--account` takes an account config directory path, and on `launch` and `switch` it also matches on just the directory name. Global state lives under `~/.config/claudex/`, holding the plugin in `global/` and presets in `presets/`.
+`--debug` is on every command and swaps the styled output for zerolog: a timestamped console line in a terminal, and JSON when stdout is not one. Color and cursor redraws drop automatically off a terminal too, so piping any command gives plain text with no flag. Every input is a flag or an argument, and nothing prompts. `-A/--account` takes an account config directory path, and on `launch` and `switch` it also matches on just the directory name. Global state lives under `~/.config/claudex/`, holding the plugin in `global/`, presets in `presets/`, and the web UI's state in `state.json`.
 
 ### configure
 
@@ -64,6 +64,7 @@ Per account it writes `statusline.sh` into the account directory and points `set
 | `autoMemoryEnabled` | `false` |
 | `skipDangerousModePermissionPrompt` | `true` |
 | `outputStyle` | `Concise` |
+| `enableAllProjectMcpServers` | `true` |
 | `env.DISABLE_AUTOUPDATER` | `1` |
 | `env.ENABLE_CLAUDEAI_MCP_SERVERS` | `false` |
 
@@ -86,23 +87,25 @@ CLAUDE.md          -> AGENTS.md
 
 `AGENTS.md` and `.agents/skills/` are the real files, following the [Agent Skills](https://agentskills.io) layout that Cursor and Codex read on their own, and the two symlinks exist because Claude Code looks for the other names.
 
-An existing `AGENTS.md` keeps everything outside the markers: the base block is inserted or replaced in place. The same four paths also go into `.git/info/exclude`, which is local to your clone, so the layout never appears in `git status` and never gets pushed.
+An existing `AGENTS.md` keeps everything outside the markers: the base block is inserted or replaced in place. The same four paths and `.mcp.json` also go into `.git/info/exclude`, which is local to your clone, so the layout never appears in `git status` and never gets pushed.
 
-Nothing is written when any of those paths already holds something ClaudeX did not put there. Every conflict is reported at once so you can clear them in one pass rather than one run per path.
+A directory holding AI files ClaudeX did not create (`.mcp.json`, `.claude/`, `.agents/`, `CLAUDE.md`, or `AGENTS.md`) is refused until `--foreign` says what to do with them. `--foreign preserve` zips them into `.agents/old-ai-files.zip` and `--foreign clean` deletes them, and both then apply fresh. A directory ClaudeX already set up is re-applied without asking.
+
+`--restore-resume` puts back the `.agents/session-resume/resume.md` that `clean-cwd` stashed for this directory.
 
 ### apply-preset
 
-A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, and an optional `skills/` directory. Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/` and writes its partial as its own marked section of `AGENTS.md`, so re-applying replaces that section instead of appending a second copy. It also removes any skill link whose target no longer exists, which is what a skill dropped from a preset leaves behind. It needs `claudex apply` to have run first.
+A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, an optional `skills/` directory, and an optional `mcp.json` in the `.mcp.json` shape (`{"mcpServers": {...}}`). Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/`, writes its partial as its own marked section of `AGENTS.md`, and merges its MCP servers into the project's `.mcp.json`. Re-applying replaces that section instead of appending a second copy. It also removes any skill link whose target no longer exists, which is what a skill dropped from a preset leaves behind. It needs `claudex apply` to have run first.
 
 A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
 
 ```bash
-claudex apply-preset                             # multi-select picker
+claudex apply-preset                             # lists the available presets
 claudex apply-preset private                     # local, by name; several apply in order
 claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 ```
 
-`--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset; passing one narrows the run to that half.
+`--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset, MCP servers included; passing one narrows the run to that half.
 
 One preset ships in the binary. `private` carries 30 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
 
@@ -134,23 +137,35 @@ Cloning runs `git`, so a private repository works with whatever credentials you 
 
 ### clean-cwd
 
-Removes what `apply` and `apply-preset` wrote: `.agents/`, both symlinks, the ClaudeX sections of `AGENTS.md`, and the `.git/info/exclude` block.
+Removes what `apply` and `apply-preset` wrote: `.agents/`, both symlinks, the ClaudeX sections of `AGENTS.md`, and the `.git/info/exclude` block. A `.mcp.json` stays, and so does its exclude entry. The session resume file is stashed under `~/.config/claudex/resume-stash/` first, for `apply --restore-resume` to bring back.
 
 ### launch
 
-Prompts for new or resume, for the account, and for MCP mode, then execs `claude` with `--dangerously-skip-permissions`, a `--plugin-dir` pointing at the global plugin, and `CLAUDE_CONFIG_DIR` set to the account you picked. Any inherited `CLAUDE_CONFIG_DIR` is stripped first so it cannot override that choice. The plugin is rebuilt on every launch, so language servers work without running `configure`.
-
-The new-or-resume prompt only appears when this project has sessions, and the account prompt only when there is more than one account. Resume lists this project's 10 most recent sessions across every account, and picking one launches under the account that holds it.
+Execs `claude` in the current directory with `--dangerously-skip-permissions`, a `--plugin-dir` pointing at the global plugin, and `CLAUDE_CONFIG_DIR` set to the account. Any inherited `CLAUDE_CONFIG_DIR` is stripped first so it cannot override that choice. The plugin is rebuilt on every launch, so language servers work without running `configure`. The directory is marked trusted in the account's `.claude.json`, so the trust dialog never appears.
 
 | Flag | Effect |
 |------|--------|
-| `-A/--account` | Skip the account picker |
-| `--new` | Start a new session |
-| `--resume` | Resume: the latest session, or a list when there is more than one |
-| `--session <id>` | Resume that session by id |
-| `--mcp mcps\|connectors\|none` | Skip the MCP picker |
+| `-A/--account` | The account to run under, `~/.claude` by default |
+| `--continue` | Continue the most recent conversation in this directory |
+| `-r/--remote-control <name>` | Enable Remote Control under that session name |
+| `--connectors` | Load the claude.ai connectors as MCP servers |
 
-`--new`, `--resume`, and `--session` are mutually exclusive. The MCP modes are `mcps` for MCP servers on, `connectors` to add Claude.ai connectors on top, and `none` for `--strict-mcp-config`. Launch hands the session to `claude`, so it errors without an interactive terminal.
+An older conversation is picked with `claude --resume` inside the session.
+
+### serve
+
+A local web UI that manages the projects under one root directory and the Claude sessions running in them.
+
+```bash
+claudex serve                                   # http://127.0.0.1:8080, projects under ~/.config/claudex/projects
+claudex serve --root ~/code --host 0.0.0.0 -p 9000
+```
+
+Each session is a window in a tmux session named `claudex`, running `claude --remote-control <name>` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Sessions outlive `serve`, since tmux is its own process. A project shows as active while its window runs and inactive otherwise, and Continue restarts it with `claude --continue`.
+
+The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the `configure` defaults, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
+
+`serve` has no authentication and binds to `127.0.0.1` by default. Exposing it beyond the machine is a reverse proxy's job.
 
 ### status
 
@@ -158,16 +173,11 @@ Per account, the 5h session window and the 7d windows as bars with their reset t
 
 ### switch
 
-Moves the current project's session files and history entries out of the account holding them and into another. It needs at least two accounts, and `-A/--account` is required without an interactive terminal.
-
-The picker lists this project's sessions from every account, under a row that takes all the ones in the account holding the newest. Picking a single session moves only that session, out of whichever account holds it. `--session <id>` names one directly and skips the picker, and without a terminal there is no picker, so it moves the whole account unless `--session` narrows it.
-
-### oauth-token
-
-Runs the OAuth PKCE flow in a browser and prints an access token to stdout. `-p/--port` pins the local callback port, which defaults to one the OS picks, and `-e/--expires-in` sets the requested expiry in seconds, which the server may override. `--manual` prints the authorize URL instead of opening a browser and takes the code pasted back, for a machine with no browser to hand off to. Status lines and the URL are printed only on a terminal or under `--debug`, so `TOKEN=$(claudex oauth-token)` still captures the token alone.
+Moves every session of the current directory, with its history entries, out of the other accounts and into `-A/--account`, which is required.
 
 ## Notes
 
+- **tmux is required for `serve`.** `gh` is needed only to list and clone repositories in the new-session dialog.
 - **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
 - **Preset skills are symlinks.** They point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` are real copies extracted from the binary, so re-running `apply` is what updates them.
 - **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.

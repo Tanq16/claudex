@@ -159,7 +159,11 @@ func (s *Server) handleValidatePreset(r *http.Request) (any, error) {
 	if name == workspace.BasePreset {
 		return map[string]any{"ok": true, "name": name}, nil
 	}
-	if _, err := workspace.FindPreset(paths.PresetsDir(s.home), paths.RemotePresetsDir(s.home), name); err != nil {
+	p, err := workspace.FindPreset(paths.PresetsDir(s.home), paths.RemotePresetsDir(s.home), name)
+	if err == nil {
+		_, err = p.MCPServers()
+	}
+	if err != nil {
 		msg := err.Error()
 		if errors.Is(err, fs.ErrNotExist) {
 			msg = "No preset.yaml for " + name + "; track its repository in Settings first"

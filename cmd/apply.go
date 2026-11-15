@@ -1,7 +1,11 @@
 package cmd
 
 import (
+	"errors"
+	"fmt"
 	"os"
+	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -10,6 +14,27 @@ import (
 	u "github.com/tanq16/claudex/utils"
 )
 
+var foreignChoices = []string{"preserve", "clean"}
+
+type foreignChoice string
+
+func (f *foreignChoice) String() string { return string(*f) }
+
+func (f *foreignChoice) Type() string { return strings.Join(foreignChoices, "|") }
+
+func (f *foreignChoice) Set(v string) error {
+	if !slices.Contains(foreignChoices, v) {
+		return fmt.Errorf("must be one of %s", strings.Join(foreignChoices, ", "))
+	}
+	*f = foreignChoice(v)
+	return nil
+}
+
+var applyFlags struct {
+	foreign       foreignChoice
+	restoreResume bool
+}
+
 var applyCmd = &cobra.Command{
 	Use:   "apply",
 	Short: "Write the base layout of AGENTS.md and the base skills into the current directory",
@@ -17,8 +42,14 @@ var applyCmd = &cobra.Command{
 	Run:   runApply,
 }
 
+func init() {
+	applyCmd.Flags().Var(&applyFlags.foreign, "foreign", "What to do with AI files claudex did not create: zip them into .agents/"+workspace.OldFilesZip+" first, or delete them")
+	applyCmd.Flags().BoolVar(&applyFlags.restoreResume, "restore-resume", false, "Restore the resume file that clean-cwd stashed for this directory")
+}
+
 func runApply(cmd *cobra.Command, args []string) {
 	root := currentDir()
+	oldFiles := clearForeign(root)
 	if conflicts := workspace.PreflightBase(root); len(conflicts) > 0 {
 		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
 	}
@@ -27,10 +58,18 @@ func runApply(cmd *cobra.Command, args []string) {
 	if err != nil {
 		u.PrintFatal("failed to apply the layout", err)
 	}
+	if oldFiles != nil {
+		if err := workspace.WriteOldFiles(root, oldFiles); err != nil {
+			u.PrintFatal("failed to write .agents/"+workspace.OldFilesZip, err)
+		}
+	}
 
 	u.PrintSuccess("Applied to " + u.AbbreviatePath(root))
 	u.PrintGeneric("  agents:  AGENTS.md, CLAUDE.md -> AGENTS.md")
 	u.PrintGeneric("  skills:  .agents/skills (" + strings.Join(names, ", ") + "), .claude/skills -> ../.agents/skills")
+	if oldFiles != nil {
+		u.PrintGeneric("  old:     .agents/" + workspace.OldFilesZip)
+	}
 	path, ok, err := workspace.WriteGitExclude(root)
 	switch {
 	case err != nil:
@@ -38,7 +77,41 @@ func runApply(cmd *cobra.Command, args []string) {
 	case ok:
 		u.PrintGeneric("  ignored: " + u.AbbreviatePath(path))
 	}
+	if applyFlags.restoreResume {
+		restoreResume(root)
+	}
 	u.PrintGeneric("  presets: claudex apply-preset")
+}
+
+func clearForeign(root string) []byte {
+	found := workspace.Foreign(root)
+	if len(found) == 0 {
+		return nil
+	}
+	if applyFlags.foreign == "" {
+		u.PrintError("cannot apply to "+u.AbbreviatePath(root)+": it holds AI files claudex did not create; nothing was written", nil)
+		for _, f := range found {
+			u.PrintIndentedError(f, nil)
+		}
+		u.PrintGeneric("  pass --foreign preserve to zip them into .agents/" + workspace.OldFilesZip + ", or --foreign clean to delete them")
+		os.Exit(1)
+	}
+	oldFiles, err := workspace.ClearForeign(root, found, applyFlags.foreign == "preserve")
+	if err != nil {
+		u.PrintFatal("failed to clear the existing AI files", err)
+	}
+	return oldFiles
+}
+
+func restoreResume(root string) {
+	err := workspace.RestoreResume(root, u.ResumeStash(root))
+	switch {
+	case errors.Is(err, workspace.ErrNoStash):
+		u.PrintFatal("no stashed resume file for this directory", nil)
+	case err != nil:
+		u.PrintFatal("failed to restore the resume file", err)
+	}
+	u.PrintGeneric("  resume:  " + workspace.ResumeFile)
 }
 
 func presetsDir() string {
@@ -59,6 +132,9 @@ func remotePresetsDir() string {
 
 func currentDir() string {
 	cwd, err := os.Getwd()
+	if err == nil {
+		cwd, err = filepath.EvalSymlinks(cwd)
+	}
 	if err != nil {
 		u.PrintFatal("failed to resolve current directory", err)
 	}

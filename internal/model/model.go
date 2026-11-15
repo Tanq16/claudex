@@ -31,12 +31,3 @@ type HistoryEntry struct {
 	Project   string `json:"project"`
 	SessionID string `json:"sessionId"`
 }
-
-type Conversation struct {
-	SessionID    string `json:"sessionId"`
-	MessageCount int    `json:"messageCount"`
-	Project      string `json:"project"`
-	ProjectPath  string `json:"projectPath"`
-	FirstMessage string `json:"firstMessage"`
-	LastActivity int64  `json:"lastActivity"`
-}
