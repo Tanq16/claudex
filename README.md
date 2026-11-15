@@ -1,5 +1,5 @@
 <div align="center">
-  <img src=".github/assets/logo.svg" alt="ClaudeX Logo" width="200">
+  <img src="internal/server/static/icons/logo.svg" alt="ClaudeX Logo" width="200">
   <h1>ClaudeX</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
@@ -12,6 +12,10 @@ ClaudeX is a companion CLI and local web UI for Claude Code. It configures every
 
 It exists for juggling several Claude subscriptions, and everything except account selection works the same with one. It does not replace `claude`, which it execs or runs in tmux.
 
+## Security
+
+`serve` has no authentication. Anyone who reaches its port can start Claude sessions that run with `--dangerously-skip-permissions`, read and upload project files, and clone repositories with your `gh` login. It binds to `127.0.0.1` by default and rejects cross-origin requests from other sites in your browser. Exposing it beyond the machine is a reverse proxy's job, with authentication in front.
+
 ## Capabilities
 
 | Category | Commands | Description |
@@ -20,6 +24,37 @@ It exists for juggling several Claude subscriptions, and everything except accou
 | Sessions | `launch`, `serve` | Exec `claude` under one account, or manage tmux sessions from a web UI |
 | Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
 | Presets | `create-preset`, `pull-preset` | Scaffold your own bundle of skills and rules, or pull one from a repository |
+
+## Screenshots
+
+<details>
+<summary>Click to expand</summary>
+
+### Dashboard
+
+| Desktop | Mobile |
+| :---: | :---: |
+| <img src=".github/assets/dashboard-desktop.png" alt="Dashboard desktop" width="100%" /> | <img src=".github/assets/dashboard-mobile.png" alt="Dashboard mobile" width="100%" /> |
+
+### New session
+
+| Desktop | Mobile |
+| :---: | :---: |
+| <img src=".github/assets/new-session-desktop.png" alt="New session desktop" width="100%" /> | <img src=".github/assets/new-session-mobile.png" alt="New session mobile" width="100%" /> |
+
+### Project
+
+| Desktop | Mobile |
+| :---: | :---: |
+| <img src=".github/assets/project-desktop.png" alt="Project desktop" width="100%" /> | <img src=".github/assets/project-mobile.png" alt="Project mobile" width="100%" /> |
+
+### Settings
+
+| Desktop | Mobile |
+| :---: | :---: |
+| <img src=".github/assets/settings-desktop.png" alt="Settings desktop" width="100%" /> | <img src=".github/assets/settings-mobile.png" alt="Settings mobile" width="100%" /> |
+
+</details>
 
 ## Install
 
@@ -120,7 +155,7 @@ claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 
 `--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset, MCP servers included; passing one narrows the run to that half.
 
-One preset ships in the binary. `private` carries 30 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
+One preset ships in the binary. `private` carries 29 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
 
 The manifest keys:
 
@@ -171,7 +206,7 @@ A local web UI that manages the projects under one root directory and the Claude
 
 ```bash
 claudex serve                                   # http://127.0.0.1:8080, projects under ~/.config/claudex/projects
-claudex serve --root ~/code --host 0.0.0.0 -p 9000
+claudex serve --root ~/code -p 9000
 ```
 
 Each session is a window in a tmux session named `claudex`, running `claude --remote-control <name>` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Sessions outlive `serve`, since tmux is its own process. A project shows as active while its window runs and inactive otherwise, and Continue restarts it with `claude --continue`.
@@ -179,8 +214,6 @@ Each session is a window in a tmux session named `claudex`, running `claude --re
 The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
 
 The defaults editor lists every key in Claude Code's published settings schema (https://json.schemastore.org/claude-code-settings.json), cached at `~/.config/claudex/settings-schema.json` and refreshed from the page. A key is either active, meaning it is in your defaults, or default, meaning Anthropic's own value applies. Accept copies Anthropic's default into your defaults, and Edit sets your own value. Add key covers settings and environment variables the schema does not list yet.
-
-`serve` has no authentication and binds to `127.0.0.1` by default. Exposing it beyond the machine is a reverse proxy's job.
 
 ### switch
 
