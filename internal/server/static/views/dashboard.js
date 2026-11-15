@@ -159,7 +159,7 @@ views.dashboard = {
                 <header class="flex items-center gap-3">
                     <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="folder-git-2" class="size-5"></i></span>
                     <div class="min-w-0 flex-1">
-                        <h3 class="font-display text-base leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${ui.esc(p.rcName)}</a></h3>
+                        <h3 class="font-display leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${ui.esc(p.rcName)}</a></h3>
                         <p class="truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
                     </div>
                 </header>

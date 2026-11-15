@@ -71,7 +71,7 @@ func (l Launcher) Restart(x Launch) error {
 func (l Launcher) prepare(x Launch) ([]string, error) {
 	claude, err := exec.LookPath("claude")
 	if err != nil {
-		return nil, fmt.Errorf("claude not found in PATH: %w", err)
+		return nil, err
 	}
 	if err := accounts.Trust(x.Account, l.DefaultAccount, x.Dir); err != nil {
 		return nil, fmt.Errorf("trusting %s for the account: %w", x.Dir, err)
