@@ -148,7 +148,6 @@ A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`
 A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
 
 ```bash
-claudex apply-preset                             # lists the available presets
 claudex apply-preset private                     # local, by name; several apply in order
 claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 ```

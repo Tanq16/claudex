@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -18,7 +17,7 @@ var applyPresetFlags struct {
 var applyPresetCmd = &cobra.Command{
 	Use:   "apply-preset <name>...",
 	Short: "Add a preset's skills, its AGENTS.md section, and its MCP servers on top of the base layout",
-	Args:  cobra.ArbitraryArgs,
+	Args:  cobra.MinimumNArgs(1),
 	Run:   runApplyPreset,
 }
 
@@ -30,18 +29,6 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	skills, agents := presetParts(applyPresetFlags.skills, applyPresetFlags.agents)
 
 	local, remote := presetsDir(), remotePresetsDir()
-	available := workspace.ListPresets(local, remote)
-	if len(available) == 0 {
-		u.PrintFatal("no presets found in "+u.AbbreviatePath(local)+" or "+u.AbbreviatePath(remote), nil)
-	}
-
-	if len(args) == 0 {
-		u.PrintError("name at least one preset", nil)
-		for _, p := range available {
-			u.PrintGeneric("  " + p.Ref + "  " + u.Truncate(p.Description, 70))
-		}
-		os.Exit(1)
-	}
 
 	pruned, err := workspace.PruneDeadSkillLinks(root)
 	if err != nil {
