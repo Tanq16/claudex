@@ -3,7 +3,7 @@ module github.com/tanq16/claudex
 go 1.27
 
 require (
-	charm.land/lipgloss/v2 v2.0.6
+	charm.land/lipgloss/v2 v2.1.1
 	github.com/charmbracelet/x/term v0.2.2
 	github.com/goccy/go-yaml v1.19.2
 	github.com/rs/zerolog v1.35.1

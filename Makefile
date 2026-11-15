@@ -12,11 +12,12 @@ GOOS ?= $(shell go env GOOS)
 GOARCH ?= $(shell go env GOARCH)
 
 # Pinned asset versions. Bump deliberately, never float.
-TAILWIND_VERSION    := 4.3.3
-LUCIDE_VERSION      := 1.34.0
+TAILWIND_VERSION    := 4.3.5
+LUCIDE_VERSION      := 1.73.0
 FONTAWESOME_VERSION := 7.3.1
-MARKED_VERSION      := 18.0.11
+MARKED_VERSION      := 18.2.0
 HIGHLIGHTJS_VERSION := 11.12.0
+DOMPURIFY_VERSION   := 3.4.18
 
 STATIC_DIR := internal/server/static
 JS_DIR     := $(STATIC_DIR)/js
@@ -60,6 +61,7 @@ $(STAMP): $(MAKEFILE_LIST)
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@$(TAILWIND_VERSION)" -o "$(JS_DIR)/tailwind.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/lucide@$(LUCIDE_VERSION)/dist/umd/lucide.min.js" -o "$(JS_DIR)/lucide.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/marked@$(MARKED_VERSION)/lib/marked.umd.js" -o "$(JS_DIR)/marked.umd.js"
+	@curl -sfL "https://cdn.jsdelivr.net/npm/dompurify@$(DOMPURIFY_VERSION)/dist/purify.min.js" -o "$(JS_DIR)/purify.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/highlight.min.js" -o "$(JS_DIR)/highlight.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/styles/github-dark.min.css" -o "$(CSS_DIR)/github-dark.min.css"
 	@$(MAKE) --no-print-directory fontawesome
