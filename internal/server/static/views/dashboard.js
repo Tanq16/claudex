@@ -51,10 +51,10 @@ views.dashboard = {
         const header = this.root.querySelector('[data-dash-header]');
         header.innerHTML = `
             <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-mantle text-mauve"><i data-lucide="folder-tree" class="size-5"></i></span>
-            <span class="min-w-0 flex-1">
+            <div class="min-w-0 flex-1">
                 <h1 class="truncate font-mono text-sm text-text">${ui.esc(root)}</h1>
                 <p class="truncate text-xs text-overlay1">${projects.length} tracked ${projects.length === 1 ? 'directory' : 'directories'}${this.multiAccount() ? ` across ${accounts.length} accounts` : ''}</p>
-            </span>
+            </div>
             ${projects.length ? `<span class="hidden items-center gap-2 md:flex">
                 ${ui.chip(`${active} active`, { tone: active ? 'green' : 'neutral', icon: 'activity' })}
                 ${ui.chip(`${inactive} inactive`, { icon: 'moon' })}
@@ -138,7 +138,7 @@ views.dashboard = {
             list.innerHTML = `<li class="col-span-full h-full rounded-3xl bg-mantle">${ui.empty({
                 icon: 'moon',
                 title: 'No active sessions',
-                hint: `${tracked} tracked ${tracked === 1 ? 'directory is' : 'directories are'} idle. Continue one from Tracked, or start something new.`,
+                hint: `${tracked} tracked ${tracked === 1 ? 'directory is' : 'directories are'} idle. Continue one from Inactive, or start something new.`,
                 action: ui.button('New session', { icon: 'plus', action: 'new-session' }),
             })}</li>`;
             return;
@@ -158,10 +158,10 @@ views.dashboard = {
             <article data-action="dash-open" data-name="${name}" class="flex h-full cursor-pointer flex-col gap-3 rounded-3xl bg-mantle p-4 transition-colors hover:bg-base ${busy ? 'opacity-70' : ''}">
                 <header class="flex items-center gap-3">
                     <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="folder-git-2" class="size-5"></i></span>
-                    <span class="min-w-0 flex-1">
-                        <h3 class="truncate font-display text-base leading-snug font-medium text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${ui.esc(p.rcName)}</a></h3>
+                    <div class="min-w-0 flex-1">
+                        <h3 class="font-display text-base leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${ui.esc(p.rcName)}</a></h3>
                         <p class="truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
-                    </span>
+                    </div>
                 </header>
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
                     ${meta.map((m) => `<div class="min-w-0">
@@ -210,7 +210,7 @@ views.dashboard = {
         return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
             <span class="min-w-0 flex-1">
                 <span class="flex items-baseline gap-2">
-                    <span class="truncate text-sm font-medium text-text">${ui.esc(p.rcName)}</span>
+                    <span class="min-w-0 text-sm font-medium wrap-anywhere text-text">${ui.esc(p.rcName)}</span>
                     <span class="shrink-0 text-xs text-overlay1" title="Last active">${ui.esc(ui.timeAgo(p.lastActive))}</span>
                 </span>
                 <span class="block truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</span>

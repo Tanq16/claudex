@@ -140,11 +140,11 @@
         header.innerHTML = `
             ${ui.iconButton('arrow-left', { title: 'Back to dashboard', action: 'project-back' })}
             ${ui.iconButton(treeIcon, { title: mobile ? 'Files' : 'Toggle file tree', action: 'project-toggle-tree' })}
-            <span class="flex min-w-0 flex-1 items-center gap-2.5 px-1">
+            <div class="flex min-w-0 flex-1 items-center gap-2.5 px-1">
                 <h1 class="truncate font-display text-xl text-text md:text-2xl">${ui.esc(p.name)}</h1>
                 <span class="hidden shrink-0 sm:inline-flex">${ui.status(p.active)}</span>
                 <span title="${p.active ? 'Active' : 'Inactive'}" class="size-2 shrink-0 rounded-full sm:hidden ${p.active ? 'bg-green' : 'bg-overlay0'}"></span>
-            </span>
+            </div>
             ${primary.join('')}
             ${ui.iconButton(detailsIcon, { title: 'Session details', action: 'project-toggle-details' })}`;
         ui.icons(header);
@@ -169,7 +169,7 @@
                     ${row('Status', ui.status(p.active))}
                     ${row('Started', p.active && p.startedAt ? ui.timeAgo(p.startedAt) : 'Not running')}
                     ${row('Last active', ui.timeAgo(p.lastActive))}
-                    ${row('Remote Control', `<span class="flex items-center gap-1.5"><i data-lucide="radio-tower" class="size-3.5 shrink-0 text-overlay1"></i><span class="truncate">${ui.esc(p.rcName)}</span></span>`)}
+                    ${row('Remote Control', `<span class="flex items-center gap-1.5"><i data-lucide="radio-tower" class="size-3.5 shrink-0 text-overlay1"></i><span class="min-w-0 wrap-anywhere">${ui.esc(p.rcName)}</span></span>`)}
                     ${row('Account', acc ? `<span class="block truncate">${ui.esc(acc.label)}</span><span class="block truncate font-mono text-xs text-overlay1">${ui.esc(acc.dir)}</span>` : ui.esc(p.account))}
                     ${row('Path', `<span class="block break-all font-mono text-xs">${ui.esc(p.dir)}</span>`)}
                     ${row('Connectors', p.active ? ui.chip(p.connectors ? 'On' : 'Off', { tone: p.connectors ? 'green' : 'neutral', icon: p.connectors ? 'cable' : 'unplug' }) : '<span class="text-overlay1">n/a</span>')}
@@ -417,8 +417,7 @@
             article.querySelectorAll('img[src]').forEach((img) => {
                 const src = img.getAttribute('src');
                 if (/^([a-z]+:|\/)/i.test(src)) return;
-                const url = api.rawUrl(S.name, resolvePath(dirname(f.path), src));
-                if (url) img.src = url;
+                img.src = api.rawUrl(S.name, resolvePath(dirname(f.path), src));
             });
             addCopyButtons(body);
             article.querySelectorAll('a[href^="http"]').forEach((a) => {
@@ -887,7 +886,7 @@
             title: 'Presets',
             icon: 'layers',
             subtitle: 'Re-apply, add, or remove presets. Remote presets pull their latest version.',
-            body: `<div class="flex flex-col pt-1">${group('Built-in', builtin)}${group('Tracked remote', remote)}<span class="mt-3">${errorLine}</span></div>`,
+            body: `<div class="flex flex-col pt-1">${group('Built-in', builtin)}${group('Tracked remote', remote)}<div class="mt-3">${errorLine}</div></div>`,
             footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-modal-cancel' })}${ui.button('Apply presets', { icon: 'check', variant: 'primary', attrs: 'data-submit' })}`,
         });
         m.el.querySelector('[data-modal-cancel]').addEventListener('click', () => m.close());

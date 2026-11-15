@@ -20,17 +20,17 @@ const app = {
         window.addEventListener('pageshow', (e) => {
             if (e.persisted) app.refresh();
         });
-        await app.refresh({ silent: true });
+        await app.refresh();
         app.route();
     },
 
-    async refresh({ silent = false } = {}) {
+    async refresh() {
         store.loading = true;
         app.renderNav();
         try {
             store.state = await api.state();
         } catch (err) {
-            if (!silent) ui.toast(err.message, { tone: 'red', icon: 'circle-alert' });
+            ui.toast(err.message, { tone: 'red', icon: 'circle-alert' });
         }
         store.loading = false;
         app.renderNav();
@@ -418,7 +418,7 @@ const ui = {
                 <section role="dialog" aria-modal="true" class="flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-mantle shadow-2xl shadow-crust md:max-h-[86dvh] md:rounded-3xl ${sizes[size]} max-md:[animation:sheet-in_.2s_ease-out] md:[animation:pop-in_.15s_ease-out]">
                     <header class="flex shrink-0 items-center gap-3 px-5 pt-5 pb-3 md:px-6 md:pt-6">
                         ${icon ? `<span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-mauve/15 text-mauve"><i data-lucide="${icon}" class="size-5"></i></span>` : ''}
-                        <span class="min-w-0 flex-1"><h2 class="truncate font-display text-lg font-medium text-text">${ui.esc(title)}</h2>${subtitle ? `<p class="truncate text-sm text-overlay1">${subtitle}</p>` : ''}</span>
+                        <div class="min-w-0 flex-1"><h2 class="truncate font-display text-lg font-medium text-text">${ui.esc(title)}</h2>${subtitle ? `<p class="truncate text-sm text-overlay1">${subtitle}</p>` : ''}</div>
                         ${dismissible ? ui.iconButton('x', { title: 'Close', attrs: 'data-modal-close' }) : ''}
                     </header>
                     <div data-modal-body data-scroll class="min-h-0 flex-1 overflow-y-auto px-5 pb-4 md:px-6">${body}</div>
@@ -518,6 +518,7 @@ const ui = {
     },
 
     timeAgo(ts) {
+        if (ts == null) return 'never';
         const s = Math.max(0, Math.round((Date.now() - ts) / 1000));
         if (s < 60) return 'just now';
         const units = [['d', 86400], ['h', 3600], ['m', 60]];

@@ -191,12 +191,12 @@ views.newSession = (() => {
         const nameField = (field, value, placeholder, verb) => `
             <label for="ns-${field}" class="${ui.cls.label} -mb-2 px-1">Directory name</label>
             <input id="ns-${field}" data-name="ns-${field}" class="${ui.cls.input} font-mono" value="${ui.esc(value)}" placeholder="${placeholder}" autocomplete="off" autocapitalize="off" spellcheck="false">
-            <span data-region="${field}-check">${nameCheck(value.trim(), verb).html}</span>`;
+            <div data-region="${field}-check">${nameCheck(value.trim(), verb).html}</div>`;
 
         const sourceBodyHtml = () => {
             if (s.source === 'existing') {
-                return `<span data-region="select" class="flex flex-col gap-2">${selectHtml()}</span>
-                    <span data-region="dir-info" class="flex flex-col gap-3">${dirInfoHtml()}</span>`;
+                return `<div data-region="select" class="flex flex-col gap-2">${selectHtml()}</div>
+                    <div data-region="dir-info" class="flex flex-col gap-3">${dirInfoHtml()}</div>`;
             }
             if (s.source === 'empty') return nameField('empty-name', s.emptyName, 'my-new-project', 'Creates');
             return `
@@ -228,7 +228,7 @@ views.newSession = (() => {
                         { value: 'clone', label: 'Clone', icon: 'folder-down' },
                     ],
                 })}
-                <span data-region="source-body" class="flex flex-col gap-3">${sourceBodyHtml()}</span>`,
+                <div data-region="source-body" class="flex flex-col gap-3">${sourceBodyHtml()}</div>`,
         });
 
         const modeHintHtml = () => {
@@ -259,7 +259,7 @@ views.newSession = (() => {
                         { value: 'continue', label: 'Continue', icon: 'history', disabled: !canContinue() },
                     ],
                 })}
-                <span data-region="mode-hint">${modeHintHtml()}</span>
+                <div data-region="mode-hint">${modeHintHtml()}</div>
                 <span class="-mx-3 -mb-2 block">${ui.switch({ name: 'ns-connectors', label: 'claude.ai connectors', hint: 'Sets ENABLE_CLAUDEAI_MCP_SERVERS for this session', checked: s.connectors })}</span>`;
         };
 
@@ -268,12 +268,12 @@ views.newSession = (() => {
         const presetButton = () => ui.button(s.presetPending ? 'Checking' : 'Add', { icon: s.presetPending ? 'loader-circle' : 'plus', spin: s.presetPending, type: 'submit', disabled: s.presetPending });
 
         const presetsHtml = () => `
-            <span data-region="preset-list">${presetListHtml()}</span>
+            <div data-region="preset-list">${presetListHtml()}</div>
             <form data-ns="preset-form" class="flex gap-2">
                 <input data-name="ns-preset-draft" class="${ui.cls.input} min-w-0 font-mono" value="${ui.esc(s.presetDraft)}" placeholder="owner-repo/preset" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Add a preset by name">
                 <span data-region="preset-button" class="contents">${presetButton()}</span>
             </form>
-            <span data-region="preset-error">${s.presetError ? note('red', 'circle-alert', ui.esc(s.presetError)) : ''}</span>`;
+            <div data-region="preset-error">${s.presetError ? note('red', 'circle-alert', ui.esc(s.presetError)) : ''}</div>`;
 
         const mcpHtml = () => {
             const lib = state().mcpLibrary;
@@ -327,14 +327,14 @@ views.newSession = (() => {
             subtitle: 'Runs in the <span class="font-mono">claudex</span> tmux session',
             size: 'xl',
             body: `
-                <span class="flex flex-col gap-3 3xl:contents">
-                    <span data-region="source" class="contents">${sourceHtml()}</span>
-                    <span data-region="session" class="contents">${well({ icon: 'terminal', title: 'Session', body: sessionHtml() })}</span>
-                </span>
-                <span class="flex flex-col gap-3">
-                    ${well({ icon: 'layers', title: 'Presets', aside: `<span data-region="preset-count">${countChip(s.presets.size)}</span>`, body: `<span data-region="presets" class="flex flex-col gap-3">${presetsHtml()}</span>` })}
-                    ${well({ icon: 'plug', title: 'MCP servers', aside: `<span data-region="mcp-count">${countChip(s.mcp.size)}</span>`, body: `<span data-region="mcp" class="block">${mcpHtml()}</span>` })}
-                </span>`,
+                <div class="flex flex-col gap-3 3xl:contents">
+                    <div data-region="source" class="contents">${sourceHtml()}</div>
+                    <div data-region="session" class="contents">${well({ icon: 'terminal', title: 'Session', body: sessionHtml() })}</div>
+                </div>
+                <div class="flex flex-col gap-3">
+                    ${well({ icon: 'layers', title: 'Presets', aside: `<span data-region="preset-count">${countChip(s.presets.size)}</span>`, body: `<div data-region="presets" class="flex flex-col gap-3">${presetsHtml()}</div>` })}
+                    ${well({ icon: 'plug', title: 'MCP servers', aside: `<span data-region="mcp-count">${countChip(s.mcp.size)}</span>`, body: `<div data-region="mcp">${mcpHtml()}</div>` })}
+                </div>`,
             footer: footerHtml(),
             onClose: () => {
                 s.closed = true;
@@ -477,7 +477,7 @@ views.newSession = (() => {
             if (r.ok) {
                 const wasClosed = s.closed;
                 m.close();
-                if (!wasClosed) app.go(`#/project/${encodeURIComponent(req.name)}`);
+                if (!wasClosed) app.go(`#/project/${encodeURIComponent(r.result.name)}`);
                 return;
             }
             body.inert = false;

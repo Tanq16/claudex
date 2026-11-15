@@ -417,7 +417,7 @@ views.settings = (() => {
                     <span class="px-1 ${ui.cls.label}">Transport</span>
                     ${ui.segmented({ name: 'mcp-transport', value: ed.transport, options: [{ value: 'http', label: 'HTTP', icon: 'globe' }, { value: 'stdio', label: 'stdio', icon: 'square-terminal' }] })}
                 </span>
-                <span data-mcp-fields class="flex flex-col gap-5"></span>
+                <div data-mcp-fields class="flex flex-col gap-5"></div>
             </form>`,
             footer: ' ',
             onClose: () => {
