@@ -55,7 +55,7 @@ views.newSession = (() => {
         const untracked = () => (s.source === 'existing' && !project() ? (s.dirs || []).find((d) => d.name === s.dir) : undefined);
         const target = () => ({ existing: s.dir, empty: s.emptyName.trim(), clone: s.cloneName.trim() })[s.source];
         const taken = (name) => state().projects.some((p) => p.name === name) || (s.dirs || []).some((d) => d.name === name);
-        const canContinue = () => Boolean(project());
+        const canContinue = () => Boolean(project() || untracked());
         const mode = () => (canContinue() ? s.mode : 'new');
         const multiAccount = () => state().accounts.length > 1;
         const defaultAccount = () => (state().accounts.find((a) => a.isDefault) || state().accounts[0])?.dir || '';
@@ -232,8 +232,8 @@ views.newSession = (() => {
         });
 
         const modeHintHtml = () => {
-            if (!canContinue()) return note('muted', 'info', 'Continue needs a tracked directory, so this starts a new conversation.');
-            if (mode() === 'continue') return note('muted', 'history', 'Picks up the newest conversation in this directory.');
+            if (!canContinue()) return note('muted', 'info', 'Continue needs an existing directory, so this starts a new conversation.');
+            if (mode() === 'continue') return note('muted', 'history', 'Picks up the newest conversation in this directory, or starts a new one if there is none.');
             return note('muted', 'sparkles', 'Starts a fresh conversation. Earlier ones stay available to Continue.');
         };
 
