@@ -59,12 +59,25 @@ Per account it writes `statusline.sh` into the account directory and points `set
 | Key | Value |
 |-----|-------|
 | `attribution.commit` | `""` |
+| `attribution.pr` | `""` |
 | `effortLevel` | `xhigh` |
 | `tui` | `fullscreen` |
-| `autoMemoryEnabled` | `false` |
-| `skipDangerousModePermissionPrompt` | `true` |
 | `outputStyle` | `Concise` |
+| `autoMemoryEnabled` | `false` |
+| `autoCompactEnabled` | `false` |
+| `idleCompaction` | `false` |
+| `skipDangerousModePermissionPrompt` | `true` |
 | `enableAllProjectMcpServers` | `true` |
+| `enableArtifact` | `false` |
+| `feedbackDrafts` | `off` |
+| `feedbackSurveyRate` | `0` |
+| `disableBundledSkills` | `true` |
+| `syncClaudeAiSkills` | `false` |
+| `syncClaudeAiPlugins` | `false` |
+| `includeGitInstructions` | `false` |
+| `spinnerTipsEnabled` | `false` |
+| `promptSuggestionEnabled` | `false` |
+| `awaySummaryEnabled` | `false` |
 | `env.DISABLE_AUTOUPDATER` | `1` |
 | `env.ENABLE_CLAUDEAI_MCP_SERVERS` | `false` |
 
