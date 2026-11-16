@@ -112,7 +112,7 @@ func (s *Server) projects(st *state.State) []projectView {
 			Presets:    workspace.Presets(dir),
 			MCP:        mcp.ProjectNames(dir),
 			Connectors: p.Connectors,
-			Stash:      fileExists(s.stashPath(dir)),
+			Stash:      fileExists(s.stashPath(dir)) && !fileExists(filepath.Join(dir, workspace.ResumeFile)),
 		}
 		if v.Active {
 			v.StartedAt = millis(started[windows[name].PID])

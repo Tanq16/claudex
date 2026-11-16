@@ -420,6 +420,12 @@
                 img.src = api.rawUrl(S.name, resolvePath(dirname(f.path), src));
             });
             addCopyButtons(body);
+            article.querySelectorAll('table').forEach((table) => {
+                const wrap = document.createElement('div');
+                wrap.className = 'mb-6 overflow-x-auto rounded-xl border border-surface1/50';
+                table.replaceWith(wrap);
+                wrap.appendChild(table);
+            });
             article.querySelectorAll('a[href^="http"]').forEach((a) => {
                 a.target = '_blank';
                 a.rel = 'noopener';
