@@ -160,7 +160,7 @@ views.newSession = (() => {
                     columns: 2,
                     options: [
                         { value: 'preserve', label: 'Preserve', icon: 'archive', hint: 'Zip them into .agents/old-ai-files.zip' },
-                        { value: 'clean', label: 'Clean', icon: 'eraser', hint: 'Run clean-cwd and drop them' },
+                        { value: 'clean', label: 'Clean', icon: 'eraser', hint: 'Delete them without a backup' },
                     ],
                 })}`;
         };
