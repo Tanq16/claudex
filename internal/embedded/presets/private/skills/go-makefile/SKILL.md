@@ -59,7 +59,8 @@ TAILWIND_VERSION    := 4.3.3
 LUCIDE_VERSION      := 1.34.0
 FONTAWESOME_VERSION := 7.3.1
 DEVICON_VERSION     := 2.17.0
-MARKED_VERSION      := 18.0.11
+MARKED_VERSION      := 18.2.0
+DOMPURIFY_VERSION   := 3.4.18
 HIGHLIGHTJS_VERSION := 11.12.0
 MERMAID_VERSION     := 11.17.2
 CHARTJS_VERSION     := 4.5.1
@@ -108,8 +109,8 @@ $(STAMP): $(MAKEFILE_LIST)
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@tailwindcss/browser@$(TAILWIND_VERSION)" -o "$(JS_DIR)/tailwind.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/lucide@$(LUCIDE_VERSION)/dist/umd/lucide.min.js" -o "$(JS_DIR)/lucide.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/marked@$(MARKED_VERSION)/lib/marked.umd.js" -o "$(JS_DIR)/marked.umd.js"
+	@curl -sfL "https://cdn.jsdelivr.net/npm/dompurify@$(DOMPURIFY_VERSION)/dist/purify.min.js" -o "$(JS_DIR)/purify.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/highlight.min.js" -o "$(JS_DIR)/highlight.min.js"
-	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/styles/github-dark.min.css" -o "$(CSS_DIR)/github-dark.min.css"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/mermaid@$(MERMAID_VERSION)/dist/mermaid.min.js" -o "$(JS_DIR)/mermaid.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/chart.js@$(CHARTJS_VERSION)/dist/chart.umd.js" -o "$(JS_DIR)/chart.umd.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/devicon@$(DEVICON_VERSION)/devicon.min.css" -o "$(CSS_DIR)/devicon.min.css"

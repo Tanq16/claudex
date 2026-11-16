@@ -1,6 +1,6 @@
 ---
 name: go-embedded-frontend
-description: A single-page frontend embedded into a Go binary from internal/server/static/ - HTML boilerplate, Tailwind v4 browser build, the Catppuccin Mocha palette, self-hosted fonts, icons, and PWA files. Use when building or changing the web UI of a Go Web Only or CLI + Web project, laying out static assets, theming a page, choosing which surface a panel or control sits on, or adding PWA support. Triggers on internal/server/static/, index.html, tailwind, @theme, Catppuccin, crust, favicon, manifest.json, sw.js, Lucide, and Font Awesome. Not for templ or htmx server-rendered HTML, and not for a framework SPA built outside the repository.
+description: A single-page frontend embedded into a Go binary from internal/server/static/ - HTML boilerplate, Tailwind v4 browser build, the Catppuccin palette and its opt-in light mode, the ui component kit, self-hosted fonts, icons, and PWA files. Use when building or changing the web UI of a Go Web Only or CLI + Web project, building a control or a view, laying out static assets, theming a page, adding a light mode, choosing which surface a panel or control sits on, or adding PWA support. Triggers on internal/server/static/, index.html, ui.js, tailwind, @theme, Catppuccin, crust, surface0, data-scroll, favicon, manifest.json, sw.js, Lucide, and Font Awesome. Not for templ or htmx server-rendered HTML, and not for a framework SPA built outside the repository.
 user-invocable: false
 ---
 
@@ -10,11 +10,17 @@ user-invocable: false
 
 The Go server owns how these bytes are served. This covers what goes inside `static/`.
 
+## Start here: required reading
+
+**Before building or changing a control, a view, or the theme:**
+- `./references/components.md`: the `ui` kit, control fills and states, radii, scrolling, floating layers, and light mode
+
 ## Layout
 
 ```
 internal/server/static/
 ├── index.html          # the single page
+├── ui.js               # the component kit
 ├── app.js              # application logic, when it outgrows an inline block
 ├── manifest.json       # PWA, when enabled
 ├── sw.js               # PWA, when enabled, served at /sw.js
@@ -22,7 +28,6 @@ internal/server/static/
 │   ├── inter.css               # @font-face for Inter
 │   ├── google-sans.css         # @font-face for Google Sans
 │   ├── jetbrains-mono.css      # @font-face for JetBrains Mono
-│   ├── github-dark.min.css     # highlight.js theme, when rendering markdown
 │   └── devicon.min.css         # when using tech logos
 ├── fonts/              # woff2 only
 ├── fontawesome/
@@ -113,7 +118,8 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
     <script src="/static/js/tailwind.js"></script>
     <style>
       /* Catppuccin Mocha */
-      :root {
+      :root, .dark {
+        color-scheme: dark;
         --ctp-rosewater: #f5e0dc; --ctp-flamingo: #f2cdcd; --ctp-pink: #f5c2e7;
         --ctp-mauve: #cba6f7;     --ctp-red: #f38ba8;      --ctp-maroon: #eba0ac;
         --ctp-peach: #fab387;     --ctp-yellow: #f9e2af;   --ctp-green: #a6e3a1;
@@ -126,7 +132,7 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
       }
     </style>
     <style type="text/tailwindcss">
-      @theme {
+      @theme inline {
         --color-rosewater: var(--ctp-rosewater); --color-flamingo: var(--ctp-flamingo);
         --color-pink: var(--ctp-pink);           --color-mauve: var(--ctp-mauve);
         --color-red: var(--ctp-red);             --color-maroon: var(--ctp-maroon);
@@ -140,32 +146,32 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
         --color-surface2: var(--ctp-surface2);   --color-surface1: var(--ctp-surface1);
         --color-surface0: var(--ctp-surface0);   --color-base: var(--ctp-base);
         --color-mantle: var(--ctp-mantle);       --color-crust: var(--ctp-crust);
-
+      }
+      @theme {
         --font-sans: 'Inter', sans-serif;
         --font-display: 'Google Sans', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
       }
+      @layer base {
+        button:not(:disabled), [role="button"], [role="option"], a[href], summary { cursor: pointer; }
+      }
     </style>
 </head>
-<body class="bg-crust text-subtext0 min-h-dvh font-sans">
-    <nav class="bg-crust border-b border-surface0 px-4 py-3">
-        <div class="max-w-6xl mx-auto flex items-center justify-between">
-            <div class="flex items-center gap-2">
-                <img src="/static/icons/logo.png" alt="Logo" class="w-8 h-8">
-                <span class="text-lg font-semibold font-display text-text">APP_NAME</span>
-            </div>
-        </div>
-    </nav>
+<body class="bg-crust text-subtext0 h-dvh overflow-hidden flex flex-col font-sans antialiased">
+    <header class="shrink-0 flex items-center gap-3 px-4 pt-4 sm:px-6 lg:px-10 lg:pt-6">
+        <a href="#/" class="flex items-center gap-2.5 font-display text-xl font-medium text-text">
+            <img src="/static/icons/logo.png" alt="" class="size-11">
+            <span>APP_NAME</span>
+        </a>
+        <nav id="nav" class="ml-auto flex gap-1 rounded-full bg-mantle p-1"></nav>
+    </header>
 
-    <main class="max-w-6xl mx-auto px-4 py-8">
-        <h1 class="text-2xl font-bold mb-6 font-display text-text">Page Title</h1>
-        <div class="bg-mantle border border-surface0 rounded-xl p-6">
-            <input class="w-full bg-surface0 border border-surface1 rounded-lg px-3 py-2 text-text pointer-coarse:text-[16px]">
-        </div>
-    </main>
+    <main id="view" class="flex-1 min-h-0 px-4 py-4 sm:px-6 lg:px-10 lg:py-6"></main>
 
+    <div id="layer-root"></div>
+
+    <script src="/static/ui.js"></script>
     <script src="/static/app.js"></script>
-    <script>lucide.createIcons();</script>
     <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/sw.js');
@@ -179,23 +185,27 @@ The Tailwind v4 browser build reads the `<style type="text/tailwindcss">` block 
 
 A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, and a real `var(--color-mauve)` for hand-written CSS. Naming the entries after Catppuccin's own names keeps the class written and the swatch picked identical.
 
-`@theme` maps each name onto a `--ctp-*` variable rather than a literal hex. The utility resolves the variable at paint time, so redefining the `--ctp-*` set under a selector re-themes the page without a second `@theme` or a class change. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--color-mauve) 50%, transparent)` rather than substituting a value.
+`@theme inline` makes every utility emit the `--ctp-*` variable directly, so redefining the set on any element re-themes its subtree. Plain `@theme` resolves the mapping once at `:root`, and a subtree pinned with `class="dark"` would follow the page instead. Opacity modifiers survive it, since v4 emits `color-mix(in oklab, var(--ctp-mauve) 50%, transparent)` rather than substituting a value.
+
+The `@layer base` rule restores the pointer cursor, because the v4 preflight leaves buttons on the default arrow.
 
 `@import "tailwindcss";` is omitted, because the browser build injects it when no `@import` appears in the block. Writing one takes over the import graph and drops the base styles.
 
 ## Layering
 
-The page is grounded on `crust`, the darkest step, and every surface is raised from there. Grounding on `base` instead leaves the chrome darker than the page it sits on and costs contrast against every text color.
+The page is grounded on `crust`, the step furthest back in both themes, and every surface is raised from there. Grounding on `base` instead leaves the chrome a step behind the page it sits on and costs contrast against every text color.
 
 | Role | Token |
 |---|---|
 | Page ground, and any chrome flush with it such as a sidebar, header, or rail | `crust` |
-| A surface that reads as lifted off the page, such as a card, modal, popover, or dropdown | `mantle` |
-| A control sitting on either of those, such as an input, chip, button, or hovered row | `surface0` |
-| Borders, dividers, and the hover state of a `surface0` control | `surface1` |
-| A well recessed inside a `mantle` panel, such as a code block or an embedded preview | `base` |
+| A surface that reads as lifted off the page, such as a card, modal, popover, or a pill bar on the ground | `mantle` |
+| A control sitting on either of those, such as an input, select, chip, button, or pill track, and a selected row | `surface0` |
+| Borders, dividers, the hover or open state of a `surface0` control, its selected segment, and anything nested in it | `surface1` |
+| A well recessed inside a `mantle` panel, such as a code block, an embedded preview, or a media frame | `base` |
 
 Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast ratio of 1.07 and `crust` to `surface0` is 1.49, which separates them without drawing a seam. Skipping a rung reads as two unrelated panels rather than one raised off the other.
+
+Every fill steps forward from the layer under it, never back toward the ground. The ramp runs dark to light in Mocha and light to dark in the light palette, so a `crust` track inside a `mantle` panel reads as a groove in one theme and a bright strip in the other.
 
 Text runs the same way. Body copy takes `subtext0`, headings and the one value a row exists to show take `text`, and metadata takes `overlay1`. Defaulting body copy to `text` makes every word shout and leaves nothing louder for a heading to be.
 
@@ -205,23 +215,7 @@ Structure never borrows from the accent ramp. The neutral steps carry it, and an
 
 Catppuccin Mocha is the default for a new frontend. A project that already has a palette keeps it, since re-theming an existing app is a design decision rather than a convention.
 
-Light and dark switching is added only when it is asked for, by redefining the `--ctp-*` set for Latte.
-
-```html
-<style>
-  /* Catppuccin Latte, re-slotted so crust stays the page ground */
-  :root:not(.dark) {
-    --ctp-crust: #eff1f5; --ctp-mantle: #e6e9ef; --ctp-base: #dce0e8;
-    --ctp-surface0: #ccd0da; --ctp-surface1: #bcc0cc; --ctp-surface2: #acb0be;
-    --ctp-text: #4c4f69; --ctp-subtext0: #5c5f77; --ctp-overlay1: #6c6f85;
-    --ctp-blue: #1e66f5; --ctp-mauve: #8839ef;
-  }
-</style>
-```
-
-Latte's ramp runs light to dark, the opposite of Mocha's, so re-slotting keeps `crust` the ground and `mantle` the surface above it in both. The text tokens shift one step too, because Latte's own `subtext0` on its own `base` is 4.37 and body copy has to clear 4.5.
-
-A script in `<head>` sets the class from `localStorage` or `prefers-color-scheme` before the body renders, preventing a flash of the wrong theme.
+A light mode is added only when it is asked for, as a `.light` class on `<html>` that redefines the whole `--ctp-*` set. Mocha stays on `:root`, so a page without the class is dark. Its values and toggle are in `./references/components.md`, since stock Latte washes out.
 
 ## Styling Rules
 
@@ -296,7 +290,7 @@ The page carries no `apple-mobile-web-app-status-bar-style` tag. Without it, iOS
 
 iOS reads the status bar style only at install, so an existing install keeps the blur until the app is removed and added again.
 
-The body takes `min-h-dvh`, because a Home Screen app without the status bar tag computes `100vh` incorrectly and the page scrolls (WebKit bug 316008).
+The body is sized in `dvh` rather than `vh`, because a Home Screen app without the status bar tag computes `100vh` incorrectly and the page scrolls (WebKit bug 316008).
 
 `static/sw.js` is a no-op worker:
 

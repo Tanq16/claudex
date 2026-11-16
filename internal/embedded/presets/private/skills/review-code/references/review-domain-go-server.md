@@ -70,8 +70,14 @@ The expected pattern for every check lives in those skills. This file states wha
 | Nerd Font is earned | Grep the page for a private-use-area glyph or a Powerline separator when the nerd variant is downloaded |
 | Palette declared once | Grep the HTML for the theme declaration and count how many places define the same colors |
 | Tailwind configuration form | Read the HTML for how theme values are declared and check it against the Tailwind version loaded |
+| Color mapping is inline | Read the `@theme` block mapping the palette for the `inline` keyword |
+| Light mode is opt-in | When a light mode exists, read for a `.light` class on `<html>` carrying the full palette and a pre-paint script after the `theme-color` meta |
 | Page ground | Read the `body` background and check it against the layering table |
 | Layer steps | Read the backgrounds of nested surfaces and check that each is one rung from its parent |
+| Fills step forward | Read the background of every pill track, footer, and nested control and check none takes a token behind the layer it sits on |
+| Component kit | Grep views outside `ui.js` for hand-built control class strings such as `bg-surface0 px-4 py-2.5` |
+| Control states | Read the kit for row hover at `surface0/50`, selected rows at `surface0`, and the `surface1` step for anything inside a `surface0` control |
+| Scroll model | Read the `body` for `h-dvh overflow-hidden`, grep scroll regions for `data-scroll`, and check native scrollbars are hidden |
 | Text ramp | Read the default body color and the heading colors and check they are not the same token |
 | Structure is neutral | Grep border and background utilities for accent colors |
 | Utilities over CSS | Read every hand-written rule and check it against the named exceptions rather than for a utility that would do it |
@@ -84,13 +90,16 @@ The expected pattern for every check lives in those skills. This file states wha
 | Check | How to verify |
 |---|---|
 | Renderer overrides | Read the `marked.use` call and the token handlers it installs |
-| Post-render call order | Read the render function and trace the order of the parse, the copy buttons, the diagram run, and the icon initialization |
-| Copy buttons are idempotent | Read the button injection for its guard against running twice |
+| Post-render call order | Read the render function and trace the order of the sanitized parse, the diagram run, and the icon initialization |
+| Output is sanitized | Read the render call for `DOMPurify.sanitize` wrapping `marked.parse` |
+| Copy buttons | Read the code renderer for the kit's icon button and a single delegated copy action |
 | Clipboard fallback | Read the copy handler for the non-secure-context path |
 | Mermaid theme mode | Read the `mermaid.initialize` config for its theme key |
 | Mermaid render trigger | Read the config for automatic startup and grep for a manual run call |
+| Diagrams wait for fonts | Read the run call for `document.fonts.ready` |
+| Diagrams follow the theme | Read for the source kept in `data-src`, a re-run on `themechange`, and `darkMode` read from the page |
 | Markdown styling | Read the stylesheet for the heading colors, the inline versus block code treatment, and the table rules |
-| Colors follow the palette | Grep the Markdown stylesheet and the Mermaid config for hex literals rather than palette reads |
+| Colors follow the palette | Grep the Markdown stylesheet, the `.hljs` rules, and the Mermaid config for hex literals rather than palette reads, and the page for `github-dark.min.css` |
 
 ---
 
