@@ -53,7 +53,7 @@ import (
     featureCmd "github.com/[GITHUB_USER]/REPO_NAME/cmd/feature-cmd"
 )
 
-var AppVersion = "dev-build" // set at build time via ldflags
+var AppVersion = "dev-build"
 
 var debugFlag bool
 
@@ -169,10 +169,9 @@ Same logger and same `--debug` as CLI Only, without the `utils` import. What a s
 
 ## Simple Command
 
-A command without subcommands is defined directly in `cmd/`, with its own flag struct and `init()`. Grouping flags in a struct per command keeps two commands from colliding over a variable named `output` in the shared `cmd` package.
+A command without subcommands, such as `cmd/serve.go`, is defined directly in `cmd/` with its own flag struct and `init()`. Grouping flags in a struct per command keeps two commands from colliding over a variable named `output` in the shared `cmd` package.
 
 ```go
-// cmd/serve.go
 package cmd
 
 import (
@@ -257,10 +256,9 @@ The exit code is distinct from the `1` that `PrintFatal` uses, which lets a call
 
 ## Subcommand Package
 
-A group of related subcommands gets a package under `cmd/`. The parent command is exported and has no `Run`, so invoking it bare prints help instead of doing something arbitrary; the children are unexported and each carry a `Run`.
+A group of related subcommands gets a package under `cmd/`, such as `cmd/feature-cmd/`, whose `feature.go` holds the parent. The parent command is exported and has no `Run`, so invoking it bare prints help instead of doing something arbitrary; the children are unexported and each carry a `Run`.
 
 ```go
-// cmd/feature-cmd/feature.go
 package featureCmd
 
 import (

@@ -83,7 +83,7 @@ An action revealed on hover takes `ui.cls.reveal`, which also shows it while it 
 
 ## Base Styles
 
-The hand-written block covers states Tailwind does not reach and the animations the kit names in `[animation:...]` utilities. It sits in the palette `<style>`, after the theme blocks.
+The hand-written block covers states Tailwind does not reach and the animations the kit names in `[animation:...]` utilities. It sits in the plain palette `<style>`, after the `:root, .dark` and `.light` blocks, rather than in the `text/tailwindcss` block that holds `@theme`.
 
 ```css
 * { scrollbar-width: none; }
