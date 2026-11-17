@@ -18,6 +18,11 @@ The libraries are vendored and pinned, never loaded from a CDN at run time: `mar
 
 `ui` below is the page's component kit, which supplies `esc`, `iconButton`, `on`, and `icons`. Building the copy button from the kit keeps it identical to every other icon button on the page.
 
+## Start here: required reading
+
+**When building a page that displays a document:**
+- `./references/document-view.md`: the reading column, the outline that follows the scroll, the Contents menu, and the Rendered and Source toggle
+
 ## Call Order
 
 The three steps run in this order after every content change, because each depends on the DOM the previous one produced.
@@ -113,16 +118,6 @@ ui.on('md-copy', async (b) => {
 ```
 
 The `textarea` fallback covers pages served over plain HTTP, where `navigator.clipboard` is unavailable because the context is not secure.
-
-## Document View
-
-A document view renders into `<article class="markdown-body mx-auto max-w-3xl">` inside a `mantle` panel whose body is the scroll region. A line much past `max-w-3xl` is too long to read comfortably on a wide screen.
-
-A Rendered and Source toggle sits in the page heading as a segmented control on the ground. The source view is the raw Markdown highlighted with the `markdown` grammar in a `base` well inside the same scroll region.
-
-A long document gets an "On this page" aside built from the rendered `h2` and `h3` ids, with `h3` entries indented. Below `lg` the aside gives way to a Contents menu in the panel header, since a phone has no room for a second column.
-
-The aside follows the scroll: the last heading above the top of the scroll region is the selected row at `bg-surface0 text-text`, and the rest are `text-overlay1` rows hovering at `surface0/50`. These are the kit's row states, so the aside reads as the same kind of list as every sidebar.
 
 ## Styles
 

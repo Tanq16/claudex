@@ -12,8 +12,21 @@ The Go server owns how these bytes are served. This covers what goes inside `sta
 
 ## Start here: required reading
 
-**Before building or changing a control, a view, or the theme:**
-- `./references/components.md`: the `ui` kit, control fills and states, radii, scrolling, floating layers, and light mode
+The references carry the component kit's code. `ui.js` holds all of kit-core and adds each group's builders once the app uses that group.
+
+**Always, before building or changing a view, a control, or the theme:**
+- `./references/foundations.md`: color roles, fill and state rules, type, radius, icon sizes, base CSS, and light mode
+- `./references/kit-core.md`: the `ui` object, buttons, chips, fields, delegation, popovers, tooltips, modals, and toasts
+
+**When building that part:**
+- `./references/layout.md`: the shell, the router and nav, page heads, galleries, workspaces, scroll regions, or sidebars
+- `./references/controls.md`: text inputs, a textarea, numbers, checkboxes, switches, radios, pill tracks, choice cards, swatches, or tags
+- `./references/selects-menus.md`: a select, a date picker, or a menu
+- `./references/feedback.md`: toasts, tooltips, confirm and form modals, banners, badges, loading states, or empty states
+- `./references/data.md`: stats, cards, details, a table, or list rows
+- `./references/media-music.md`: an audio player, or the seek bar and transport buttons any media view uses
+- `./references/media-video.md`: a video player, read with media-music.md
+- `./references/media-reader.md`: a PDF reader
 
 ## Layout
 
@@ -151,6 +164,7 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
         --font-sans: 'Inter', sans-serif;
         --font-display: 'Google Sans', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
+        --breakpoint-3xl: 120rem;
       }
       @layer base {
         button:not(:disabled), [role="button"], [role="option"], a[href], summary { cursor: pointer; }
@@ -158,12 +172,12 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
     </style>
 </head>
 <body class="bg-crust text-subtext0 h-dvh overflow-hidden flex flex-col font-sans antialiased">
-    <header class="shrink-0 flex items-center gap-3 px-4 pt-4 sm:px-6 lg:px-10 lg:pt-6">
-        <a href="#/" class="flex items-center gap-2.5 font-display text-xl font-medium text-text">
-            <img src="/static/icons/logo.png" alt="" class="size-11">
-            <span>APP_NAME</span>
+    <header class="shrink-0 flex flex-wrap items-center gap-3 px-4 pt-4 sm:flex-nowrap sm:px-6 lg:px-10 lg:pt-6">
+        <a href="#/" aria-label="APP_NAME" class="flex items-center gap-2.5 font-display text-xl font-medium text-text">
+            <img src="/static/icons/logo.png" alt="" class="size-11 sm:size-13">
+            <span class="max-sm:hidden">APP_NAME</span>
         </a>
-        <nav id="nav" class="ml-auto flex gap-1 rounded-full bg-mantle p-1"></nav>
+        <nav id="nav" class="flex gap-1 rounded-full bg-mantle p-1 max-sm:order-last max-sm:w-full max-sm:justify-between sm:ml-auto"></nav>
     </header>
 
     <main id="view" class="flex-1 min-h-0 px-4 py-4 sm:px-6 lg:px-10 lg:py-6"></main>
@@ -215,7 +229,7 @@ Structure never borrows from the accent ramp. The neutral steps carry it, and an
 
 Catppuccin Mocha is the default for a new frontend. A project that already has a palette keeps it, since re-theming an existing app is a design decision rather than a convention.
 
-A light mode is added only when it is asked for, as a `.light` class on `<html>` that redefines the whole `--ctp-*` set. Mocha stays on `:root`, so a page without the class is dark. Its values and toggle are in `./references/components.md`, since stock Latte washes out.
+A light mode is added only when it is asked for, as a `.light` class on `<html>` that redefines the whole `--ctp-*` set. Mocha stays on `:root`, so a page without the class is dark. Its values and toggle are in `./references/foundations.md`, since stock Latte washes out.
 
 ## Styling Rules
 

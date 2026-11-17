@@ -41,7 +41,7 @@ The Nerd Font variant is off by default. It exists only for a page that renders 
 ## Template
 
 ```makefile
-.PHONY: help assets verify-assets font nerdfont fontawesome clean build build-for build-all docker-build docker-push version
+.PHONY: help assets verify-assets font nerdfont fontawesome pdfjs clean build build-for build-all docker-build docker-push version
 
 # =============================================================================
 # Variables
@@ -64,6 +64,7 @@ DOMPURIFY_VERSION   := 3.4.18
 HIGHLIGHTJS_VERSION := 11.12.0
 MERMAID_VERSION     := 11.17.2
 CHARTJS_VERSION     := 4.5.1
+PDFJS_VERSION       := 6.4.299
 NERDFONT_VERSION    := 3.5.1
 
 # Only a page that renders Nerd Font glyphs needs 1 here.
@@ -74,6 +75,7 @@ JS_DIR     := $(STATIC_DIR)/js
 CSS_DIR    := $(STATIC_DIR)/css
 FONTS_DIR  := $(STATIC_DIR)/fonts
 FA_DIR     := $(STATIC_DIR)/fontawesome
+PDFJS_DIR  := $(JS_DIR)/pdfjs
 STAMP      := $(STATIC_DIR)/.assets-stamp
 
 MONO := $(if $(filter 1,$(NERDFONT)),nerdfont,font FAMILY="JetBrains+Mono" SLUG=jetbrains-mono WEIGHTS="400;700")
@@ -115,6 +117,7 @@ $(STAMP): $(MAKEFILE_LIST)
 	@curl -sfL "https://cdn.jsdelivr.net/npm/chart.js@$(CHARTJS_VERSION)/dist/chart.umd.js" -o "$(JS_DIR)/chart.umd.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/devicon@$(DEVICON_VERSION)/devicon.min.css" -o "$(CSS_DIR)/devicon.min.css"
 	@$(MAKE) --no-print-directory fontawesome
+	@$(MAKE) --no-print-directory pdfjs
 	@$(MAKE) --no-print-directory font FAMILY="Inter" SLUG=inter WEIGHTS="400;500;600;700"
 	@$(MAKE) --no-print-directory font FAMILY="Google+Sans" SLUG=google-sans WEIGHTS="400;500;700"
 	@$(MAKE) --no-print-directory $(MONO)
@@ -168,6 +171,12 @@ fontawesome:
 	done
 	@sed -i.bak 's|../webfonts/|/static/fontawesome/webfonts/|g' "$(FA_DIR)/css/all.min.css"
 	@rm -f "$(FA_DIR)/css/all.min.css.bak"
+
+pdfjs:
+	@mkdir -p $(PDFJS_DIR)/build $(PDFJS_DIR)/web/images $(PDFJS_DIR)/wasm
+	@set -e; for f in build/pdf.min.mjs build/pdf.worker.min.mjs web/pdf_viewer.mjs web/pdf_viewer.css web/images/loading-icon.gif wasm/openjpeg.wasm wasm/jbig2.wasm wasm/qcms_bg.wasm; do \
+	  curl -sfL "https://cdn.jsdelivr.net/npm/pdfjs-dist@$(PDFJS_VERSION)/$$f" -o "$(PDFJS_DIR)/$$f"; \
+	done
 
 verify-assets: ## Fail early if the embedded tree is missing an asset
 	@test -s $(JS_DIR)/tailwind.js || (echo "tailwind.js missing, run 'make assets'" && exit 1)
