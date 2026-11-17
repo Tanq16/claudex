@@ -34,6 +34,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | No lint or format targets | Read the target list |
 | Assets downloaded, not committed | Read the asset target; run `git ls-files` over the directories it writes; read `.gitignore` |
 | Every claimed asset is downloaded | Cross-reference what the frontend loads against what the asset target fetches |
+| No unused asset is downloaded | Cross-reference what the asset target fetches, beyond the set the skill always keeps, against what the frontend loads |
 | Versions pinned | Grep the Makefile for `latest` and for unpinned ranges in download URLs |
 | Fonts | Read the font targets for the three families, their sources, and the format they end up in |
 | Font subsetting | Read the Google Fonts target for the filter that keeps only the latin blocks |

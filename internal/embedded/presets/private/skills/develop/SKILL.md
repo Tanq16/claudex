@@ -30,7 +30,7 @@ State in one line what is being built or changed, then classify it.
 
 ## Step 2: Select and read the governing skills
 
-Pick from the Skill Map below, then read each selected `SKILL.md` in full. Naming a skill is not reading it, and a convention you half-remember is the one that produces a plausible file nobody wants.
+Pick from the Skill Map below, then read each selected `SKILL.md` in full. The references it marks as always read are read with it, and a task-scoped reference is read when its task is part of the work. Naming a skill is not reading it, and a convention you half-remember is the one that produces a plausible file nobody wants.
 
 Load the skills the task actually touches rather than the whole set. When in doubt, take the two always-in-scope skills for the language plus the one that matches the files being edited.
 

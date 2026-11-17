@@ -2,15 +2,18 @@
 
 **Applies to:** Go Web Only, Go CLI + Web, and Go Headless API Service. Category 4 applies wherever an embedded frontend exists, and is skipped for a Headless API Service. Category 3 applies only where a CLI client authenticates against an OAuth provider.
 
-**Skills to load, in full, before running any check below:**
+**Skills and references to load, in full, before running any check below:**
 - `[SKILLS_DIR]/go-package-architecture/SKILL.md`
 - `[SKILLS_DIR]/go-http-server/SKILL.md`
 - `[SKILLS_DIR]/go-oauth-cli/SKILL.md` (Category 3 only)
 - `[SKILLS_DIR]/go-embedded-frontend/SKILL.md` (Category 4 only)
+- `[SKILLS_DIR]/go-embedded-frontend/references/foundations.md` and `kit-core.md` (Category 4 only)
+- Each other `[SKILLS_DIR]/go-embedded-frontend/references/` file whose part the frontend builds, as the skill's "Start here" list maps them (Category 4 only)
 - `[SKILLS_DIR]/web-markdown-rendering/SKILL.md` (Category 5 only)
+- `[SKILLS_DIR]/web-markdown-rendering/references/document-view.md` (Category 5, when the page displays a document)
 - `[SKILLS_DIR]/web-mermaid-diagrams/SKILL.md` (Category 5 only)
 
-The expected pattern for every check lives in those skills. This file states what to look at and how to look at it.
+The expected pattern for every check lives in those files. This file states what to look at and how to look at it.
 
 ---
 
@@ -77,6 +80,14 @@ The expected pattern for every check lives in those skills. This file states wha
 | Fills step forward | Read the background of every pill track, footer, and nested control and check none takes a token behind the layer it sits on |
 | Component kit | Grep views outside `ui.js` for hand-built control class strings such as `bg-surface0 px-4 py-2.5` |
 | Control states | Read the kit for row hover at `surface0/50`, selected rows at `surface0`, and the `surface1` step for anything inside a `surface0` control |
+| Shadows | Grep for `shadow-` utilities and check each sits on a floating layer and takes the `shade` token |
+| Hover-revealed actions | Grep for `opacity-0` beside `group-hover:` and check each carries `ui.cls.reveal` |
+| Multi-button fields | Read each `ui.field` wrapping a pill track, a stepper, or a tag field for `group: true` |
+| Coarse-pointer text size | Grep every input, textarea, and editable control for `pointer-coarse:text-[16px]` |
+| Row text on touch | Read the main text of list rows and table cells for `ui.cls.rowText` |
+| Form submission | Read each form modal for a `<form novalidate>`, a submit button naming it through `form`, and validation through `ui.invalid` |
+| Empty states | Read each `ui.empty` that follows a label or heading for `fill: false` |
+| Mono ligatures | Read the `@theme` block for `--font-mono--font-feature-settings` |
 | Scroll model | Read the `body` for `h-dvh overflow-hidden`, grep scroll regions for `data-scroll`, and check native scrollbars are hidden |
 | Text ramp | Read the default body color and the heading colors and check they are not the same token |
 | Structure is neutral | Grep border and background utilities for accent colors |
@@ -100,6 +111,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | Diagrams follow the theme | Read for the source kept in `data-src`, a re-run on `themechange`, and `darkMode` read from the page |
 | Markdown styling | Read the stylesheet for the heading colors, the inline versus block code treatment, and the table rules |
 | Colors follow the palette | Grep the Markdown stylesheet, the `.hljs` rules, and the Mermaid config for hex literals rather than palette reads, and the page for `github-dark.min.css` |
+| Document view | When the page displays a document, read for the reading column, the scroll-following outline, the Contents menu, and the Rendered and Source toggle |
 
 ---
 

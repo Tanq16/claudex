@@ -10,7 +10,7 @@ user-invocable: true
 
 ## Start here: required reading
 
-Read the manifest for every domain in scope before that domain is reviewed: by you for a targeted review, or by the domain's sub-agent for a full one. A manifest names the skills to load, the applicability rules, and how each check is verified. Read only the manifests for domains that apply to the detected project type.
+Read the manifest for every domain in scope before that domain is reviewed: by you for a targeted review, or by the domain's sub-agent for a full one. A manifest names the skills and references to load, the applicability rules, and how each check is verified. Read only the manifests for domains that apply to the detected project type.
 
 **Before reviewing a domain:**
 - `./references/review-domain-go-core.md`: Go layout, idioms, logging, config, tests
@@ -106,7 +106,7 @@ Otherwise go to Step 3b.
 | Chrome Extension | Infrastructure |
 | Node Web Only | Node, Infrastructure |
 
-With one domain applying, handle it inline: read the manifest, load its skills, run the checks, and produce the report. Spawning a single sub-agent adds a round trip and no parallelism.
+With one domain applying, handle it inline: read the manifest, load its skills and references, run the checks, and produce the report. Spawning a single sub-agent adds a round trip and no parallelism.
 
 With several, launch one sub-agent per domain, all in a single message so they run concurrently.
 
@@ -125,11 +125,12 @@ You are a focused code review agent for the [DOMAIN_NAME] domain.
 1. Read your domain manifest:
    [SKILLS_DIR]/review-code/references/review-domain-[DOMAIN_FILE].md
 
-2. Read, in full, every skill the manifest lists. They are at
-   [SKILLS_DIR]/[SKILL_NAME]/SKILL.md
-   The manifest states what to check and how to verify it; the skill states what the
-   correct answer is. Running a check without having read its skill produces a
-   finding you cannot cite.
+2. Read, in full, every file the manifest lists: each skill at
+   [SKILLS_DIR]/[SKILL_NAME]/SKILL.md and each reference at
+   [SKILLS_DIR]/[SKILL_NAME]/references/[FILE].md
+   The manifest states what to check and how to verify it; the skill and its
+   references state what the correct answer is. Running a check without having read
+   the file that defines it produces a finding you cannot cite.
 
 3. Inspect the project in [CWD] against every check in the manifest that applies to
    [PROJECT_TYPE]. Use Read, Glob, Grep, and read-only Bash. For a conditional check,
@@ -149,7 +150,7 @@ Go to Step 3c.
 
 ### Step 3b: Targeted review
 
-Handle it inline with no sub-agents. Read the manifest, load the skills it names, narrow to the requested subset or package scope, run the applicable checks, and produce the report.
+Handle it inline with no sub-agents. Read the manifest, load the skills and references it names, narrow to the requested subset or package scope, run the applicable checks, and produce the report.
 
 A package path narrows file-existence checks to that package while keeping cross-cutting checks such as error handling and logging, since those are the ones a package most commonly gets wrong in isolation.
 
