@@ -161,8 +161,8 @@ segmented({ name, value, options, full = false, ground = false }) {
     </span>`;
 },
 
-tonePills({ name, value, options }) {
-    const fill = ui.tracks.panel;
+tonePills({ name, value, options, ground = false }) {
+    const fill = ui.tracks[ground ? 'ground' : 'panel'];
     return `<span role="radiogroup" data-ui="radiogroup" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" class="inline-flex max-w-full flex-wrap items-center gap-1 rounded-full ${fill.track} p-1">
         ${options.map((o) => {
             const on = o.value === value;
@@ -251,10 +251,12 @@ el.addEventListener('ui-change', (e) => {
 
 A tag field is a `surface0` well holding chips and a bare input, ringed as one control through `focus-within`. Its chips take `surface1`, because they sit inside a `surface0` control. Enter adds the typed value as a chip, and each chip's remove button deletes it.
 
+The input's minimum width holds its whole placeholder at 16px, so a line with less room wraps the input below the chips instead of clipping the text. A different placeholder resizes `min-w-44` to fit.
+
 ```javascript
 const tags = `<div data-tags class="flex flex-wrap items-center gap-1.5 rounded-2xl bg-surface0 p-1.5 focus-within:ring-2 focus-within:ring-mauve/40">
     ${['go-idioms', 'go-cli-output'].map((t) => ui.chip(t, { mono: true, remove: 'tag-remove' }).replace('bg-surface0', 'bg-surface1')).join('')}
-    <input data-tag-input placeholder="Add and press Enter" class="min-w-32 flex-1 bg-transparent px-2 py-1 text-sm text-text placeholder:text-overlay0 outline-none pointer-coarse:text-[16px]">
+    <input data-tag-input placeholder="Add and press Enter" class="min-w-44 flex-1 bg-transparent px-2 py-1 text-sm text-text placeholder:text-overlay0 outline-none pointer-coarse:text-[16px]">
 </div>`;
 ```
 

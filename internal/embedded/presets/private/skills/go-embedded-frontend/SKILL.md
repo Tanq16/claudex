@@ -150,6 +150,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
         --font-sans: 'Inter', sans-serif;
         --font-display: 'Google Sans', sans-serif;
         --font-mono: 'JetBrains Mono', monospace;
+        --font-mono--font-feature-settings: "calt" 0;
         --breakpoint-3xl: 120rem;
       }
       @layer base {

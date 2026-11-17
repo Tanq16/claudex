@@ -60,6 +60,8 @@ An action revealed on hover takes `ui.cls.reveal`, which also shows it while it 
 | A path, an ID, or a hash | `font-mono` |
 | A number in a column, a count, or a clock | `tabular-nums` |
 
+`--font-mono--font-feature-settings: "calt" 0` in `@theme` turns off JetBrains Mono's ligatures on `font-mono` and on `code`, `kbd`, and `pre`. Those ligatures draw `!=` and `->` as one glyph, and a path, a hash, or a code sample shows the characters as typed.
+
 ## Radius
 
 | Radius | Used by |

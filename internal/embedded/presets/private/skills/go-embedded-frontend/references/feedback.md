@@ -173,8 +173,8 @@ const loading = `
 ## Empty States
 
 ```javascript
-empty({ icon, title, hint = '', action = '' }) {
-    return `<div class="flex h-full min-h-40 flex-col items-center justify-center gap-3 p-6 text-center">
+empty({ icon, title, hint = '', action = '', fill = true }) {
+    return `<div class="flex ${fill ? 'h-full' : ''} min-h-40 flex-col items-center justify-center gap-3 p-6 text-center">
         <span class="flex size-12 items-center justify-center rounded-full bg-surface0 text-overlay1"><i data-lucide="${icon}" class="size-5"></i></span>
         <p class="font-display text-[16px] text-text">${ui.esc(title)}</p>
         ${hint ? `<p class="max-w-sm text-sm text-overlay1">${hint}</p>` : ''}
@@ -185,9 +185,11 @@ empty({ icon, title, hint = '', action = '' }) {
 
 An empty state is an icon in a `surface0` circle, a title, an optional hint, and an optional action, centered in the space the content would fill.
 
+An empty state standing in for a whole pane fills its height and centers there. One that follows a label or heading, such as an empty list under a sidebar group, passes `fill: false` and sits where the first rows would be. `h-full` takes the container's whole height below that label, which centers the message far from it.
+
 ```javascript
 const empties = `<div class="grid gap-3 sm:grid-cols-2">
     <div class="${ui.cls.tile}">${ui.empty({ icon: 'inbox', title: 'No active sessions', action: ui.button('New session', { icon: 'plus', size: 'sm' }) })}</div>
-    <div class="${ui.cls.tile}">${ui.empty({ icon: 'search-x', title: 'No matches', hint: 'Nothing matches <span class="font-mono text-subtext0">orbt</span>.' })}</div>
+    <div class="${ui.cls.tile}"><p class="${ui.cls.group}">Projects</p>${ui.empty({ icon: 'search-x', title: 'No matches', hint: 'Nothing matches <span class="font-mono text-subtext0">orbt</span>.', fill: false })}</div>
 </div>`;
 ```

@@ -40,7 +40,8 @@ Packages fall into two kinds, and the kind decides what happens to an error pass
 A task package that has to report progress takes an `io.Writer` as a parameter and never constructs the meter, which keeps the choice of how the program talks to its user at the boundary where the rest of that choice is already made.
 
 ```go
-// internal/download/client.go
+package download
+
 func (c *Client) FetchFile(url string) ([]byte, error) {
     resp, err := c.httpClient.Get(url)
     if err != nil {
@@ -58,7 +59,6 @@ func (c *Client) FetchFile(url string) ([]byte, error) {
 **Interaction packages** are the boundaries where the program talks to its user. Cobra commands and HTTP handlers are always this kind, and so is any package that owns the loop a progress meter is drawing, because the meter is an `io.Writer` on the byte stream and cannot leave that package without the copy loop going with it. They add the context that names what the user was trying to do, they log, and they produce the user-facing message. Doing it here means the context is written once, where the intent is known, rather than accumulated as a stack of prefixes on the way up.
 
 ```go
-// cmd/download.go, CLI Only
 Run: func(cmd *cobra.Command, args []string) {
     data, err := download.NewClient().FetchFile(url)
     if err != nil {
@@ -79,7 +79,8 @@ Most projects are JSON-file backed and stateless, which needs no abstraction at 
 Introduce a `Store` interface only when a second implementation genuinely exists or is committed to. An interface with one implementation is indirection that costs a jump and buys nothing.
 
 ```go
-// internal/storage/storage.go
+package storage
+
 type Store interface {
     Get(key string) ([]byte, error)
     Set(key string, value []byte) error
@@ -89,7 +90,8 @@ type Store interface {
 ```
 
 ```go
-// internal/storage/json.go
+package storage
+
 type JSONStore struct{ path string }
 
 func NewJSONStore(path string) *JSONStore { return &JSONStore{path: path} }
@@ -114,7 +116,8 @@ A state file the program itself writes is created at mode `0600`, because it liv
 An internal package takes a config struct rather than reading flags or the environment, which is what lets it be called from a test, a second command, or a server handler without any of them.
 
 ```go
-// internal/download/config.go
+package download
+
 type Config struct {
     URL         string
     OutputPath  string
@@ -146,7 +149,8 @@ A shared client bounds every phase that can hang and leaves the body read unboun
 `Client.Timeout` is not that bound. It covers the whole exchange including the body, so a 30-second value cancels any download that runs past 30 seconds, and a deadline genuinely meant to cover a body belongs on a `context.WithTimeout` at the call site where the size of that body is known.
 
 ```go
-// internal/httpclient/client.go
+package httpclient
+
 func New() *http.Client {
     return &http.Client{
         Transport: &http.Transport{
