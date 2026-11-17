@@ -73,8 +73,9 @@ project-root/
     └── server/
         ├── server.go
         └── static/         # embedded frontend
-            ├── css/ fonts/ js/
-            └── index.html
+            ├── css/ fonts/ icons/ js/
+            ├── index.html
+            └── ui.js       # the component kit
 ```
 
 ### CLI + Web
