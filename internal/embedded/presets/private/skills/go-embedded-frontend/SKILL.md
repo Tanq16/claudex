@@ -8,23 +8,21 @@ user-invocable: false
 
 **One `index.html` under `internal/server/static/`, styled with the Tailwind browser build and the Catppuccin Mocha palette, with every asset self-hosted.**
 
-The Go server owns how these bytes are served. This covers what goes inside `static/`.
-
 ## Start here: required reading
 
-The references carry the component kit's code. `ui.js` holds all of kit-core and adds each group's builders once the app uses that group.
+`ui.js` holds all of kit-core and adds each group's builders once the app uses that group.
 
-**Always, before building or changing a view, a control, or the theme:**
+**Always, for any view, control, or theme work:**
 - `./references/foundations.md`: color roles, fill and state rules, type, radius, icon sizes, base CSS, and light mode
 - `./references/kit-core.md`: the `ui` object, buttons, chips, fields, delegation, popovers, tooltips, modals, and toasts
 
 **When building that part:**
-- `./references/layout.md`: the shell, the router and nav, page heads, galleries, workspaces, scroll regions, or sidebars
-- `./references/controls.md`: text inputs, a textarea, numbers, checkboxes, switches, radios, pill tracks, choice cards, swatches, or tags
+- `./references/layout.md`: the shell, router, nav, page heads, galleries, workspaces, scroll regions, or sidebars
+- `./references/controls.md`: inputs, textareas, numbers, checkboxes, switches, radios, pill tracks, choice cards, swatches, or tags
 - `./references/selects-menus.md`: a select, a date picker, or a menu
-- `./references/feedback.md`: toasts, tooltips, confirm and form modals, banners, badges, loading states, or empty states
+- `./references/feedback.md`: toasts, tooltips, modals, banners, badges, loading states, or empty states
 - `./references/data.md`: stats, cards, details, a table, or list rows
-- `./references/media-music.md`: an audio player, or the seek bar and transport buttons any media view uses
+- `./references/media-music.md`: an audio player, or the seek bar and transport any media view uses
 - `./references/media-video.md`: a video player, read with media-music.md
 - `./references/media-reader.md`: a PDF reader
 
@@ -56,11 +54,11 @@ internal/server/static/
 └── js/                 # tailwind.js, lucide.min.js, and anything else vendored
 ```
 
-Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed. A Makefile target downloads them and the release workflow calls the same target, since a downloaded asset in a diff is a binary nobody reviews and a version nobody can trace.
+Nothing under `css/`, `js/`, `fonts/`, or `fontawesome/` is committed, since the Makefile downloads it.
 
 ## Assets
 
-Every asset is pinned to an exact version. A floating `@latest` makes two builds of the same commit produce different bytes, and a new major breaks rendering with no diff to point at.
+Every asset is pinned to an exact version, so two builds of one commit produce the same bytes.
 
 | Asset | Version | Lands at |
 |---|---|---|
@@ -74,34 +72,23 @@ Every asset is pinned to an exact version. A floating `@latest` makes two builds
 | JetBrains Mono Nerd Font Mono | nerd-fonts `v3.5.1`, opt-in | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
 
-The three fonts are always downloaded, so the asset step is the same everywhere. The rest of the table is downloaded when the project uses it. Marked, Highlight.js, and Mermaid are pinned by the skills that own them.
+The three fonts are always downloaded, and the rest only when the project uses them. Marked, Highlight.js, Mermaid, and PDF.js are pinned where their usage is documented.
 
 Web fonts are woff2, never ttf, since woff2 is roughly half the bytes and every browser here supports it.
 
-Only the `latin` and `latin-ext` blocks of each Google Fonts stylesheet are kept. The endpoint declares every subset the family has, twenty-five files for Google Sans, and `//go:embed` compiles all of them into the binary regardless.
-
-Font Awesome's stylesheet references its webfonts by a relative path that does not survive being served from `/static/`, so the asset step rewrites it:
-
-```bash
-sed -i.bak 's|../webfonts/|/static/fontawesome/webfonts/|g' fontawesome/css/all.min.css
-rm -f fontawesome/css/all.min.css.bak
-```
-
-`sed -i.bak` rather than `sed -i ''`, because the empty-argument form is BSD-only and the release workflow runs this on Linux.
+Font Awesome's stylesheet points at its webfonts by a relative path that breaks under `/static/`, so the asset step rewrites it to `/static/fontawesome/webfonts/`.
 
 ## Fonts
 
-| Font | Role | `font-family` |
-|---|---|---|
-| Inter | body and UI text | `'Inter'` |
-| Google Sans | display headings and branding | `'Google Sans'` |
-| JetBrains Mono | code and monospace | `'JetBrains Mono'` |
+| Font | Role |
+|---|---|
+| Inter | body and UI text |
+| Google Sans | display headings and branding |
+| JetBrains Mono | code and monospace |
 
 Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, since a page fetching a font from a third party leaks every visitor's IP and stops rendering offline.
 
-The mono slot takes the plain family by default. The Nerd Font variant is a patched build Google Fonts does not carry, costing two megabytes and ten seconds against sixty kilobytes and half a second. A page earns that only by rendering Nerd Font glyphs: a Powerline separator, a private-use file-type icon, or terminal output carrying them. An icon Lucide or Font Awesome already has is not a reason.
-
-Switching is a Makefile variable, not a page change. The nerd target writes the same `css/jetbrains-mono.css` under the same `JetBrains Mono` family name.
+The mono slot takes the plain family. The Nerd Font variant is earned only by a page rendering Nerd Font glyphs, such as a Powerline separator or terminal output carrying them, and an icon Lucide or Font Awesome already has is not a reason. Switching is a Makefile variable that writes the same `css/jetbrains-mono.css` under the same family name.
 
 ## The Page
 
@@ -195,7 +182,7 @@ Switching is a Makefile variable, not a page change. The nerd target writes the 
 </html>
 ```
 
-The Tailwind v4 browser build reads the `<style type="text/tailwindcss">` block containing `@theme` and rejects a JavaScript config entirely, so the `tailwind.config = {...}` global from v3 produces no CSS and no error.
+The v4 browser build reads `@theme` from the `<style type="text/tailwindcss">` block, and the v3 `tailwind.config = {...}` global produces no CSS and no error.
 
 A `--color-mauve` entry generates `bg-mauve`, `text-mauve`, and a real `var(--color-mauve)` for hand-written CSS. Naming the entries after Catppuccin's own names keeps the class written and the swatch picked identical.
 
@@ -221,7 +208,7 @@ Adjacent layers step one rung and no more. `crust` to `mantle` is a contrast rat
 
 Every fill steps forward from the layer under it, never back toward the ground. The ramp runs dark to light in Mocha and light to dark in the light palette, so a `crust` track inside a `mantle` panel reads as a groove in one theme and a bright strip in the other.
 
-Text runs the same way. Body copy takes `subtext0`, headings and the one value a row exists to show take `text`, and metadata takes `overlay1`. Defaulting body copy to `text` makes every word shout and leaves nothing louder for a heading to be.
+Body copy takes `subtext0` rather than `text`, which would make every word shout and leave nothing louder for a heading.
 
 Structure never borrows from the accent ramp. The neutral steps carry it, and an accent marks one thing per view: the active item, the primary action, or a state. Two accents competing means neither is signal.
 
@@ -229,7 +216,7 @@ Structure never borrows from the accent ramp. The neutral steps carry it, and an
 
 Catppuccin Mocha is the default for a new frontend. A project that already has a palette keeps it, since re-theming an existing app is a design decision rather than a convention.
 
-A light mode is added only when it is asked for, as a `.light` class on `<html>` that redefines the whole `--ctp-*` set. Mocha stays on `:root`, so a page without the class is dark. Its values and toggle are in `./references/foundations.md`, since stock Latte washes out.
+A light mode is added only when asked for, from `./references/foundations.md`, since stock Latte washes out.
 
 ## Styling Rules
 
@@ -251,9 +238,7 @@ The browser build compiles utility classes at run time, which Tailwind documents
 
 One `index.html` is the default. Views are shown and hidden client-side, and shared logic moves into `app.js` only once more than one place needs it.
 
-Every form control renders at 16px on a coarse pointer, through `pointer-coarse:text-[16px]` alongside whatever size the design uses. iOS Safari zooms the viewport in when a focused control computes under 16px, and it does not zoom back out on blur.
-
-`text-base` cannot carry it, because the palette defines `--color-base` and Tailwind compiles `text-base` to `color: var(--color-base)` with no font size.
+Every form control renders at 16px on a coarse pointer through `pointer-coarse:text-[16px]`, because iOS Safari zooms in on a focused control under 16px and does not zoom back out. `text-base` cannot carry it, since the palette's `--color-base` turns `text-base` into a color with no font size.
 
 The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-scalable=no` and `maximum-scale=1` suppress the zoom only by taking pinch zoom away from everyone.
 
@@ -276,7 +261,7 @@ The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-sca
 
 `lucide.createIcons()` runs after any DOM update that inserts an `<i data-lucide>`, since it replaces those elements with inline SVG and does not observe later insertions.
 
-App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on light and dark browser chrome. PWA icons keep their content inside the centre 80%, because the installer rounds the corners off.
+App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on light and dark browser chrome. PWA icons keep their content inside the center 80%, because the installer rounds the corners off.
 
 ## PWA
 
@@ -316,7 +301,7 @@ It caches nothing, so the app behaves like a normal tab. A caching worker serves
 
 The manifest, the two icon sizes, and HTTPS make the app installable, not the worker. The worker earns its line by controlling the app's pages, which later offline or push behavior needs.
 
-A worker's scope is the directory it is served from, so one served at `/static/sw.js` controls `/static/` and never the app at `/`. It registers without error, so nothing signals the narrow scope. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
+A worker's scope is the directory it is served from, so one at `/static/sw.js` never controls the app at `/`, and it registers without error. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
 
 The file stays under `static/` so `//go:embed static` picks it up, and a route at `/sw.js` serves it from the embedded FS through `http.ServeFileFS` with a `text/javascript` content type.
 
