@@ -38,11 +38,13 @@ A tile, stat block, or card inside a panel is `surface0/50` and keeps that fill 
 
 An accent tint is `/15` on a small element such as a chip, a toned pill, or an icon tile, and `/10` on a large area such as a banner, a callout, an overdue row, or a selected choice card. A large area at `/15` reads as a colored panel rather than a marked one.
 
-Shadows sit only under floating layers, as `shadow-crust/N`, and nothing glows. Elevation inside the page is carried by tone alone, so a shadow always means the element floats.
+Shadows sit only under floating layers, as `shadow-shade/N`, and nothing glows. Elevation inside the page is carried by tone alone, so a shadow always means the element floats.
+
+`shade` is the one token outside Catppuccin's names. It is `crust` in Mocha and a translucent `text` in the light palette. The light `crust` is near-white, so a shadow in it veils whatever sits under a popover.
 
 Every interactive element takes `ui.cls.focus`, and a text field shows the same ring on plain `focus`. Mauve marks focus, the primary action, and the selected icon, which is why no structural fill borrows it.
 
-An action revealed on hover is always visible below `md` through `max-md:opacity-100`, since a touch screen has no hover. A button whose label does not fit a phone drops it below `sm` and keeps it as the tooltip.
+An action revealed on hover takes `ui.cls.reveal`, which also shows it while it holds focus or its menu is open, and always below `md`. A trigger that hides while focused or while its menu is open leaves the user acting on a control they cannot see. A touch screen has no hover at all. A button whose label does not fit a phone drops it below `sm` and keeps it as the tooltip.
 
 ## Type
 
@@ -118,7 +120,7 @@ The `.light` block sits beside the Mocha block in the palette `<style>`.
     --ctp-subtext1: #545770;  --ctp-subtext0: #5c5f77; --ctp-overlay2: #6c6f85;
     --ctp-overlay1: #737689;  --ctp-overlay0: #8c8fa1; --ctp-surface2: #bcc0cc;
     --ctp-surface1: #ccd0da;  --ctp-surface0: #dce0e8; --ctp-base: #e6e9ef;
-    --ctp-mantle: #eff1f5;    --ctp-crust: #f8f9fb;
+    --ctp-mantle: #eff1f5;    --ctp-crust: #f8f9fb;     --ctp-shade: rgb(76 79 105 / 0.25);
   }
 </style>
 ```

@@ -34,7 +34,7 @@ Every interpolated value passes through `ui.esc`, because a builder returns mark
 
 ```javascript
 cls: {
-    input: 'w-full rounded-2xl bg-surface0 px-4 py-2.5 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]',
+    input: 'w-full rounded-2xl bg-surface0 px-4 py-2.5 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 aria-[invalid=true]:ring-2 aria-[invalid=true]:ring-red/50 pointer-coarse:text-[16px]',
     label: 'text-xs font-medium uppercase tracking-wide text-overlay1',
     group: 'px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-overlay0',
     panel: 'rounded-3xl bg-mantle',
@@ -43,6 +43,8 @@ cls: {
     row: 'rounded-2xl transition-colors hover:bg-surface0/50',
     focus: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40',
     count: 'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-mono text-[11px] tabular-nums',
+    rowText: 'truncate pointer-coarse:whitespace-normal pointer-coarse:wrap-break-word',
+    reveal: 'opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 max-md:opacity-100',
 },
 
 tone: {
@@ -111,7 +113,7 @@ ui.on('press', (b) => b.setAttribute('aria-pressed', String(b.getAttribute('aria
 
 ```javascript
 chip(text, { tone = 'neutral', icon, mono = false, tip = '', remove } = {}) {
-    return `<span ${tip ? `data-tip="${ui.esc(tip)}"` : ''} class="inline-flex max-w-full items-center gap-1.5 rounded-full ${remove ? 'pr-1' : 'pr-2.5'} pl-2.5 py-1 text-xs font-medium ${ui.tone.chip(tone)} ${mono ? 'font-mono' : ''}">${icon ? `<i data-lucide="${icon}" class="size-3 shrink-0"></i>` : ''}<span class="truncate">${ui.esc(text)}</span>${remove ? `<button type="button" aria-label="Remove ${ui.esc(text)}" data-action="${remove}" data-value="${ui.esc(text)}" class="-my-0.5 grid size-5 place-items-center rounded-full opacity-70 hover:bg-surface1 hover:opacity-100"><i data-lucide="x" class="size-3"></i></button>` : ''}</span>`;
+    return `<span ${tip ? `data-tip="${ui.esc(tip)}"` : ''} class="inline-flex max-w-full items-center gap-1.5 rounded-full ${remove ? 'pr-1' : 'pr-2.5'} pl-2.5 py-1 text-xs font-medium ${ui.tone.chip(tone)} ${mono ? 'font-mono' : ''}">${icon ? `<i data-lucide="${icon}" class="size-3 shrink-0"></i>` : ''}<span class="truncate">${ui.esc(text)}</span>${remove ? `<button type="button" aria-label="Remove ${ui.esc(text)}" data-action="${remove}" data-value="${ui.esc(text)}" class="-my-0.5 grid size-5 place-items-center rounded-full opacity-70 hover:bg-current/15 hover:opacity-100"><i data-lucide="x" class="size-3"></i></button>` : ''}</span>`;
 },
 
 count(n, tone = 'neutral') {
@@ -144,7 +146,7 @@ spinner(cls = 'size-4') {
 },
 ```
 
-A chip, a count, and a status take their fill from `ui.tone.chip`. A status adds a dot that pulses for a live state such as running or pending. A chip's `remove` names the action of an inline remove button, which the tag field uses.
+A chip, a count, and a status take their fill from `ui.tone.chip`. A status adds a dot that pulses for a live state such as running or pending. A chip's `remove` names the action of an inline remove button, which the tag field uses. The button hovers at `current/15`, a tint of the chip's own text, so the hover shows on any chip fill.
 
 A `kbd` sits inside a `surface0` control such as the search field or a menu, so it takes `surface1`.
 
@@ -153,12 +155,15 @@ A tile is an icon on its tone's tint, `sm` in a panel header and `md` in a stat,
 ## Fields
 
 ```javascript
-field(label, control, { hint = '' } = {}) {
-    return `<label class="flex min-w-0 flex-col gap-1.5"><span class="${ui.cls.label} px-1">${ui.esc(label)}</span>${control}${hint ? `<span class="px-1 text-xs text-overlay1">${hint}</span>` : ''}</label>`;
+field(label, control, { hint = '', group = false } = {}) {
+    const tag = group ? 'div' : 'label';
+    return `<${tag} ${group ? `role="group" aria-label="${ui.esc(label)}"` : ''} class="flex min-w-0 flex-col gap-1.5"><span class="${ui.cls.label} px-1">${ui.esc(label)}</span>${control}${hint ? `<span class="px-1 text-xs text-overlay1">${hint}</span>` : ''}</${tag}>`;
 },
 ```
 
-A field stacks a label above its control and a hint below it. It is a `<label>`, so a click on the label focuses the control.
+A field stacks a label above its control and a hint below it. It is a `<label>`, so a click on its text activates the first button or input inside. For an input, a textarea, a number field, a select, or a date picker, that is the control itself.
+
+Any other control passes `group: true` and renders a `role="group"` `div` instead. In a pill track, a stepper, or a tag field, the first button is one pill, a decrease, or a chip's remove. A `<label>` around one turns a click on its text into a selection or a deletion.
 
 ## Delegation
 
@@ -194,6 +199,10 @@ initDelegation() {
             next.focus();
             ui.handleControl(next, e);
         }
+    });
+
+    document.addEventListener('input', (e) => {
+        if (e.target.matches('input[data-name], textarea[data-name]')) ui.emit(e.target, e.target.value);
     });
 
     document.addEventListener('pointerdown', (e) => {
@@ -240,7 +249,6 @@ handleControl(control, e) {
         const input = control.closest('[data-number]').querySelector('input');
         if (Number(control.dataset.step) > 0) input.stepUp(); else input.stepDown();
         input.dispatchEvent(new Event('input', { bubbles: true }));
-        ui.emit(input, input.value);
     } else if (kind === 'reveal') {
         const input = control.closest('.relative').querySelector('input');
         const show = input.type === 'password';
@@ -258,7 +266,7 @@ emit(el, value) {
 
 Behavior is wired once, by delegation on `document`. A control carries `data-ui` for a built-in behavior such as a radio, a switch, a select, or a stepper, and `data-action` for a handler registered with `ui.on`. A view re-renders by replacing `innerHTML`, which drops every per-element listener, while a delegated one never needs binding again.
 
-A control reports a change as a bubbling `ui-change` event carrying `{ name, value }`, so a view listens once on its root for every control inside it.
+A control reports a change as a bubbling `ui-change` event carrying `{ name, value }`, so a view listens once on its root for every control inside it. A text field, a textarea, or a number field reports on every keystroke through the delegated `input` listener. A stepper button reaches that listener by dispatching `input`.
 
 ```javascript
 el.addEventListener('ui-change', (e) => { if (e.detail.name === 'media-tab') show(e.detail.value); });
@@ -293,7 +301,7 @@ popover: {
         ui.popover.close();
         ui.tooltip.hide();
         const el = document.createElement('div');
-        el.className = `fixed z-[70] rounded-2xl bg-mantle p-1.5 shadow-2xl shadow-crust/80 ring-1 ring-surface0 [animation:pop-in_.12s_ease-out] ${ui.scheme(anchor)}`;
+        el.className = `fixed z-[70] rounded-2xl bg-mantle p-1.5 shadow-2xl shadow-shade/80 ring-1 ring-surface0 [animation:pop-in_.12s_ease-out] ${ui.scheme(anchor)}`;
         el.innerHTML = html;
         ui.layer().appendChild(el);
         const r = anchor.getBoundingClientRect();
@@ -370,7 +378,7 @@ tooltip: {
         ui.tooltip.target = t;
         const el = document.createElement('div');
         el.setAttribute('role', 'tooltip');
-        el.className = `pointer-events-none fixed z-[90] max-w-64 rounded-xl bg-surface0 px-2.5 py-1.5 text-xs text-text shadow-lg shadow-crust/60 [animation:fade-in_.1s_ease-out] ${ui.scheme(t)}`;
+        el.className = `pointer-events-none fixed z-[90] max-w-64 rounded-xl bg-surface0 px-2.5 py-1.5 text-xs text-text shadow-lg shadow-shade/60 [animation:fade-in_.1s_ease-out] ${ui.scheme(t)}`;
         el.textContent = t.dataset.tip;
         ui.layer().appendChild(el);
         const r = t.getBoundingClientRect();
@@ -416,7 +424,7 @@ modal: {
         const root = document.createElement('div');
         root.className = 'fixed inset-0 z-50 flex items-end justify-center bg-crust/70 backdrop-blur-sm md:items-center md:p-6 [animation:fade-in_.15s_ease-out]';
         root.innerHTML = `
-            <section role="dialog" aria-modal="true" class="flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-mantle shadow-2xl shadow-crust md:max-h-[86dvh] md:rounded-3xl ${sizes[size]} max-md:[animation:sheet-in_.2s_ease-out] md:[animation:pop-in_.15s_ease-out]">
+            <section role="dialog" aria-modal="true" class="flex max-h-[92dvh] w-full flex-col rounded-t-3xl bg-mantle shadow-2xl shadow-shade md:max-h-[86dvh] md:rounded-3xl ${sizes[size]} max-md:[animation:sheet-in_.2s_ease-out] md:[animation:pop-in_.15s_ease-out]">
                 <header class="flex shrink-0 items-center gap-3 px-5 pt-5 pb-3 md:px-6 md:pt-6">
                     ${icon ? `<span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-${tone}/15 text-${tone}"><i data-lucide="${icon}" class="size-5"></i></span>` : ''}
                     <div class="min-w-0 flex-1"><h2 class="truncate font-display text-lg font-medium text-text">${ui.esc(title)}</h2>${subtitle ? `<p class="truncate text-sm text-overlay1">${subtitle}</p>` : ''}</div>
@@ -463,7 +471,7 @@ toast(message, { tone = 'neutral', icon = 'info', timeout = 3500, action } = {})
         ui.layer().appendChild(host);
     }
     const el = document.createElement('div');
-    el.className = `pointer-events-auto flex max-w-md items-center gap-3 rounded-full bg-surface0 py-2 pl-4 ${action ? 'pr-2' : 'pr-5'} min-h-11 text-sm text-text shadow-xl shadow-crust/70 [animation:toast-in_.18s_ease-out]`;
+    el.className = `pointer-events-auto flex max-w-md items-center gap-3 rounded-full bg-surface0 py-2 pl-4 ${action ? 'pr-2' : 'pr-5'} min-h-11 text-sm text-text shadow-xl shadow-shade/70 [animation:toast-in_.18s_ease-out]`;
     el.innerHTML = `<i data-lucide="${icon}" class="size-4 shrink-0 ${ui.tone.text(tone)}"></i><span class="min-w-0">${ui.esc(message)}</span>${action ? `<button type="button" class="ml-1 h-7 shrink-0 rounded-full px-3 text-xs font-medium text-mauve transition-colors hover:bg-surface1">${ui.esc(action.label)}</button>` : ''}`;
     host.appendChild(el);
     ui.icons(el);
@@ -479,6 +487,25 @@ toast(message, { tone = 'neutral', icon = 'info', timeout = 3500, action } = {})
 ```
 
 A toast sits bottom center on a phone and bottom right from `md`, dismisses itself after 3.5 seconds, and carries at most one action button. Its tone colors only the icon.
+
+## Clipboard
+
+```javascript
+async copy(text) {
+    try {
+        await navigator.clipboard.writeText(text);
+    } catch {
+        const ta = Object.assign(document.createElement('textarea'), { value: text });
+        ta.style.cssText = 'position:fixed;opacity:0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        ta.remove();
+    }
+},
+```
+
+The `textarea` fallback covers a page served over plain HTTP, where `navigator.clipboard` is unavailable because the context is not secure.
 
 ## Fuzzy Search
 

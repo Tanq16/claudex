@@ -13,23 +13,34 @@ input({ name, value = '', placeholder = '', type = 'text', icon, mono = false, a
     return `<span class="relative flex">${icon ? `<i data-lucide="${icon}" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>` : ''}${base}${type === 'password' ? `<span class="absolute inset-y-0 right-1 flex items-center">${ui.iconButton('eye', { tip: 'Show', size: 'sm', variant: 'inset', attrs: 'data-ui="reveal"' })}</span>` : ''}</span>`;
 },
 
-search({ name, placeholder = 'Search', value = '', shortcut }) {
-    return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none">${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
+search({ name, placeholder = 'Search', value = '', shortcut, attrs = '' }) {
+    return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none" ${attrs}>${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
 },
 ```
 
 An input with an `icon` gets a leading icon, and a `password` input gets a reveal button. The reveal is an `inset` icon button that flips the input's type through the delegation's `reveal` branch.
 
-A search field is `rounded-full`, unlike the `rounded-2xl` inputs, and shows its shortcut as `kbd` keys from `md` up.
+A search field is `rounded-full`, unlike the `rounded-2xl` inputs, and shows its shortcut as `kbd` keys from `md` up. Its `attrs` land on the `<input>`, as they do for `ui.input`.
 
-An invalid field adds `ring-2 ring-red/50` and puts its message in the field's hint in `text-red`, so the error sits where the eye already is.
+An invalid field carries `aria-invalid="true"`, which `ui.cls.input` rings in `red/50`, and puts its message in the field's hint in `text-red`, so the error sits where the eye already is.
+
+```javascript
+invalid(input, message = '') {
+    const field = input.closest('label, [role="group"]');
+    field.querySelector('[data-error]')?.remove();
+    input.setAttribute('aria-invalid', String(Boolean(message)));
+    if (message) field.insertAdjacentHTML('beforeend', `<span data-error class="px-1 text-xs text-red">${ui.esc(message)}</span>`);
+},
+```
+
+`ui.invalid` marks a field after render, such as when a submit fails validation, and clears the mark and the message when called without one.
 
 ```javascript
 const inputs = `<div class="grid gap-3">
     ${ui.field('Name', ui.input({ name: 'name', placeholder: 'orbit-api' }))}
     ${ui.field('Repository', ui.input({ name: 'repo', icon: 'folder-git-2', value: 'tanq16/claudex', mono: true }))}
     ${ui.field('Token', ui.input({ name: 'token', type: 'password', value: 'sk-live-0123456789' }))}
-    ${ui.field('Port', `<input class="${ui.cls.input} ring-2 ring-red/50 focus:ring-red/60" value="99999">`, { hint: '<span class="text-red">Port must be between 1 and 65535</span>' })}
+    ${ui.field('Port', ui.input({ name: 'port', value: '99999', attrs: 'aria-invalid="true"' }), { hint: '<span class="text-red">Port must be between 1 and 65535</span>' })}
     ${ui.field('Search', ui.search({ name: 'q', placeholder: 'Filter projects', shortcut: ['⌘', 'K'] }))}
 </div>`;
 ```
@@ -75,7 +86,7 @@ A stepper is a pill for a small integer range, and a number field is an input wi
 
 ```javascript
 const numbers = `<div class="grid gap-4 sm:grid-cols-2">
-    ${ui.field('Connections', `<span>${ui.stepper({ name: 'conn', value: 4, min: 1, max: 16 })}</span>`)}
+    ${ui.field('Connections', `<span>${ui.stepper({ name: 'conn', value: 4, min: 1, max: 16 })}</span>`, { group: true })}
     ${ui.field('Timeout', ui.number({ name: 'timeout', value: 30, min: 1, unit: 'seconds' }))}
 </div>`;
 ```
@@ -118,8 +129,10 @@ Each is a `<button>` with a `role` and `aria-checked`, styled through `group-ari
 
 A checkbox, switch, or radio row takes the whole row as its target and hovers at `surface0/50`. `toggle` is the bare switch for the right-hand side of a settings row.
 
+A settings row's control never shrinks, so a narrow screen wraps the label rather than clipping a segment of the control.
+
 ```javascript
-const settingRow = (label, hint, control) => `<div class="flex items-center justify-between gap-6 rounded-2xl px-3 py-2.5"><div class="min-w-0"><p class="text-sm text-text">${label}</p><p class="text-xs text-overlay1">${hint}</p></div>${control}</div>`;
+const settingRow = (label, hint, control) => `<div class="flex items-center justify-between gap-6 rounded-2xl px-3 py-2.5"><div class="min-w-0"><p class="text-sm text-text">${label}</p><p class="text-xs text-overlay1">${hint}</p></div><div class="shrink-0">${control}</div></div>`;
 
 const toggles = `<div class="grid gap-x-4 sm:grid-cols-2">
     <div>${ui.checkbox({ name: 'a', label: 'Remote Control', hint: 'Reachable from claude.ai', checked: true })}${ui.checkbox({ name: 'b', label: 'Connectors' })}${ui.checkbox({ name: 'c', label: 'Locked', disabled: true, checked: true })}</div>

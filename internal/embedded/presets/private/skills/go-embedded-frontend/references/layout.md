@@ -8,16 +8,20 @@ The body is an `h-dvh overflow-hidden` column, the header is `shrink-0`, and `<m
 
 A gallery or settings view gets one scroll region filling `<main>`, and a workspace view gets side-by-side panels that each scroll on their own. One page-level scroll in a workspace would push a sibling panel off screen whenever a list grows.
 
-The router keeps one `pages` object mapping a route to `{ nav: [label, icon], render(), mount(el), leave(), theme(el) }`, where the last three are optional. A route change replaces `#view` with a fresh clone, which drops every listener the last view attached to it, and then renders, mounts, and draws the nav.
+The router keeps one `pages` object mapping a route to `{ nav: [label, icon], render(), mount(el), leave(), theme(el) }`, where `nav` and the last three are optional. A route change replaces `#view` with a fresh clone, which drops every listener the last view attached to it, and then renders, mounts, and draws the nav.
+
+A route is `#/page` or `#/page/param`. `app.param` holds the decoded rest of the path, for a page showing one item such as a note or a task being edited. A page without `nav` is reachable by its route and stays out of the nav.
 
 ```javascript
 const app = {
     current: null,
+    param: '',
 
     route() {
-        const name = location.hash.replace(/^#\/?/, '') || 'foundations';
+        const [name, ...rest] = location.hash.replace(/^#\/?/, '').split('/');
         if (app.current) pages[app.current].leave?.();
         app.current = pages[name] ? name : 'foundations';
+        app.param = decodeURIComponent(rest.join('/'));
         const old = document.getElementById('view');
         const el = old.cloneNode(false);
         old.replaceWith(el);
@@ -31,10 +35,10 @@ const app = {
 
     renderNav() {
         const nav = document.getElementById('nav');
-        nav.innerHTML = Object.entries(pages).map(([key, p]) => {
+        nav.innerHTML = Object.entries(pages).filter(([, p]) => p.nav).map(([key, p]) => {
             const on = app.current === key;
             const [label, icon] = p.nav;
-            return `<a href="#/${key}" class="flex h-9 items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors max-sm:px-3 ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : `data-tip="${label}" data-tip-side="bottom"`}><i data-lucide="${icon}" class="size-4 ${on ? 'text-mauve' : ''}"></i><span class="${on ? 'max-sm:hidden' : 'max-xl:hidden'}">${label}</span></a>`;
+            return `<a href="#/${key}" class="flex h-9 items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors max-sm:flex-1 max-sm:justify-center max-sm:px-3 ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : `data-tip="${label}" data-tip-side="bottom"`}><i data-lucide="${icon}" class="size-4 ${on ? 'text-mauve' : ''}"></i><span class="${on ? 'max-sm:hidden' : 'max-xl:hidden'}">${label}</span></a>`;
         }).join('');
         ui.icons(nav);
     },
@@ -48,7 +52,7 @@ const app = {
 };
 ```
 
-The nav is one `mantle` pill group. The current link is a `surface0` pill with a mauve icon, and every other link is an `overlay1` icon whose label shows from `xl` up and as a tooltip below it. Below `sm` the nav takes its own full-width row under the logo.
+The nav is one `mantle` pill group. The current link is a `surface0` pill with a mauve icon, and every other link is an `overlay1` icon whose label shows from `xl` up and as a tooltip below it. Below `sm` the nav takes its own full-width row under the logo. Its links share that row equally, so two pages read as a pair rather than as two icons pinned to opposite edges.
 
 Boot wires the delegation, the tooltips, and the scroll observer once, then routes. `renderTheme` runs only when the app has a light mode.
 
@@ -199,7 +203,7 @@ const items = Array.from({ length: 2 }, (_, i) => {
     const k = i % 2;
     return `<li><button type="button" class="flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left transition-colors ${i === 1 ? 'bg-surface0' : 'hover:bg-surface0/50'}">
         ${ui.avatar(['Ana', 'Bo'][k], tones[(k + 1) % 2])}
-        <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="truncate text-sm font-medium text-text">${['Scrollbar jumps on every second wheel event', 'Tooltip pattern for icon-only buttons'][k]} #${40 + i}</span></span><span class="mt-0.5 block truncate text-xs text-overlay1">${['opened 2h ago', 'updated yesterday'][k]}</span></span>
+        <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="${ui.cls.rowText} text-sm font-medium text-text">${['Scrollbar jumps on every second wheel event', 'Tooltip pattern for icon-only buttons'][k]} #${40 + i}</span></span><span class="mt-0.5 block truncate text-xs text-overlay1">${['opened 2h ago', 'updated yesterday'][k]}</span></span>
         ${ui.chip(names[k], { tone: tones[k] })}
     </button></li>`;
 }).join('');
@@ -213,9 +217,9 @@ const inspector = `<div class="flex flex-col gap-5">
 
 return `<div class="flex h-full min-h-0 flex-col">
     ${pageHead('Layout', ui.segmented({ name: 'layout-tab', value: 'issues', ground: true, options: [{ value: 'issues', label: 'Issues', icon: 'circle-dot', compact: true }, { value: 'prs', label: 'Pulls', icon: 'git-pull-request', compact: true }, { value: 'board', label: 'Board', icon: 'kanban', compact: true }] }))}
-    <div data-shell class="flex min-h-0 flex-1 gap-4">
+    <div data-shell class="flex min-h-0 flex-1">
         <div data-backdrop class="fixed inset-0 z-30 hidden bg-crust/70 md:hidden"></div>
-        <aside data-side class="flex min-h-0 flex-col max-md:fixed max-md:inset-y-3 max-md:left-3 max-md:z-40 max-md:w-[min(21rem,calc(100vw-3rem))] max-md:-translate-x-[120%] max-md:rounded-3xl max-md:bg-mantle max-md:p-2 max-md:shadow-2xl max-md:shadow-crust max-md:transition-transform">
+        <aside data-side class="flex min-h-0 flex-col md:mr-4 max-md:fixed max-md:inset-y-3 max-md:left-3 max-md:z-40 max-md:w-[min(21rem,calc(100vw-3rem))] max-md:-translate-x-[120%] max-md:rounded-3xl max-md:bg-mantle max-md:p-2 max-md:shadow-2xl max-md:shadow-shade max-md:transition-transform">
             <div class="shrink-0 pr-3.5 pb-2">${ui.search({ name: 'side-q', placeholder: 'Filter' })}</div>
             <nav data-scroll class="min-h-0 flex-1 overflow-y-auto pb-2">${side}</nav>
         </aside>
@@ -228,7 +232,7 @@ return `<div class="flex h-full min-h-0 flex-col">
             </header>
             <ul data-scroll class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">${items}</ul>
         </section>
-        <aside data-inspector class="hidden min-h-0 flex-col rounded-3xl bg-mantle 2xl:flex"><div data-scroll class="min-h-0 flex-1 overflow-y-auto p-5">${inspector}</div></aside>
+        <aside data-inspector class="hidden min-h-0 flex-col rounded-3xl bg-mantle 2xl:ml-4 2xl:flex"><div data-scroll class="min-h-0 flex-1 overflow-y-auto p-5">${inspector}</div></aside>
     </div>
 </div>`;
 ```
@@ -282,8 +286,9 @@ sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collap
     panel.appendChild(handle);
 
     const apply = (animate) => {
-        panel.style.transition = animate ? 'width .2s ease, opacity .2s ease' : 'none';
+        panel.style.transition = animate ? 'width .2s ease, opacity .2s ease, margin .2s ease' : 'none';
         panel.style.width = state.collapsed ? '0px' : `${state.width}px`;
+        panel.style.margin = state.collapsed ? '0' : '';
         panel.style.opacity = state.collapsed ? '0' : '1';
         panel.style.overflow = state.collapsed ? 'hidden' : '';
         panel.style.pointerEvents = state.collapsed ? 'none' : '';
@@ -335,3 +340,5 @@ sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collap
 ```
 
 `ui.sidebar(panel, { key, min, max, initial, side })` gives a panel a drag handle on its inner edge, a double-click that resets the width, and a collapse to zero width. The width and the collapsed state persist in `localStorage` under the app's name and the key, so a layout survives a reload.
+
+A collapsed panel also drops its margin. A sidebar keeps its distance from the panel beside it with a margin on its inner edge rather than the row's `gap`, which would leave a 16px seam where the panel was.

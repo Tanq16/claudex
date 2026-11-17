@@ -195,7 +195,6 @@ var serveCmd = &cobra.Command{
         if err := srv.Setup(); err != nil {
             log.Fatal().Err(err).Msg("failed to set up server")
         }
-        log.Info().Str("host", serveFlags.host).Int("port", serveFlags.port).Msg("starting server")
         if err := srv.Run(); err != nil {
             log.Fatal().Err(err).Msg("server error")
         }

@@ -397,7 +397,7 @@ music() {
                 <span class="hidden group-[.playing]:inline-flex">${equalizer()}</span>
             </span>
             <span class="min-w-0"><span class="block truncate text-sm text-text group-[.playing]:text-mauve">${ui.esc(t.title)}</span>${t.artist !== a.artist ? `<span class="block truncate text-xs text-overlay1">${ui.esc(t.artist)}</span>` : ''}</span>
-            <span class="flex items-center gap-1"><span class="flex size-8 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">${t.lyrics ? ui.iconButton('mic-vocal', { tip: 'Lyrics', size: 'sm', attrs: `data-action="track-lyrics" data-index="${i}"` }) : ''}</span><span class="w-10 text-right text-xs tabular-nums text-overlay1">${ui.clock(t.duration)}</span></span>
+            <span class="flex items-center gap-1"><span class="flex size-8 ${ui.cls.reveal}">${t.lyrics ? ui.iconButton('mic-vocal', { tip: 'Lyrics', size: 'sm', attrs: `data-action="track-lyrics" data-index="${i}"` }) : ''}</span><span class="w-10 text-right text-xs tabular-nums text-overlay1">${ui.clock(t.duration)}</span></span>
         </li>`).join('');
     return `<section class="flex min-h-0 flex-1 flex-col rounded-3xl bg-mantle">
         <div data-scroll class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">

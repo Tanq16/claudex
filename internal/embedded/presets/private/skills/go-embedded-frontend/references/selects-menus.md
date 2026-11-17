@@ -5,11 +5,11 @@
 ## Select
 
 ```javascript
-select({ name, value = '', options, placeholder = 'Select', searchable = false, icon, pill = false }) {
+select({ name, value = '', options, placeholder = 'Select', searchable = false, icon, pill = false, attrs = '' }) {
     const current = options.find((o) => o.value === value);
     ui.selectOptions[name] = { options, searchable };
     const lead = current?.dot ? ui.dot(current.dot) : current?.icon ? `<i data-lucide="${current.icon}" class="size-4 shrink-0 text-overlay1"></i>` : icon ? `<i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>` : '';
-    return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="listbox" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 ${ui.cls.focus} pointer-coarse:text-[16px]">
+    return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="listbox" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 ${ui.cls.focus} pointer-coarse:text-[16px]" ${attrs}>
         <span data-select-lead class="contents">${lead}</span>
         <span data-select-label class="min-w-0 flex-1 truncate ${current ? 'text-text' : 'text-overlay0'}">${ui.esc(current ? current.label : placeholder)}</span>
         <i data-lucide="chevrons-up-down" class="size-4 shrink-0 text-overlay1"></i>
@@ -19,7 +19,7 @@ select({ name, value = '', options, placeholder = 'Select', searchable = false, 
 
 A select is a button opening a listbox popover rather than a native `<select>`, because a native list ignores the palette and the radius. Its options register in `ui.selectOptions` under the select's `name`, so a name is unique on the page.
 
-An option is `{ value, label, hint, icon, dot }`, and the trigger shows the chosen option's icon or dot. `pill` gives the toolbar form, a `rounded-full` trigger sized to its label.
+An option is `{ value, label, hint, icon, dot }`, and the trigger shows the chosen option's icon or dot. `pill` gives the toolbar form, a `rounded-full` trigger sized to its label. `attrs` land on the trigger button, as they do for `ui.datePicker`.
 
 ```javascript
 openSelect(button) {
@@ -118,8 +118,8 @@ const selects = `<div class="grid gap-3">
 ## Date Picker
 
 ```javascript
-datePicker({ name, value = '', placeholder = 'Pick a date', pill = false }) {
-    return `<button type="button" data-ui="date" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="dialog" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 ${ui.cls.focus} pointer-coarse:text-[16px]">
+datePicker({ name, value = '', placeholder = 'Pick a date', pill = false, attrs = '' }) {
+    return `<button type="button" data-ui="date" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="dialog" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 ${ui.cls.focus} pointer-coarse:text-[16px]" ${attrs}>
         <i data-lucide="calendar" class="size-4 shrink-0 text-overlay1"></i>
         <span data-date-label data-placeholder="${ui.esc(placeholder)}" class="min-w-0 flex-1 truncate ${value ? 'text-text' : 'text-overlay0'}">${value ? ui.fmtDate(value) : ui.esc(placeholder)}</span>
     </button>`;
@@ -201,10 +201,11 @@ const dates = `<div class="grid gap-3 sm:grid-cols-2">
 
 ```javascript
 menu(anchor, items) {
+    anchor.setAttribute('aria-expanded', 'true');
     const el = ui.popover.open(anchor, items.map((item, i) => (item === '-' ? '<span class="my-1 block h-px"></span>' : `
         <button type="button" data-menu-index="${i}" ${item.disabled ? 'disabled' : ''} class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${item.danger ? 'text-red hover:bg-red/15' : 'text-subtext0 hover:bg-surface0 hover:text-text'}">
             <i data-lucide="${item.icon}" class="size-4 shrink-0"></i><span class="min-w-0 flex-1"><span class="block">${ui.esc(item.label)}</span>${item.hint ? `<span class="block text-xs text-overlay1">${ui.esc(item.hint)}</span>` : ''}</span>${item.keys ? `<span class="flex gap-1">${ui.kbd(item.keys)}</span>` : ''}
-        </button>`)).join(''), { align: 'end', width: 260 });
+        </button>`)).join(''), { align: 'end', width: 260, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
     el.addEventListener('click', (e) => {
         const b = e.target.closest('[data-menu-index]');
         if (!b) return;
@@ -216,7 +217,7 @@ menu(anchor, items) {
 
 A menu is a 260px popover aligned to its trigger's end. An item is `{ icon, label, hint, keys, danger, disabled, onSelect }`, and `'-'` leaves a gap between groups rather than drawing a rule. A danger item is red text hovering at `red/15`.
 
-The trigger is an `ellipsis` or `ellipsis-vertical` icon button. Choosing closes the menu before `onSelect` runs, because the popover's `z-[70]` would otherwise float the menu over a modal the handler opens at `z-50`.
+The trigger is an `ellipsis` or `ellipsis-vertical` icon button, and it carries `aria-expanded` while its menu is open, which keeps a trigger hidden behind `ui.cls.reveal` in view. Choosing closes the menu before `onSelect` runs, because the popover's `z-[70]` would otherwise float the menu over a modal the handler opens at `z-50`.
 
 ```javascript
 ui.on('more-menu', (b) => ui.menu(b, [

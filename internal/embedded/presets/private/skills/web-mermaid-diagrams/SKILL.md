@@ -66,6 +66,7 @@ const mermaidConfig = () => ({
     startOnLoad: false,
     theme: 'base',
     fontFamily: 'Inter',
+    ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
     themeVariables: {
         darkMode: !document.documentElement.classList.contains('light'),
         background: c('base'),
@@ -89,7 +90,6 @@ const mermaidConfig = () => ({
         noteTextColor: c('yellow'),
         noteBorderColor: c('surface2'),
 
-        // Flowchart
         nodeBkg: c('surface0'),
         nodeBorder: c('blue'),
         clusterBkg: c('mantle'),
@@ -98,7 +98,6 @@ const mermaidConfig = () => ({
         edgeLabelBackground: c('surface0'),
         nodeTextColor: c('text'),
 
-        // Sequence
         actorBkg: c('surface0'),
         actorBorder: c('blue'),
         actorTextColor: c('text'),
@@ -113,7 +112,6 @@ const mermaidConfig = () => ({
         activationBkgColor: c('surface1'),
         sequenceNumberColor: c('base'),
 
-        // Gantt
         sectionBkgColor: c('mantle'),
         altSectionBkgColor: c('base'),
         sectionBkgColor2: c('crust'),
@@ -133,7 +131,6 @@ const mermaidConfig = () => ({
         gridColor: c('surface0'),
         todayLineColor: c('red'),
 
-        // Pie, twelve distinct hues
         pie1: c('mauve'), pie2: c('blue'), pie3: c('green'), pie4: c('yellow'),
         pie5: c('red'), pie6: c('teal'), pie7: c('peach'), pie8: c('sky'),
         pie9: c('pink'), pie10: c('sapphire'), pie11: c('maroon'), pie12: c('lavender'),
@@ -143,7 +140,6 @@ const mermaidConfig = () => ({
         pieStrokeColor: c('base'),
         pieOuterStrokeColor: c('surface0'),
 
-        // Git graph, eight branch colors
         git0: c('blue'), git1: c('mauve'), git2: c('green'), git3: c('yellow'),
         git4: c('red'), git5: c('teal'), git6: c('peach'), git7: c('sapphire'),
         gitInv0: c('base'), gitInv1: c('base'), gitInv2: c('base'), gitInv3: c('base'),
@@ -154,10 +150,8 @@ const mermaidConfig = () => ({
         tagLabelBackground: c('yellow'),
         tagLabelBorder: c('peach'),
 
-        // State diagram
         labelBackgroundColor: c('surface0'),
 
-        // Color scale, used by mindmaps and timelines
         cScale0: c('surface0'), cScale1: c('blue'), cScale2: c('mauve'),  cScale3: c('green'),
         cScale4: c('yellow'), cScale5: c('red'), cScale6: c('teal'),  cScale7: c('peach'),
         cScale8: c('sky'), cScale9: c('pink'), cScale10: c('sapphire'), cScale11: c('lavender'),
@@ -183,7 +177,7 @@ The pie, git, and colour-scale series each cycle through the full Catppuccin acc
 .mermaid:not([data-processed]) { color: transparent; min-height: 8rem; }
 ```
 
-`overflow-x: auto` keeps a wide diagram inside its own scroll region instead of stretching the page.
+`overflow-x: auto` keeps a wide diagram inside its own scroll region instead of stretching the page. Every diagram type in the config sets `useMaxWidth: false`, because Mermaid's default scales a wide diagram down to the container's width. On a phone that shrinks its labels past reading.
 
 An unrendered diagram hides its source text and holds a minimum height, so the page neither flashes raw Mermaid syntax nor jumps while the fonts load.
 

@@ -16,7 +16,7 @@ The libraries are vendored and pinned, never loaded from a CDN at run time: `mar
 <script src="/static/js/highlight.min.js"></script>
 ```
 
-`ui` below is the page's component kit, which supplies `esc`, `iconButton`, `on`, and `icons`. Building the copy button from the kit keeps it identical to every other icon button on the page.
+`ui` below is the page's component kit, which supplies `esc`, `iconButton`, `on`, `icons`, `copy`, and `cls.reveal`. Building the copy button from the kit keeps it identical to every other icon button on the page.
 
 ## Start here: required reading
 
@@ -43,7 +43,7 @@ Marked passes raw HTML in the source straight through, so its output is sanitize
 
 ## The Renderer
 
-`marked.use({ renderer })` is called once at startup. Overriding three token types covers code fences, heading anchors, and callouts, and everything else keeps Marked's default output.
+`marked.use({ renderer })` is called once at startup. Overriding four token types covers code fences, heading anchors, callouts, and task-list boxes, and everything else keeps Marked's default output.
 
 ```javascript
 const md = {
@@ -62,7 +62,10 @@ const md = {
                     try {
                         html = hljs.highlight(text, { language }).value;
                     } catch {}
-                    return `<div class="group relative"><pre><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 opacity-0 transition-opacity group-hover:opacity-100 max-md:opacity-100">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                    return `<div class="group relative"><pre><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                },
+                checkbox({ checked }) {
+                    return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
                 },
                 heading({ tokens, depth }) {
                     const text = this.parser.parseInline(tokens);
@@ -87,25 +90,17 @@ Heading IDs are slugged from the rendered text with tags stripped, so a heading 
 
 The unknown-grammar catch keeps the escaped source. Letting the exception propagate would abort the whole parse over one fence with a typo in its language tag.
 
+A task-list box is the kit's checkbox drawn read-only, because Marked's own box is a native `<input type="checkbox">` that ignores the palette.
+
 ## Copy Buttons
 
-Each fence's copy button is the kit's small secondary icon button in the block's top-right corner. It appears on hover, and it stays visible below `md`, where there is no hover.
+Each fence's copy button is the kit's small secondary icon button in the block's top-right corner, revealed through `ui.cls.reveal`.
 
 Every button routes through one delegated `md-copy` action, so a re-render needs no re-binding and no guard against injecting a second button. On success the icon turns to a green check and the tooltip to `Copied` for a second and a half.
 
 ```javascript
 ui.on('md-copy', async (b) => {
-    const text = b.closest('.group').querySelector('code').textContent;
-    try {
-        await navigator.clipboard.writeText(text);
-    } catch {
-        const ta = Object.assign(document.createElement('textarea'), { value: text });
-        ta.style.cssText = 'position:fixed;opacity:0';
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand('copy');
-        ta.remove();
-    }
+    await ui.copy(b.closest('.group').querySelector('code').textContent);
     b.innerHTML = '<i data-lucide="check" class="size-4 text-green"></i>';
     b.dataset.tip = 'Copied';
     ui.icons(b);
@@ -117,7 +112,6 @@ ui.on('md-copy', async (b) => {
 });
 ```
 
-The `textarea` fallback covers pages served over plain HTTP, where `navigator.clipboard` is unavailable because the context is not secure.
 
 ## Styles
 
@@ -158,7 +152,10 @@ Each level takes a distinct Catppuccin color so the outline is readable at a gla
 .markdown-body ol { list-style-type: decimal; }
 .markdown-body li { margin-bottom: 0.25em; }
 .markdown-body li::marker { color: var(--ctp-overlay1); }
+.markdown-body li:has(> [role=checkbox], > p > [role=checkbox]) { list-style: none; }
 ```
+
+A task-list item drops its bullet, since the box already marks it.
 
 ### Code
 

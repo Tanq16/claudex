@@ -10,7 +10,7 @@ user-invocable: false
 
 ## Start here: required reading
 
-`ui.js` holds all of kit-core and adds each group's builders once the app uses that group.
+`ui.js` holds all of kit-core, plus each member of the other groups that the app calls or that a called member calls in turn.
 
 **Always, for any view, control, or theme work:**
 - `./references/foundations.md`: color roles, fill and state rules, type, radius, icon sizes, base CSS, and light mode
@@ -72,7 +72,7 @@ Every asset is pinned to an exact version, so two builds of one commit produce t
 | JetBrains Mono Nerd Font Mono | nerd-fonts `v3.5.1`, opt-in | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
 
-The three fonts are always downloaded, and the rest only when the project uses them. Marked, Highlight.js, Mermaid, and PDF.js are pinned where their usage is documented.
+Tailwind, Lucide, and the three fonts are always downloaded, and the rest only when the project uses them. Marked, Highlight.js, Mermaid, and PDF.js are pinned where their usage is documented.
 
 Web fonts are woff2, never ttf, since woff2 is roughly half the bytes and every browser here supports it.
 
@@ -112,12 +112,10 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
     <link rel="stylesheet" href="/static/css/inter.css">
     <link rel="stylesheet" href="/static/css/google-sans.css">
     <link rel="stylesheet" href="/static/css/jetbrains-mono.css">
-    <link rel="stylesheet" href="/static/fontawesome/css/all.min.css">
 
     <script src="/static/js/lucide.min.js"></script>
     <script src="/static/js/tailwind.js"></script>
     <style>
-      /* Catppuccin Mocha */
       :root, .dark {
         color-scheme: dark;
         --ctp-rosewater: #f5e0dc; --ctp-flamingo: #f2cdcd; --ctp-pink: #f5c2e7;
@@ -128,7 +126,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
         --ctp-subtext1: #bac2de;  --ctp-subtext0: #a6adc8; --ctp-overlay2: #9399b2;
         --ctp-overlay1: #7f849c;  --ctp-overlay0: #6c7086; --ctp-surface2: #585b70;
         --ctp-surface1: #45475a;  --ctp-surface0: #313244; --ctp-base: #1e1e2e;
-        --ctp-mantle: #181825;    --ctp-crust: #11111b;
+        --ctp-mantle: #181825;    --ctp-crust: #11111b;    --ctp-shade: #11111b;
       }
     </style>
     <style type="text/tailwindcss">
@@ -146,6 +144,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
         --color-surface2: var(--ctp-surface2);   --color-surface1: var(--ctp-surface1);
         --color-surface0: var(--ctp-surface0);   --color-base: var(--ctp-base);
         --color-mantle: var(--ctp-mantle);       --color-crust: var(--ctp-crust);
+        --color-shade: var(--ctp-shade);
       }
       @theme {
         --font-sans: 'Inter', sans-serif;
@@ -164,7 +163,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
             <img src="/static/icons/logo.png" alt="" class="size-11 sm:size-13">
             <span class="max-sm:hidden">APP_NAME</span>
         </a>
-        <nav id="nav" class="flex gap-1 rounded-full bg-mantle p-1 max-sm:order-last max-sm:w-full max-sm:justify-between sm:ml-auto"></nav>
+        <nav id="nav" class="flex gap-1 rounded-full bg-mantle p-1 max-sm:order-last max-sm:w-full sm:ml-auto"></nav>
     </header>
 
     <main id="view" class="flex-1 min-h-0 px-4 py-4 sm:px-6 lg:px-10 lg:py-6"></main>
@@ -254,8 +253,10 @@ The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-sca
 <i data-lucide="settings"></i>
 <script>lucide.createIcons();</script>
 
+<link rel="stylesheet" href="/static/fontawesome/css/all.min.css">
 <i class="fab fa-github"></i>
 
+<link rel="stylesheet" href="/static/css/devicon.min.css">
 <i class="devicon-go-original-wordmark"></i>
 ```
 
@@ -305,4 +306,4 @@ A worker's scope is the directory it is served from, so one at `/static/sw.js` n
 
 The file stays under `static/` so `//go:embed static` picks it up, and a route at `/sw.js` serves it from the embedded FS through `http.ServeFileFS` with a `text/javascript` content type.
 
-Drop the manifest, the worker, its route, the registration script, and the PWA meta tags together when not building a PWA. The manifest alone prompts an install, which an app gaining nothing from one should not offer.
+Drop the manifest, the worker, its route, the registration script, the manifest link, and the two `apple-mobile-web-app-*` meta tags together when not building a PWA. The manifest alone prompts an install, which an app gaining nothing from one should not offer. `theme-color` stays, because it colors the browser's own chrome and light mode updates it.

@@ -112,7 +112,7 @@ The LSP is already wired into every session for Go, Python, TypeScript, and Java
 | README | `project-readme` |
 | Chrome extension | `chrome-extension` |
 
-A whole project type pulls in a predictable set. A CLI Only tool takes the two Go skills plus `go-cli-structure`, `go-cli-commands`, and `go-cli-output`, and adds the others as the surface grows. A Web Only service takes the two Go skills plus `go-http-server`, `go-package-architecture`, and `go-embedded-frontend`.
+A whole project type pulls in a predictable set. A CLI Only tool takes the two Go skills plus `go-cli-structure`, `go-cli-commands`, and `go-cli-output`, and adds the others as the surface grows. A Web Only service takes the two Go skills plus `go-cli-structure`, `go-http-server`, `go-package-architecture`, `go-embedded-frontend`, and `go-makefile`, since its `serve` command and its asset download are part of every build.
 
 ## Principles
 

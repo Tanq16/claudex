@@ -19,9 +19,10 @@ package server
 
 import (
     "embed"
-    "fmt"
     "io/fs"
+    "net"
     "net/http"
+    "strconv"
 
     "github.com/rs/zerolog/log"
 )
@@ -54,7 +55,7 @@ func (s *Server) Setup() error {
 }
 
 func (s *Server) Run() error {
-    addr := fmt.Sprintf("%s:%d", s.host, s.port)
+    addr := net.JoinHostPort(s.host, strconv.Itoa(s.port))
     log.Info().Str("addr", addr).Msg("starting")
     return http.ListenAndServe(addr, s.mux)
 }
@@ -76,7 +77,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 }
 ```
 
-`Setup` is separate from `Run` so a caller can report a mount failure before the process commits to listening on a port.
+`Setup` is separate from `Run` so a caller can report a mount failure before the process commits to listening on a port. `Run` logs the address it binds, so the command calling it logs nothing about the start.
+
+A handler's dependencies, such as a store, are fields on `Server` that `New` takes after `host` and `port`. The entry point chooses them once and passes them down, so nothing in the server knows which backend it has.
+
+`net.JoinHostPort` brackets an IPv6 host, which a plain `host:port` format leaves ambiguous.
 
 `fs.Sub` strips the `static` prefix from the embedded tree, and `http.StripPrefix` strips it from the request path. Both are needed: without the first, `/static/css/app.css` resolves to `static/static/css/app.css` inside the FS.
 
@@ -98,9 +103,6 @@ func (s *Server) Setup() error {
     }
     s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
     s.mux.HandleFunc("/", s.handleIndex)
-
-    // TODO: add API routes
-
     return nil
 }
 ```

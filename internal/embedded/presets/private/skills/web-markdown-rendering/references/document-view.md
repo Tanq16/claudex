@@ -42,6 +42,8 @@ A Rendered and Source toggle sits in the page head as a pill track on the ground
 
 A long document gets an "On this page" aside built from the rendered `h2` and `h3` ids, with `h3` entries indented. Below `lg` the aside gives way to a Contents menu in the panel header, since a phone has no room for a second column.
 
+Beside a left sidebar, the outline moves to the right through `order-last` and shows from `xl`, with the Contents button switching at `xl` to match. A sidebar, an outline, and a `max-w-3xl` column do not fit side by side at `lg`.
+
 ## Outline and Toggle
 
 ```javascript

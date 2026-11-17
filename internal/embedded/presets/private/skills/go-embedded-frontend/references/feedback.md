@@ -25,6 +25,8 @@ ui.on('notify', (b) => {
 
 Any element takes a tooltip through `data-tip`, and `data-tip-side` picks the side. A truncated path or name carries its full text as its tooltip, since the truncation hides exactly what the user came to read.
 
+A tooltip never opens on touch, so the text a row exists to show takes `ui.cls.rowText`, which truncates on a mouse and wraps on a coarse pointer.
+
 ```javascript
 const tips = `${row(['top', 'right', 'bottom', 'left'].map((s) => `<button type="button" data-tip="Tooltip on the ${s}" data-tip-side="${s}" class="h-10 rounded-full bg-surface0 px-4 text-sm text-text hover:bg-surface1">${s}</button>`).join(''))}
     ${row(`${ui.iconButton('git-branch', { tip: 'Switch branch' })}${ui.iconButton('terminal', { tip: 'Open terminal' })}${ui.iconButton('settings-2', { tip: 'Settings' })}${ui.button('Publish', { icon: 'upload', disabled: true, tip: 'Nothing to publish yet' })}`)}
@@ -59,7 +61,7 @@ confirm({ title, message, confirmLabel = 'Confirm', danger = false, icon = 'circ
 
 `ui.confirm` resolves to a boolean, and closing without an answer resolves `false`. A destructive action passes `danger`, which turns the header tile and the confirm button red.
 
-A form modal lays its fields in a grid that collapses to one column on a phone, and its footer buttons carry `data-close`. A removal that cannot be undone asks the user to type the resource's name, and its `danger-solid` button stays disabled until the text matches.
+A form modal's body is a `<form novalidate>` laying its fields in a grid that collapses to one column on a phone. Its primary button is `type="submit"` with a `form` attribute naming the form, because the footer sits outside the body. That pairing is what lets Enter in a field submit. The submit handler checks the fields through `ui.invalid`, since the browser's validation bubbles ignore the palette. Cancel carries `data-close`. A removal that cannot be undone asks the user to type the resource's name, and its `danger-solid` button stays disabled until the text matches.
 
 ```javascript
 const modals = row(`${ui.button('Confirm', { action: 'restart' })}${ui.button('Delete', { variant: 'danger', icon: 'trash-2', action: 'delete' })}${ui.button('Form', { icon: 'square-pen', action: 'new-session' })}${ui.button('Typed confirm', { icon: 'shield-alert', action: 'remove-machine' })}`);
@@ -76,16 +78,24 @@ ui.on('new-session', () => {
     const m = ui.modal.open({
         title: 'New session',
         icon: 'plus',
-        body: `<div class="grid gap-4 pt-1 sm:grid-cols-2">
-            ${ui.field('Name', `<input autofocus class="${ui.cls.input}" placeholder="orbit-api">`)}
+        body: `<form id="new-session-form" novalidate class="grid gap-4 pt-1 sm:grid-cols-2">
+            ${ui.field('Name', ui.input({ name: 'm-name', placeholder: 'orbit-api', attrs: 'autofocus' }))}
             ${ui.field('Account', ui.select({ name: 'm-account', value: 'work', options: [{ value: 'personal', label: 'Personal', icon: 'user-round' }, { value: 'work', label: 'Work', icon: 'briefcase' }] }))}
-            <div class="sm:col-span-2">${ui.field('Source', ui.segmented({ name: 'm-source', value: 'new', full: true, options: [{ value: 'new', label: 'New', icon: 'folder-plus' }, { value: 'existing', label: 'Existing', icon: 'folder-open' }, { value: 'clone', label: 'Clone', icon: 'git-branch' }] }))}</div>
+            <div class="sm:col-span-2">${ui.field('Source', ui.segmented({ name: 'm-source', value: 'new', full: true, options: [{ value: 'new', label: 'New', icon: 'folder-plus' }, { value: 'existing', label: 'Existing', icon: 'folder-open' }, { value: 'clone', label: 'Clone', icon: 'git-branch' }] }), { group: true })}</div>
             <div class="sm:col-span-2">${ui.field('Prompt', ui.textarea({ name: 'm-prompt', rows: 4, placeholder: 'Optional first message' }))}</div>
             <div class="sm:col-span-2">${ui.switch({ name: 'm-rc', label: 'Remote Control', checked: true })}</div>
-        </div>`,
-        footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-close' })}${ui.button('Start', { icon: 'play', variant: 'primary', attrs: 'data-close' })}`,
+        </form>`,
+        footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-close' })}${ui.button('Start', { icon: 'play', variant: 'primary', type: 'submit', attrs: 'form="new-session-form"' })}`,
     });
     m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) m.close(); });
+    m.el.addEventListener('input', (e) => { if (e.target.getAttribute('aria-invalid') === 'true') ui.invalid(e.target); });
+    m.el.querySelector('form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const name = e.target.querySelector('[data-name="m-name"]');
+        if (!name.value.trim()) return ui.invalid(name, 'Name the session');
+        m.close();
+        ui.toast('Session started', { tone: 'green', icon: 'circle-check' });
+    });
 });
 ui.on('remove-machine', () => {
     const m = ui.modal.open({
