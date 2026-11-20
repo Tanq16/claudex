@@ -25,7 +25,6 @@ user-invocable: false
 - `./references/media-music.md`: an audio player, or the seek bar and transport any media view uses
 - `./references/media-video.md`: a video player, read with media-music.md
 - `./references/media-reader.md`: a PDF reader
-- `./references/chat.md`: an agent chat, its tool rows, approval cards, composer, or status line
 
 ## Layout
 

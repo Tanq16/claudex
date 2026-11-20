@@ -92,7 +92,6 @@ The expected pattern for every check lives in those files. This file states what
 | Scroll model | Read the `body` for `h-dvh overflow-hidden`, grep scroll regions for `data-scroll`, and check native scrollbars are hidden |
 | Scroll lanes | Read each `data-scroll` region's content: one lining up against its right edge, such as a table, a right-aligned column, or a chat transcript, carries `data-scroll="lane"`, and every other region carries a bare `data-scroll` |
 | PDF refit | When a PDF reader exists, read its refit for a `ResizeObserver` on the container rather than a window `resize` listener |
-| Agent chat | When the frontend hosts an agent chat, read the `initialize` request for `perTaskStopAffordance: true`, each background task's stop for `stop_task`, and the user bubble and turn footer for copy buttons |
 | Text ramp | Read the default body color and the heading colors and check they are not the same token |
 | Less text | Read page heads, panel headers, and modals for explanatory subtitles, and status chips for a label that only one state can show |
 | Shallow markup | Read view templates for a `div` that carries no class or role |
