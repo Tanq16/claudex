@@ -91,7 +91,7 @@ A region whose content lines up against its right edge takes `data-scroll="lane"
 
 A lane region flush against its parent's right edge pulls out by the lane with `-mr-3.5`, which keeps its content column aligned with the page.
 
-The thumb sits 4px from the region's edge as `w-1.5 rounded-full bg-overlay0/60`. It widens to `w-2 bg-overlay1` under the pointer and fades 900ms after the last scroll. Its track is inset at least 6px top and bottom, and by half the corner radius on a rounded region or parent, so the thumb never pokes past a curve.
+The thumb sits 4px from the region's edge as `w-1.5 rounded-full bg-overlay0/60`. It widens to `w-2 bg-overlay1` under the pointer and fades 900ms after the last scroll, unless the pointer is on it. A faded thumb takes no pointer events, so it never swallows a click on the content under it. The pointer coming within 16px of the region's right or bottom edge shows it again, ready to drag. Its track is inset at least 6px top and bottom, and by half the corner radius on a rounded region or parent, so the thumb never pokes past a curve.
 
 A region that overflows sideways also gets a horizontal thumb, `h-1.5` along its bottom edge, which always floats. A bottom lane would exist only while the content overflows, so the region would change height as it appeared. Only a computed `overflow-x` of `auto` or `scroll` counts, because a region clipping with `hidden` cannot be scrolled sideways by the user.
 
@@ -127,6 +127,7 @@ scrollbar(el) {
         const t = document.createElement('span');
         t.setAttribute('aria-hidden', 'true');
         t.className = `absolute z-20 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,height,background-color] duration-300 hover:bg-overlay1 cursor-default ${cls}`;
+        t.style.pointerEvents = 'none';
         host.appendChild(t);
         return t;
     };
@@ -185,14 +186,28 @@ scrollbar(el) {
         }
         return tall || wide;
     };
+    const hide = () => {
+        if (dragging || ty.matches(':hover') || tx.matches(':hover')) return;
+        for (const t of [ty, tx]) {
+            t.style.opacity = '0';
+            t.style.pointerEvents = 'none';
+        }
+    };
     const show = () => {
         if (!place()) return;
-        ty.style.opacity = tx.style.opacity = '1';
+        for (const t of [ty, tx]) {
+            t.style.opacity = '1';
+            t.style.pointerEvents = '';
+        }
         clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => { if (!dragging) ty.style.opacity = tx.style.opacity = '0'; }, 900);
+        hideTimer = setTimeout(hide, 900);
     };
     el.addEventListener('scroll', show, { passive: true });
     el.addEventListener('pointerenter', show);
+    el.addEventListener('pointermove', (e) => {
+        const r = el.getBoundingClientRect();
+        if (r.right - e.clientX < 16 || r.bottom - e.clientY < 16) show();
+    });
     new ResizeObserver(() => place()).observe(el);
     new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
@@ -211,6 +226,10 @@ scrollbar(el) {
         t.addEventListener('pointerup', () => {
             dragging = null;
             show();
+        });
+        t.addEventListener('pointerleave', () => {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(hide, 900);
         });
     };
     drag(ty, true);

@@ -503,13 +503,14 @@ async copy(text, button) {
         ta.remove();
     }
     if (!button) return;
-    const tip = button.dataset.tip;
+    button.dataset.tipIdle ??= button.dataset.tip;
     button.innerHTML = '<i data-lucide="check" class="size-4 text-green"></i>';
     button.dataset.tip = 'Copied';
     ui.icons(button);
-    setTimeout(() => {
+    clearTimeout(button._copied);
+    button._copied = setTimeout(() => {
         button.innerHTML = '<i data-lucide="copy" class="size-4"></i>';
-        button.dataset.tip = tip;
+        button.dataset.tip = button.dataset.tipIdle;
         ui.icons(button);
     }, 1500);
 },
@@ -517,7 +518,7 @@ async copy(text, button) {
 
 The `textarea` fallback covers a page served over plain HTTP, where `navigator.clipboard` is unavailable because the context is not secure.
 
-A copy button passes itself as `button`, which turns its icon to a green check and its tooltip to `Copied` for a second and a half. Every copy button on the page then confirms the same way, and its own tooltip comes back afterwards.
+A copy button passes itself as `button`, which turns its icon to a green check and its tooltip to `Copied` for a second and a half. Every copy button on the page then confirms the same way. The button's own tooltip is kept in `data-tip-idle` and comes back afterwards, and a second click inside the window restarts it.
 
 ## Fuzzy Search
 
