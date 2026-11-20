@@ -25,6 +25,7 @@ user-invocable: false
 - `./references/media-music.md`: an audio player, or the seek bar and transport any media view uses
 - `./references/media-video.md`: a video player, read with media-music.md
 - `./references/media-reader.md`: a PDF reader
+- `./references/chat.md`: an agent chat, its tool rows, approval cards, composer, or status line
 
 ## Layout
 
@@ -50,7 +51,7 @@ internal/server/static/
 │   ├── apple-touch-icon.png    # 180x180, iOS home screen
 │   ├── icon-192.png            # PWA, Android
 │   ├── icon-512.png            # PWA, splash screen
-│   └── logo.png                # in-app branding
+│   └── logo.svg                # the project's logo, in-app branding
 └── js/                 # tailwind.js, lucide.min.js, and anything else vendored
 ```
 
@@ -161,7 +162,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
 <body class="bg-crust text-subtext0 h-dvh overflow-hidden flex flex-col font-sans antialiased">
     <header class="shrink-0 flex flex-wrap items-center gap-3 px-4 pt-4 sm:flex-nowrap sm:px-6 lg:px-10 lg:pt-6">
         <a href="#/" aria-label="APP_NAME" class="flex items-center gap-2.5 font-display text-xl font-medium text-text">
-            <img src="/static/icons/logo.png" alt="" class="size-11 sm:size-13">
+            <img src="/static/icons/logo.svg" alt="" class="size-11 sm:size-13">
             <span class="max-sm:hidden">APP_NAME</span>
         </a>
         <nav id="nav" class="flex gap-1 rounded-full bg-mantle p-1 max-sm:order-last max-sm:w-full sm:ml-auto"></nav>
@@ -261,9 +262,7 @@ The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-sca
 <i class="devicon-go-original-wordmark"></i>
 ```
 
-`lucide.createIcons()` runs after any DOM update that inserts an `<i data-lucide>`, since it replaces those elements with inline SVG and does not observe later insertions.
-
-App icons are PNG with transparency, recognizable at 16 pixels, and drawn from the Catppuccin palette so they read on light and dark browser chrome. PWA icons keep their content inside the center 80%, because the installer rounds the corners off.
+App icons are PNG exports of the project's own `logo.svg`, so the mark is drawn once. They keep transparency, read at 16 pixels, and use the Catppuccin palette so they show on light and dark browser chrome. PWA icons keep their content inside the center 80%, because the installer rounds the corners off.
 
 ## PWA
 

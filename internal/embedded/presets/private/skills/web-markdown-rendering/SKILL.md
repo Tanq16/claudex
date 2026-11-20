@@ -28,8 +28,8 @@ The libraries are vendored and pinned, never loaded from a CDN at run time: `mar
 The three steps run in this order after every content change, because each depends on the DOM the previous one produced.
 
 ```javascript
-render(container, source) {
-    container.innerHTML = DOMPurify.sanitize(marked.parse(source));
+render(container, source, opts) {
+    container.innerHTML = DOMPurify.sanitize(marked.parse(source, opts));
     md.mermaid(container);
     ui.icons(container);
 },
@@ -62,7 +62,7 @@ const md = {
                     try {
                         html = hljs.highlight(text, { language }).value;
                     } catch {}
-                    return `<div class="group relative"><pre><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
                 },
                 checkbox({ checked }) {
                     return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
@@ -86,6 +86,8 @@ const md = {
 
 A `mermaid` fence becomes a `<div class="mermaid">` holding the escaped source rather than a highlighted block, and it carries no copy button. The escape keeps an arrow such as `-->` or a `<br/>` label from being rewritten by the HTML parser and the sanitizer before Mermaid reads the text back.
 
+A fence's `<pre>` carries `data-scroll`, so a long line scrolls sideways behind the kit's drawn horizontal thumb rather than with no visible bar.
+
 Heading IDs are slugged from the rendered text with tags stripped, so a heading containing inline code or a link still produces a usable anchor.
 
 The unknown-grammar catch keeps the escaped source. Letting the exception propagate would abort the whole parse over one fence with a typo in its language tag.
@@ -96,20 +98,10 @@ A task-list box is the kit's checkbox drawn read-only, because Marked's own box 
 
 Each fence's copy button is the kit's small secondary icon button in the block's top-right corner, revealed through `ui.cls.reveal`.
 
-Every button routes through one delegated `md-copy` action, so a re-render needs no re-binding and no guard against injecting a second button. On success the icon turns to a green check and the tooltip to `Copied` for a second and a half.
+Every button routes through one delegated `md-copy` action, so a re-render needs no re-binding and no guard against injecting a second button. Passing the button to `ui.copy` turns it into a green check reading `Copied` for a second and a half.
 
 ```javascript
-ui.on('md-copy', async (b) => {
-    await ui.copy(b.closest('.group').querySelector('code').textContent);
-    b.innerHTML = '<i data-lucide="check" class="size-4 text-green"></i>';
-    b.dataset.tip = 'Copied';
-    ui.icons(b);
-    setTimeout(() => {
-        b.innerHTML = '<i data-lucide="copy" class="size-4"></i>';
-        b.dataset.tip = 'Copy';
-        ui.icons(b);
-    }, 1500);
-});
+ui.on('md-copy', (b) => ui.copy(b.closest('.group').querySelector('code').textContent, b));
 ```
 
 

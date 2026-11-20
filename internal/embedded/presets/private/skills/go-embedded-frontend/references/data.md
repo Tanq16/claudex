@@ -48,7 +48,7 @@ The first column is `w-full` and breaks anywhere, so it takes the width the othe
 ```javascript
 const rows = [['api.github.com', 'allowed', 1284, '2.1 ms', 'green'], ['doubleclick.net', 'blocked', 822, '0.0 ms', 'red']];
 const th = 'px-3 pb-2 text-left text-[11px] font-medium uppercase tracking-wider whitespace-nowrap text-overlay1';
-const table = `<div class="relative -mr-3.5 flex min-h-0 flex-1 flex-col"><div data-scroll class="min-h-0 flex-1 overflow-auto"><table class="w-full border-separate border-spacing-0 text-sm">
+const table = `<div class="relative -mr-3.5 flex min-h-0 flex-1 flex-col"><div data-scroll="lane" class="min-h-0 flex-1 overflow-auto"><table class="w-full border-separate border-spacing-0 text-sm">
     <thead class="sticky top-0 z-10 bg-mantle"><tr><th class="${th} w-full">Domain</th><th class="${th}">Result</th><th class="${th} text-right">Queries</th><th class="${th} text-right max-sm:hidden">Latency</th><th class="${th} w-10"></th></tr></thead>
     <tbody>${rows.map(([d, r, q, l, t]) => `<tr class="group transition-colors hover:bg-surface0/50 [&>td:first-child]:rounded-l-2xl [&>td:last-child]:rounded-r-2xl"><td class="px-3 py-2.5 font-mono text-xs text-text wrap-anywhere">${d}</td><td class="px-3 py-2.5">${ui.chip(r, { tone: t })}</td><td class="px-3 py-2.5 text-right font-mono text-xs text-subtext0 tabular-nums">${q.toLocaleString()}</td><td class="px-3 py-2.5 text-right font-mono text-xs whitespace-nowrap text-overlay1 tabular-nums max-sm:hidden">${l}</td><td class="px-1 py-1 text-right"><span class="${ui.cls.reveal}">${ui.iconButton('ellipsis', { tip: 'Actions', size: 'sm', attrs: 'data-action="more-menu"' })}</span></td></tr>`).join('')}</tbody>
 </table></div></div>`;

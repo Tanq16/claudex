@@ -255,7 +255,7 @@ Every view of the player is found by a `data-player` attribute and redrawn from 
                         <span class="max-md:self-center">${ui.segmented({ name: 'np-tab', value: tab, options: [{ value: 'lyrics', label: 'Lyrics', icon: 'mic-vocal' }, { value: 'queue', label: 'Queue', icon: 'list-music' }] })}</span>
                         <div class="relative">
                             <div data-np-lyrics data-scroll class="h-72 overflow-y-auto rounded-2xl bg-base px-5 py-4 text-sm leading-7 whitespace-pre-line text-subtext1 select-text md:h-[25rem]"></div>
-                            <ul data-np-queue data-scroll class="flex h-72 flex-col gap-0.5 overflow-y-auto rounded-2xl bg-base p-2 md:h-[25rem]"></ul>
+                            <ul data-np-queue data-scroll="lane" class="flex h-72 flex-col gap-0.5 overflow-y-auto rounded-2xl bg-base p-2 md:h-[25rem]"></ul>
                         </div>
                     </div>
                 </div>`,
@@ -400,7 +400,7 @@ music() {
             <span class="flex items-center gap-1"><span class="flex size-8 ${ui.cls.reveal}">${t.lyrics ? ui.iconButton('mic-vocal', { tip: 'Lyrics', size: 'sm', attrs: `data-action="track-lyrics" data-index="${i}"` }) : ''}</span><span class="w-10 text-right text-xs tabular-nums text-overlay1">${ui.clock(t.duration)}</span></span>
         </li>`).join('');
     return `<section class="flex min-h-0 flex-1 flex-col rounded-3xl bg-mantle">
-        <div data-scroll class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
+        <div data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6">
             <header class="mb-6 flex flex-col items-center gap-5 sm:flex-row sm:items-end sm:gap-7">
                 <img src="${a.cover}" alt="" class="size-44 shrink-0 rounded-2xl sm:size-48 lg:size-56">
                 <div class="flex min-w-0 flex-col items-center gap-1.5 text-center sm:items-start sm:text-left">

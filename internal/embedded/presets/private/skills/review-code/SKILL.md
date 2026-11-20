@@ -54,7 +54,7 @@ With no target, go to Step 3a. With one, resolve it here first.
 | `core`, `foundations`, `layout`, `logging`, `idioms`, `config` | Go Core | whole domain |
 | `tests`, `testing` | Go Core and Node | the testing checks only |
 | `cli`, `cobra`, `structure`, `root`, `commands`, `flags`, `args`, `stdin`, `output`, `prompts`, `progress`, `tui` | Go CLI | whole domain |
-| `server`, `backend`, `frontend`, `web`, `http`, `auth`, `oauth`, `markdown`, `mermaid` | Go Server and Frontend | whole domain |
+| `server`, `backend`, `frontend`, `web`, `http`, `sse`, `chat`, `auth`, `oauth`, `markdown`, `mermaid` | Go Server and Frontend | whole domain |
 | `concurrency`, `goroutines`, `pipeline` | Go Concurrency | whole domain |
 | `node`, `nodejs`, `esm` | Node | whole domain |
 | `makefile`, `assets`, `build` | Infrastructure | Makefile checks only |
