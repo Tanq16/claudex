@@ -491,7 +491,7 @@ A toast sits bottom center on a phone and bottom right from `md`, dismisses itse
 ## Clipboard
 
 ```javascript
-async copy(text) {
+async copy(text, button) {
     try {
         await navigator.clipboard.writeText(text);
     } catch {
@@ -502,10 +502,23 @@ async copy(text) {
         document.execCommand('copy');
         ta.remove();
     }
+    if (!button) return;
+    button.dataset.tipIdle ??= button.dataset.tip;
+    button.innerHTML = '<i data-lucide="check" class="size-4 text-green"></i>';
+    button.dataset.tip = 'Copied';
+    ui.icons(button);
+    clearTimeout(button._copied);
+    button._copied = setTimeout(() => {
+        button.innerHTML = '<i data-lucide="copy" class="size-4"></i>';
+        button.dataset.tip = button.dataset.tipIdle;
+        ui.icons(button);
+    }, 1500);
 },
 ```
 
 The `textarea` fallback covers a page served over plain HTTP, where `navigator.clipboard` is unavailable because the context is not secure.
+
+A copy button passes itself as `button`, which turns its icon to a green check and its tooltip to `Copied` for a second and a half. Every copy button on the page then confirms the same way. The button's own tooltip is kept in `data-tip-idle` and comes back afterwards, and a second click inside the window restarts it.
 
 ## Fuzzy Search
 

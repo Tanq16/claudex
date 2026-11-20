@@ -50,6 +50,7 @@ The expected pattern for every check lives in those files. This file states what
 | Headless variant | For a Headless API Service, check that the embed and index pieces are absent rather than present and unused |
 | Middleware | Grep for wrapper functions and read where they are applied |
 | Server logging | Grep `internal/server/` for the logging calls used; zerolog in every project type, never the standard library logger |
+| Event stream | Grep for `text/event-stream`; when present, read the handler for the `Last-Event-ID` and `?after=` cursor, the `reset` path, the heartbeat, flushing through `http.NewResponseController`, and the return on the request context |
 
 ## Category 3: OAuth
 
@@ -89,7 +90,12 @@ The expected pattern for every check lives in those files. This file states what
 | Empty states | Read each `ui.empty` that follows a label or heading for `fill: false` |
 | Mono ligatures | Read the `@theme` block for `--font-mono--font-feature-settings` |
 | Scroll model | Read the `body` for `h-dvh overflow-hidden`, grep scroll regions for `data-scroll`, and check native scrollbars are hidden |
+| Scroll lanes | Read each `data-scroll` region's content: one lining up against its right edge, such as a table, a right-aligned column, or a chat transcript, carries `data-scroll="lane"`, and every other region carries a bare `data-scroll` |
+| PDF refit | When a PDF reader exists, read its refit for a `ResizeObserver` on the container rather than a window `resize` listener |
 | Text ramp | Read the default body color and the heading colors and check they are not the same token |
+| Less text | Read page heads, panel headers, and modals for explanatory subtitles, and status chips for a label that only one state can show |
+| Shallow markup | Read view templates for a `div` that carries no class or role |
+| Project logo | Glob the icons directory for `logo.svg` and read the header for the `img` showing it |
 | Structure is neutral | Grep border and background utilities for accent colors |
 | Utilities over CSS | Read every hand-written rule and check it against the named exceptions rather than for a utility that would do it |
 | Custom CSS placement | Glob for hand-written `.css` files outside the downloaded set |
@@ -103,7 +109,7 @@ The expected pattern for every check lives in those files. This file states what
 | Renderer overrides | Read the `marked.use` call and the token handlers it installs |
 | Post-render call order | Read the render function and trace the order of the sanitized parse, the diagram run, and the icon initialization |
 | Output is sanitized | Read the render call for `DOMPurify.sanitize` wrapping `marked.parse` |
-| Copy buttons | Read the code renderer for the kit's icon button and a single delegated copy action |
+| Copy buttons | Read the code renderer for the kit's icon button and a single delegated copy action, and every copy handler for the button passed to `ui.copy` rather than a confirmation of its own |
 | Clipboard fallback | Read the copy handler for the non-secure-context path |
 | Mermaid theme mode | Read the `mermaid.initialize` config for its theme key |
 | Mermaid render trigger | Read the config for automatic startup and grep for a manual run call |

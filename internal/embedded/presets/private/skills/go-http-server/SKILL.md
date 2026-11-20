@@ -1,6 +1,6 @@
 ---
 name: go-http-server
-description: The canonical net/http server for Go web services, with an embedded static frontend. Use when creating internal/server/server.go, serving a frontend out of the binary, adding a route or an API handler, or adding middleware. Triggers on net/http, http.ServeMux, go:embed static, embed.FS, fs.Sub, http.StripPrefix, http.FileServer, ListenAndServe, and any mention of gin, chi, or echo.
+description: The canonical net/http server for Go web services, with an embedded static frontend. Use when creating internal/server/server.go, serving a frontend out of the binary, adding a route or an API handler, adding middleware, or streaming live updates to a page. Triggers on net/http, http.ServeMux, go:embed static, embed.FS, fs.Sub, http.StripPrefix, http.FileServer, ListenAndServe, text/event-stream, EventSource, Last-Event-ID, http.NewResponseController, and any mention of gin, chi, or echo.
 user-invocable: false
 ---
 
@@ -127,3 +127,66 @@ s.mux.HandleFunc("/api/data", withLogging(s.handleData))
 ```
 
 Wrapping at the registration site keeps the applied middleware visible in `Setup`, where the route list already is.
+
+## Streaming Events
+
+A live view reads one Server-Sent Events stream rather than polling. `EventSource` reconnects on its own and sends the last `id:` it received as `Last-Event-ID`, so a dropped stream resumes where it stopped with no client code.
+
+```go
+type Event struct {
+    ID   string
+    Name string
+    Data []byte
+}
+
+func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
+    after := cmp.Or(r.Header.Get("Last-Event-ID"), r.URL.Query().Get("after"))
+    backlog, live, stop := s.events.Subscribe(after)
+    defer stop()
+
+    w.Header().Set("Content-Type", "text/event-stream")
+    w.Header().Set("Cache-Control", "no-cache")
+    rc := http.NewResponseController(w)
+    write := func(ev Event) {
+        fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", ev.ID, ev.Name, ev.Data)
+    }
+    for _, ev := range backlog {
+        write(ev)
+    }
+    if rc.Flush() != nil {
+        return
+    }
+
+    heartbeat := time.Tick(15 * time.Second)
+    for {
+        select {
+        case <-r.Context().Done():
+            return
+        case <-heartbeat:
+            fmt.Fprint(w, ": ping\n\n")
+        case ev, ok := <-live:
+            if !ok {
+                return
+            }
+            write(ev)
+        }
+        if rc.Flush() != nil {
+            return
+        }
+    }
+}
+```
+
+`?after=` carries the cursor when the client opens a new `EventSource` itself, such as when a tab becomes visible again, because the constructor cannot set a request header.
+
+`Subscribe` takes the backlog and the live channel under one lock, so no event falls between the replay and the stream. An empty, unknown, or stale cursor gets a single `reset` event carrying a full snapshot and the id it is current to, in place of a replay.
+
+An id carries the log's epoch as well as its position, so an id from before a restart reads as stale rather than matching a different event.
+
+A subscriber that falls behind has its channel closed rather than blocking the publisher. Its client reconnects from the last id it received and loses nothing.
+
+`Data` is one line of compact JSON, because a newline inside it ends the `data:` field.
+
+The comment line every 15 seconds keeps a proxy from closing an idle connection, the interval the WHATWG spec suggests. A write to a client that has gone away fails at the next flush, which ends the handler.
+
+The handler returns when the request context ends, and the deferred `stop` releases the subscription, so a closed tab leaves nothing behind.

@@ -1,6 +1,6 @@
 # Document View
 
-**A rendered document reads at `max-w-3xl` inside a `mantle` panel, beside an outline that follows the scroll and a toggle to its highlighted source.**
+**A rendered document fills a `mantle` panel or a confined reading column, beside an outline that follows the scroll and a toggle to its highlighted source.**
 
 The view is a page in the frontend's router, built from the page kit in `go-embedded-frontend` and rendered through `md.render`. `md.sample` stands for the document's Markdown source, and the path and size in the panel header are that file's.
 
@@ -25,10 +25,11 @@ const markdownPage = {
                         <span class="min-w-0 flex-1 truncate font-mono text-sm text-text">docs/orbit.md</span>
                         ${ui.chip('4.1 KB', { mono: true })}
                         <span class="lg:hidden">${ui.iconButton('list', { tip: 'Contents', attrs: 'data-action="md-contents"' })}</span>
+                        ${ui.iconButton('fold-horizontal', { tip: 'Narrow column', pressed: column.confined, action: 'column-toggle' })}
                     </header>
                     <div data-doc data-scroll class="relative min-h-0 flex-1 overflow-y-auto px-5 pt-2 pb-8 sm:px-8">
-                        <article class="markdown-body mx-auto max-w-3xl"></article>
-                        <pre data-source class="mx-auto hidden max-w-3xl overflow-x-auto ${ui.cls.well} p-5 font-mono text-[13px] leading-relaxed whitespace-pre-wrap"><code class="hljs">${hljs.highlight(md.sample, { language: 'markdown' }).value}</code></pre>
+                        <article data-column class="markdown-body mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}"></article>
+                        <pre data-source data-column class="mx-auto hidden w-full transition-[max-width] duration-300 ease-out ${column.cls()} overflow-x-auto ${ui.cls.well} p-5 font-mono text-[13px] leading-relaxed whitespace-pre-wrap"><code class="hljs">${hljs.highlight(md.sample, { language: 'markdown' }).value}</code></pre>
                     </div>
                 </section>
             </div>
@@ -36,13 +37,13 @@ const markdownPage = {
     },
 ```
 
-The document renders into `<article class="markdown-body mx-auto max-w-3xl">` inside a `mantle` panel whose body is the scroll region. A line much past `max-w-3xl` is too long to read comfortably on a wide screen.
+The document renders into a `data-column` article inside a `mantle` panel whose body is the scroll region. It fills the panel by default, and the `fold-horizontal` toggle in the panel header confines it to the reading column from `go-embedded-frontend`'s layout.md, for a reader who wants shorter lines on a wide screen.
 
 A Rendered and Source toggle sits in the page head as a pill track on the ground. The source view is the raw Markdown highlighted with the `markdown` grammar, in a `base` well inside the same scroll region.
 
 A long document gets an "On this page" aside built from the rendered `h2` and `h3` ids, with `h3` entries indented. Below `lg` the aside gives way to a Contents menu in the panel header, since a phone has no room for a second column.
 
-Beside a left sidebar, the outline moves to the right through `order-last` and shows from `xl`, with the Contents button switching at `xl` to match. A sidebar, an outline, and a `max-w-3xl` column do not fit side by side at `lg`.
+Beside a left sidebar, the outline moves to the right through `order-last` and shows from `xl`, with the Contents button switching at `xl` to match. A sidebar, an outline, and a readable column do not fit side by side at `lg`.
 
 ## Outline and Toggle
 

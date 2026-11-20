@@ -62,6 +62,12 @@ An action revealed on hover takes `ui.cls.reveal`, which also shows it while it 
 
 `--font-mono--font-feature-settings: "calt" 0` in `@theme` turns off JetBrains Mono's ligatures on `font-mono` and on `code`, `kbd`, and `pre`. Those ligatures draw `!=` and `->` as one glyph, and a path, a hash, or a code sample shows the characters as typed.
 
+## Content
+
+A view carries the least text that still names what it shows. A heading has no explanatory subtitle, and a status label appears only where more than one state can, because text that never changes is read once and then costs space on every visit.
+
+Markup stays shallow. Semantic elements such as `header`, `section`, `ul`, `dl`, and `footer` carry the layout, and a `div` exists only for a class or a role no surrounding element can hold, since every extra level is one more box between a reader of the source and the element a class lands on.
+
 ## Radius
 
 | Radius | Used by |

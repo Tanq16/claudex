@@ -46,6 +46,7 @@ const reader = {
     seq: 0,
     pinch: 1,
     abort: null,
+    observer: null,
 
     load() {
         reader.modules ||= (async () => {
@@ -95,6 +96,14 @@ const reader = {
                 onPinchEnd: () => { reader.pinch = 1; },
                 signal: reader.abort.signal,
             });
+            reader.observer = new ResizeObserver(() => {
+                const v = reader.view;
+                if (v === pdfViewer && v.pdfDocument && ['auto', 'page-width', 'page-fit'].includes(v.currentScaleValue)) {
+                    // PDF.js does not refit on resize; assigning the same preset recomputes it for the new width.
+                    v.currentScaleValue = v.currentScaleValue;
+                }
+            });
+            reader.observer.observe(container);
             reader.view = pdfViewer;
             reader.task = lib.getDocument({ url: MEDIA.book.src, wasmUrl: `${PDFJS}/wasm/` });
             const doc = await reader.task.promise;
@@ -133,6 +142,8 @@ const reader = {
         reader.seq++;
         reader.abort?.abort();
         reader.abort = null;
+        reader.observer?.disconnect();
+        reader.observer = null;
         reader.view?.setDocument(null);
         reader.view = null;
         reader.task?.destroy();
@@ -145,7 +156,9 @@ The modules load once, on the first open, and a failed load clears the cached pr
 
 The document opens at `page-width` on a phone and `auto` elsewhere. The fit button flips between `page-width` and `page-fit`, and a pinch zooms through PDF.js's `TouchManager`.
 
-Closing aborts the pinch listeners, detaches the document, and destroys the loading task.
+A `ResizeObserver` on the container reassigns the current preset whenever the container changes size, because the viewer keeps its old scale otherwise. A window `resize` misses a collapsed sidebar or a narrowed column, which resize the container and leave the window alone.
+
+Closing aborts the pinch listeners, disconnects the observer, detaches the document, and destroys the loading task.
 
 ```javascript
 ui.on('reader-zoom-in', () => reader.view?.increaseScale());
@@ -154,13 +167,4 @@ ui.on('reader-fit', () => {
     if (reader.view) reader.view.currentScaleValue = reader.view.currentScaleValue === 'page-width' ? 'page-fit' : 'page-width';
 });
 ui.on('reader-open', () => window.open(MEDIA.book.src, '_blank', 'noopener'));
-window.addEventListener('resize', () => {
-    const v = reader.view;
-    if (v?.pdfDocument && ['auto', 'page-width', 'page-fit'].includes(v.currentScaleValue)) {
-        // PDF.js does not refit on resize; assigning the same preset recomputes it for the new width.
-        v.currentScaleValue = v.currentScaleValue;
-    }
-});
 ```
-
-A resize reassigns the current preset, because the viewer keeps its old scale otherwise.

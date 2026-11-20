@@ -47,7 +47,7 @@ openSelect(button) {
 
     const pop = ui.popover.open(button, `
         ${searchable ? `<span class="mb-1 block">${ui.search({ name: `${name}-search` })}</span>` : ''}
-        <ul role="listbox" data-scroll class="-mr-1.5 max-h-72 overflow-y-auto">${listHtml()}</ul>`, {
+        <ul role="listbox" data-scroll="lane" class="-mr-1.5 max-h-72 overflow-y-auto">${listHtml()}</ul>`, {
         matchWidth: true,
         onClose: () => button.setAttribute('aria-expanded', 'false'),
     });

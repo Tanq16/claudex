@@ -78,16 +78,24 @@ const card = (title, body, { span = '', source = '' } = {}) => `<section class="
 </section>`;
 
 const pageHead = (title, right = '') => `<div class="mb-5 flex flex-wrap items-center justify-between gap-3"><h1 class="font-display text-2xl text-text">${title}</h1>${right}</div>`;
-const gallery = (title, right, sections) => `<div data-scroll class="-mr-3.5 h-full overflow-y-auto">${pageHead(title, right)}<div class="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">${sections.join('')}</div></div>`;
+const gallery = (title, right, sections) => `<div data-scroll="lane" class="-mr-3.5 h-full overflow-y-auto">${pageHead(title, right)}<div class="grid items-start gap-4 lg:grid-cols-2 2xl:grid-cols-3 3xl:grid-cols-4">${sections.join('')}</div></div>`;
 ```
 
 ## Scroll Regions
 
 Native scrollbars are hidden page-wide, and every scroll region carries `data-scroll` and gets a drawn thumb. A native bar takes layout width on one platform and overlays content on another, and it cannot be inset from a rounded corner.
 
-Every scroll region reserves a 14px lane on its right, so content never runs under the thumb. A region flush against its parent's right edge pulls out by the lane with `-mr-3.5`, which keeps its content column aligned with the page.
+A scroll region's thumbs float over its content, so the region keeps its size whether or not it overflows. A file tree that grows and collapses never reflows its rows as its thumb comes and goes, and a PDF, an image, a diff, or a code view runs to the edge with the thumb over it.
 
-The thumb sits 4px from the region's edge as `w-1.5 rounded-full bg-overlay0/60`. It widens to `w-2 bg-overlay1` under the pointer and fades 900ms after the last scroll. Its track is inset at least 6px top and bottom, and by half the corner radius on a rounded region or parent, so the thumb never pokes past a curve.
+A region whose content lines up against its right edge takes `data-scroll="lane"`, which reserves a constant 14px lane on the right for the vertical thumb. A thumb floating there would cut across a table's last column, a list's right-aligned counts, times, or row actions, or a transcript's right-aligned bubbles. The lane counts the region's right padding toward its 14px, so a region padded that much already looks the same either way.
+
+A lane region flush against its parent's right edge pulls out by the lane with `-mr-3.5`, which keeps its content column aligned with the page.
+
+The thumb sits 4px from the region's edge as `w-1.5 rounded-full bg-overlay0/60`. It widens to `w-2 bg-overlay1` under the pointer and fades 900ms after the last scroll, unless the pointer is on it. A faded thumb takes no pointer events, so it never swallows a click on the content under it. The pointer coming within 16px of the region's right or bottom edge shows it again, ready to drag. Its track is inset at least 6px top and bottom, and by half the corner radius on a rounded region or parent, so the thumb never pokes past a curve.
+
+A region that overflows sideways also gets a horizontal thumb, `h-1.5` along its bottom edge, which always floats. A bottom lane would exist only while the content overflows, so the region would change height as it appeared. Only a computed `overflow-x` of `auto` or `scroll` counts, because a region clipping with `hidden` cannot be scrolled sideways by the user.
+
+When a region scrolls both ways, each thumb's track stops 14px short of the other's edge, so the two never meet in the corner.
 
 The thumb is positioned against the region's parent, which `ui.anchor` makes `relative` only when the class list carries no position utility. It reads class names rather than computed style, because the browser build compiles classes after the script runs and computed style still reads `static` for an element about to become `fixed`.
 
@@ -115,74 +123,117 @@ scrollbar(el) {
     const host = el.parentElement;
     ui.anchor(el);
     ui.anchor(host);
-    const thumb = document.createElement('span');
-    thumb.setAttribute('aria-hidden', 'true');
-    thumb.className = 'absolute top-0 z-20 w-1.5 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,background-color] duration-300 hover:w-2 hover:bg-overlay1 cursor-default';
-    host.appendChild(thumb);
+    const thumb = (cls) => {
+        const t = document.createElement('span');
+        t.setAttribute('aria-hidden', 'true');
+        t.className = `absolute z-20 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,height,background-color] duration-300 hover:bg-overlay1 cursor-default ${cls}`;
+        t.style.pointerEvents = 'none';
+        host.appendChild(t);
+        return t;
+    };
+    const ty = thumb('top-0 w-1.5 hover:w-2');
+    const tx = thumb('left-0 h-1.5 hover:h-2');
     const grip = el.tagName === 'TEXTAREA' ? host.querySelector('[data-ui="grip"]') : null;
     let hideTimer;
     let dragging = null;
     let lane = -1;
+    let tall = false;
+    let wide = false;
     let track = [6, 6];
+    let trackX = [6, 6];
 
     const fit = () => {
         const px = (node, prop) => parseFloat(getComputedStyle(node)[prop]) || 0;
-        const want = Math.max(0, ui.scrollLane - px(el, 'paddingRight'));
+        const want = el.dataset.scroll === 'lane' ? Math.max(0, ui.scrollLane - px(el, 'paddingRight')) : 0;
         if (want !== lane) {
             lane = want;
-            el.style.borderRight = `${lane}px solid transparent`;
+            el.style.borderRight = lane ? `${lane}px solid transparent` : '';
         }
+        wide = ['auto', 'scroll'].includes(getComputedStyle(el).overflowX) && el.scrollWidth - el.clientWidth > 1;
+        tall = el.scrollHeight - el.clientHeight > 1;
         const above = el.offsetTop;
         const below = host.clientHeight - el.offsetTop - el.offsetHeight;
+        const corner = Math.max(px(el, 'borderBottomRightRadius') / 2, px(host, 'borderBottomRightRadius') / 2 - below);
         track = [
             Math.max(6, px(el, 'borderTopRightRadius') / 2, px(host, 'borderTopRightRadius') / 2 - above),
-            Math.max(6, px(el, 'borderBottomRightRadius') / 2, px(host, 'borderBottomRightRadius') / 2 - below, grip ? el.offsetTop + el.offsetHeight - grip.offsetTop + 4 : 0),
+            Math.max(6, corner, wide ? ui.scrollLane : 0, grip ? el.offsetTop + el.offsetHeight - grip.offsetTop + 4 : 0),
+        ];
+        trackX = [
+            Math.max(6, px(el, 'borderBottomLeftRadius') / 2, px(host, 'borderBottomLeftRadius') / 2 - below),
+            Math.max(6, corner, tall ? ui.scrollLane - lane : 0),
         ];
     };
 
     const place = () => {
         fit();
-        const { scrollTop, scrollHeight, clientHeight } = el;
-        const overflow = scrollHeight - clientHeight;
-        if (overflow <= 1) {
-            thumb.style.display = 'none';
-            return false;
+        ty.style.display = tall ? '' : 'none';
+        tx.style.display = wide ? '' : 'none';
+        if (tall) {
+            const { scrollTop, scrollHeight, clientHeight } = el;
+            const room = clientHeight - track[0] - track[1];
+            const h = Math.max(28, (clientHeight / scrollHeight) * room);
+            ty.style.right = `${host.clientWidth - el.offsetLeft - el.offsetWidth + 4}px`;
+            ty.style.height = `${h}px`;
+            ty.style.transform = `translateY(${el.offsetTop + track[0] + (scrollTop / (scrollHeight - clientHeight)) * (room - h)}px)`;
         }
-        thumb.style.display = '';
-        const room = clientHeight - track[0] - track[1];
-        const h = Math.max(28, (clientHeight / scrollHeight) * room);
-        const top = el.offsetTop + track[0] + (scrollTop / overflow) * (room - h);
-        thumb.style.right = `${host.clientWidth - el.offsetLeft - el.offsetWidth + 4}px`;
-        thumb.style.height = `${h}px`;
-        thumb.style.transform = `translateY(${top}px)`;
-        return true;
+        if (wide) {
+            const { scrollLeft, scrollWidth, clientWidth } = el;
+            const room = clientWidth - trackX[0] - trackX[1];
+            const w = Math.max(28, (clientWidth / scrollWidth) * room);
+            tx.style.bottom = `${host.clientHeight - el.offsetTop - el.offsetHeight + 4}px`;
+            tx.style.width = `${w}px`;
+            tx.style.transform = `translateX(${el.offsetLeft + trackX[0] + (scrollLeft / (scrollWidth - clientWidth)) * (room - w)}px)`;
+        }
+        return tall || wide;
+    };
+    const hide = () => {
+        if (dragging || ty.matches(':hover') || tx.matches(':hover')) return;
+        for (const t of [ty, tx]) {
+            t.style.opacity = '0';
+            t.style.pointerEvents = 'none';
+        }
     };
     const show = () => {
         if (!place()) return;
-        thumb.style.opacity = '1';
+        for (const t of [ty, tx]) {
+            t.style.opacity = '1';
+            t.style.pointerEvents = '';
+        }
         clearTimeout(hideTimer);
-        hideTimer = setTimeout(() => { if (!dragging) thumb.style.opacity = '0'; }, 900);
+        hideTimer = setTimeout(hide, 900);
     };
     el.addEventListener('scroll', show, { passive: true });
     el.addEventListener('pointerenter', show);
+    el.addEventListener('pointermove', (e) => {
+        const r = el.getBoundingClientRect();
+        if (r.right - e.clientX < 16 || r.bottom - e.clientY < 16) show();
+    });
     new ResizeObserver(() => place()).observe(el);
     new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
-    thumb.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        thumb.setPointerCapture(e.pointerId);
-        dragging = { y: e.clientY, top: el.scrollTop };
-    });
-    thumb.addEventListener('pointermove', (e) => {
-        if (!dragging) return;
-        const ratio = (el.scrollHeight - el.clientHeight) / (el.clientHeight - thumb.offsetHeight - track[0] - track[1]);
-        el.scrollTop = dragging.top + (e.clientY - dragging.y) * ratio;
-    });
-    thumb.addEventListener('pointerup', () => {
-        dragging = null;
-        show();
-    });
+    const drag = (t, vertical) => {
+        t.addEventListener('pointerdown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            t.setPointerCapture(e.pointerId);
+            dragging = vertical ? { at: e.clientY, from: el.scrollTop } : { at: e.clientX, from: el.scrollLeft };
+        });
+        t.addEventListener('pointermove', (e) => {
+            if (!dragging) return;
+            if (vertical) el.scrollTop = dragging.from + ((e.clientY - dragging.at) * (el.scrollHeight - el.clientHeight)) / (el.clientHeight - t.offsetHeight - track[0] - track[1]);
+            else el.scrollLeft = dragging.from + ((e.clientX - dragging.at) * (el.scrollWidth - el.clientWidth)) / (el.clientWidth - t.offsetWidth - trackX[0] - trackX[1]);
+        });
+        t.addEventListener('pointerup', () => {
+            dragging = null;
+            show();
+        });
+        t.addEventListener('pointerleave', () => {
+            clearTimeout(hideTimer);
+            hideTimer = setTimeout(hide, 900);
+        });
+    };
+    drag(ty, true);
+    drag(tx, false);
     place();
 },
 ```
@@ -221,7 +272,7 @@ return `<div class="flex h-full min-h-0 flex-col">
         <div data-backdrop class="fixed inset-0 z-30 hidden bg-crust/70 md:hidden"></div>
         <aside data-side class="flex min-h-0 flex-col md:mr-4 max-md:fixed max-md:inset-y-3 max-md:left-3 max-md:z-40 max-md:w-[min(21rem,calc(100vw-3rem))] max-md:-translate-x-[120%] max-md:rounded-3xl max-md:bg-mantle max-md:p-2 max-md:shadow-2xl max-md:shadow-shade max-md:transition-transform">
             <div class="shrink-0 pr-3.5 pb-2">${ui.search({ name: 'side-q', placeholder: 'Filter' })}</div>
-            <nav data-scroll class="min-h-0 flex-1 overflow-y-auto pb-2">${side}</nav>
+            <nav data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto pb-2">${side}</nav>
         </aside>
         <section class="flex min-w-0 flex-1 flex-col rounded-3xl bg-mantle">
             <header class="flex shrink-0 items-center gap-2 px-3 pt-3 pb-2 sm:px-4">
@@ -230,7 +281,7 @@ return `<div class="flex h-full min-h-0 flex-col">
                 ${ui.iconButton('list-filter', { tip: 'Filter' })}<span class="max-2xl:hidden">${ui.iconButton('panel-right', { tip: 'Toggle details', attrs: 'data-action="inspector-toggle"' })}</span>
                 ${ui.button('New issue', { icon: 'plus', variant: 'primary', collapse: true })}
             </header>
-            <ul data-scroll class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">${items}</ul>
+            <ul data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto px-2 pb-2">${items}</ul>
         </section>
         <aside data-inspector class="hidden min-h-0 flex-col rounded-3xl bg-mantle 2xl:ml-4 2xl:flex"><div data-scroll class="min-h-0 flex-1 overflow-y-auto p-5">${inspector}</div></aside>
     </div>
@@ -255,6 +306,30 @@ mount(el) {
     ui.on('side-toggle', () => (sideCtl ? sideCtl.toggle() : drawer(side.dataset.open !== 'true')));
     ui.on('inspector-toggle', () => inspCtl.toggle());
 },
+```
+
+## Reading Column
+
+A panel of prose, such as a chat transcript or a rendered document, fills its panel by default. A pressed `fold-horizontal` icon button at the right of the panel header confines every `data-column` element to `max-w-4xl`, about 120 characters of body text. The choice persists in `localStorage`, and the column eases between widths because `max-width` interpolates between a percentage and a length.
+
+```javascript
+const column = {
+    confined: localStorage.getItem('APP_NAME.column') === 'confined',
+    cls: () => (column.confined ? 'max-w-4xl' : 'max-w-full'),
+    toggle(b) {
+        column.confined = !column.confined;
+        try { localStorage.setItem('APP_NAME.column', column.confined ? 'confined' : 'full'); } catch {}
+        document.querySelectorAll('[data-column]').forEach((n) => {
+            n.classList.toggle('max-w-4xl', column.confined);
+            n.classList.toggle('max-w-full', !column.confined);
+        });
+        b.setAttribute('aria-pressed', String(column.confined));
+    },
+};
+ui.on('column-toggle', (b) => column.toggle(b));
+
+const toggle = ui.iconButton('fold-horizontal', { tip: 'Narrow column', pressed: column.confined, action: 'column-toggle' });
+const body = `<article data-column class="markdown-body mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}"></article>`;
 ```
 
 ## Sidebars
