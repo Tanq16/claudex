@@ -1,4 +1,4 @@
-.PHONY: help assets verify-assets font fontawesome clean build build-for build-all version
+.PHONY: help assets verify-assets font fontawesome pdfjs clean build build-for build-all version
 
 # =============================================================================
 # Variables
@@ -18,12 +18,15 @@ FONTAWESOME_VERSION := 7.3.1
 MARKED_VERSION      := 18.2.0
 HIGHLIGHTJS_VERSION := 11.12.0
 DOMPURIFY_VERSION   := 3.4.18
+MERMAID_VERSION     := 11.17.2
+PDFJS_VERSION       := 6.4.299
 
 STATIC_DIR := internal/server/static
 JS_DIR     := $(STATIC_DIR)/js
 CSS_DIR    := $(STATIC_DIR)/css
 FONTS_DIR  := $(STATIC_DIR)/fonts
 FA_DIR     := $(STATIC_DIR)/fontawesome
+PDFJS_DIR  := $(JS_DIR)/pdfjs
 STAMP      := $(STATIC_DIR)/.assets-stamp
 
 # Google Fonts serves woff2 only to a browser-shaped User-Agent; an unrecognized
@@ -64,7 +67,9 @@ $(STAMP): $(MAKEFILE_LIST)
 	@curl -sfL "https://cdn.jsdelivr.net/npm/dompurify@$(DOMPURIFY_VERSION)/dist/purify.min.js" -o "$(JS_DIR)/purify.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/highlight.min.js" -o "$(JS_DIR)/highlight.min.js"
 	@curl -sfL "https://cdn.jsdelivr.net/npm/@highlightjs/cdn-assets@$(HIGHLIGHTJS_VERSION)/styles/github-dark.min.css" -o "$(CSS_DIR)/github-dark.min.css"
+	@curl -sfL "https://cdn.jsdelivr.net/npm/mermaid@$(MERMAID_VERSION)/dist/mermaid.min.js" -o "$(JS_DIR)/mermaid.min.js"
 	@$(MAKE) --no-print-directory fontawesome
+	@$(MAKE) --no-print-directory pdfjs
 	@$(MAKE) --no-print-directory font FAMILY="Inter" SLUG=inter WEIGHTS="400;500;600;700"
 	@$(MAKE) --no-print-directory font FAMILY="Google+Sans" SLUG=google-sans WEIGHTS="400;500;700"
 	@$(MAKE) --no-print-directory font FAMILY="JetBrains+Mono" SLUG=jetbrains-mono WEIGHTS="400;700"
@@ -98,6 +103,12 @@ fontawesome:
 	done
 	@sed -i.bak 's|../webfonts/|/static/fontawesome/webfonts/|g' "$(FA_DIR)/css/all.min.css"
 	@rm -f "$(FA_DIR)/css/all.min.css.bak"
+
+pdfjs:
+	@mkdir -p $(PDFJS_DIR)/build $(PDFJS_DIR)/web/images $(PDFJS_DIR)/wasm
+	@set -e; for f in build/pdf.min.mjs build/pdf.worker.min.mjs web/pdf_viewer.mjs web/pdf_viewer.css web/images/loading-icon.gif wasm/openjpeg.wasm wasm/jbig2.wasm wasm/qcms_bg.wasm; do \
+	  curl -sfL "https://cdn.jsdelivr.net/npm/pdfjs-dist@$(PDFJS_VERSION)/$$f" -o "$(PDFJS_DIR)/$$f"; \
+	done
 
 verify-assets: ## Fail early if the embedded tree is missing an asset
 	@test -s $(JS_DIR)/tailwind.js || (echo "tailwind.js missing, run 'make assets'" && exit 1)
