@@ -79,7 +79,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 
 `Setup` is separate from `Run` so a caller can report a mount failure before the process commits to listening on a port. `Run` logs the address it binds, so the command calling it logs nothing about the start.
 
-A handler's dependencies, such as a store, are fields on `Server` that `New` takes after `host` and `port`. The entry point chooses them once and passes them down, so nothing in the server knows which backend it has.
+The template carries no dependencies. A handler that needs one, such as a store, gets it as a field on `Server` that `New` takes after `host` and `port`. The entry point chooses it once and passes it down, so nothing in the server knows which backend it has.
 
 `net.JoinHostPort` brackets an IPv6 host, which a plain `host:port` format leaves ambiguous.
 
