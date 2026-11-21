@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"embed"
 	"encoding/json/v2"
 	"errors"
@@ -15,7 +16,9 @@ import (
 	"sync/atomic"
 
 	"github.com/rs/zerolog/log"
+	"github.com/tanq16/claudex/internal/attached"
 	"github.com/tanq16/claudex/internal/embedded"
+	"github.com/tanq16/claudex/internal/images"
 	"github.com/tanq16/claudex/internal/paths"
 	"github.com/tanq16/claudex/internal/plugins"
 	"github.com/tanq16/claudex/internal/session"
@@ -39,6 +42,8 @@ type Server struct {
 	home        string
 	root        string
 	launcher    session.Launcher
+	host        *attached.Host
+	images      *images.Store
 	mu          sync.Mutex
 	mux         *http.ServeMux
 	schemaTried atomic.Bool
@@ -73,8 +78,11 @@ func (s *Server) Setup() error {
 	}
 	s.root = root
 
-	if err := workspace.EnsurePresets(embedded.PresetsFS, "presets", paths.PresetsDir(home)); err != nil {
+	if err := workspace.Extract(embedded.PresetsFS, "presets", paths.PresetsDir(home)); err != nil {
 		return fmt.Errorf("laying down the built-in presets: %w", err)
+	}
+	if err := workspace.Extract(embedded.DefaultSkillsFS, "default-skills", paths.BaseSkillsDir(home)); err != nil {
+		return fmt.Errorf("laying down the base skills: %w", err)
 	}
 	if err := workspace.EnsureRemotePresets(paths.RemotePresetsDir(home)); err != nil {
 		return fmt.Errorf("creating the remote presets directory: %w", err)
@@ -90,6 +98,19 @@ func (s *Server) Setup() error {
 	} else {
 		s.launcher.PluginDir = pluginDir
 	}
+
+	if s.images, err = images.New(paths.ImagesDir(home), "/api/images/"); err != nil {
+		return fmt.Errorf("creating the image store: %w", err)
+	}
+	s.host = attached.NewHost(s.images)
+	if err := s.resumeAttached(); err != nil {
+		return err
+	}
+	go func() {
+		for range s.host.Changed() {
+			s.syncAttached()
+		}
+	}()
 
 	staticFS, err := fs.Sub(staticFiles, "static")
 	if err != nil {
@@ -114,6 +135,20 @@ func (s *Server) Setup() error {
 	s.mux.HandleFunc("POST /api/projects/{name}/restore-resume", s.api(s.handleRestoreResume))
 	s.mux.HandleFunc("PUT /api/projects/{name}/presets", s.api(s.handleApplyPresets))
 	s.mux.HandleFunc("PUT /api/projects/{name}/mcp", s.api(s.handleSetMCP))
+
+	s.mux.HandleFunc("GET /api/events", s.handleEvents)
+	s.mux.HandleFunc("GET /api/images/{file}", s.handleImage)
+	s.mux.HandleFunc("GET /api/projects/{name}/history", s.api(s.handleHistory))
+	s.mux.HandleFunc("POST /api/projects/{name}/shell", s.api(s.handleShell))
+	s.mux.HandleFunc("POST /api/projects/{name}/prompt", s.api(s.handlePrompt))
+	s.mux.HandleFunc("POST /api/projects/{name}/approvals/{id}", s.api(s.handleAnswer))
+	s.mux.HandleFunc("POST /api/projects/{name}/interrupt", s.api(s.handleInterrupt))
+	s.mux.HandleFunc("POST /api/projects/{name}/tasks/{task}/stop", s.api(s.handleStopTask))
+	s.mux.HandleFunc("GET /api/projects/{name}/tasks/{task}/output", s.api(s.handleTaskOutput))
+	s.mux.HandleFunc("PUT /api/projects/{name}/model", s.api(s.handleSetting((*attached.Session).SetModel, "model")))
+	s.mux.HandleFunc("PUT /api/projects/{name}/effort", s.api(s.handleSetting((*attached.Session).SetEffort, "effort")))
+	s.mux.HandleFunc("PUT /api/projects/{name}/permission-mode", s.api(s.handleSetting((*attached.Session).SetPermissionMode, "mode")))
+	s.mux.HandleFunc("GET /api/projects/{name}/context", s.api(s.handleContext))
 
 	s.mux.HandleFunc("GET /api/projects/{name}/tree", s.api(s.handleTree))
 	s.mux.HandleFunc("GET /api/projects/{name}/file", s.api(s.handleFile))
@@ -174,10 +209,21 @@ func statusOf(err error) int {
 	if _, ok := errors.AsType[*workspace.ConflictError](err); ok {
 		return http.StatusConflict
 	}
-	for _, target := range []error{session.ErrRunning, session.ErrNotRunning, workspace.ErrNoStash, workspace.ErrResumeExists} {
+	if _, ok := errors.AsType[*attached.RefusedError](err); ok {
+		return http.StatusBadGateway
+	}
+	for _, target := range []error{session.ErrRunning, session.ErrNotRunning, workspace.ErrNoStash, workspace.ErrResumeExists, attached.ErrRunning, attached.ErrNotRunning, attached.ErrClosing} {
 		if errors.Is(err, target) {
 			return http.StatusConflict
 		}
+	}
+	switch {
+	case errors.Is(err, attached.ErrNoRequest):
+		return http.StatusNotFound
+	case errors.Is(err, attached.ErrBadAnswer):
+		return http.StatusBadRequest
+	case errors.Is(err, context.DeadlineExceeded):
+		return http.StatusGatewayTimeout
 	}
 	return http.StatusInternalServerError
 }

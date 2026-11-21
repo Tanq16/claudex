@@ -2,7 +2,6 @@ package workspace
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -14,8 +13,7 @@ const BasePreset = "base"
 type ApplyConfig struct {
 	Root          string
 	Base          []byte
-	BaseSkills    fs.FS
-	BaseSkillsDir string
+	BaseSkills    string
 	LocalPresets  string
 	RemotePresets string
 	Presets       []string
@@ -58,7 +56,7 @@ func Apply(cfg ApplyConfig) error {
 		return &ConflictError{Conflicts: conflicts}
 	}
 
-	if _, err := ApplyBase(cfg.Root, cfg.Base, cfg.BaseSkills, cfg.BaseSkillsDir); err != nil {
+	if _, err := ApplyBase(cfg.Root, cfg.Base, cfg.BaseSkills); err != nil {
 		return err
 	}
 	if _, _, err := WriteGitExclude(cfg.Root); err != nil {

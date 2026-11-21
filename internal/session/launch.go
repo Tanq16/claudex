@@ -95,11 +95,17 @@ func Args(x Launch, pluginDir string) []string {
 	if x.RCName != "" {
 		args = append(args, "--remote-control", x.RCName)
 	}
-	if x.Connectors {
+	args = append(args, SharedArgs(x.Connectors, pluginDir)...)
+	return append(args, "--dangerously-skip-permissions")
+}
+
+func SharedArgs(connectors bool, pluginDir string) []string {
+	var args []string
+	if connectors {
 		args = append(args, "--settings", connectorsSettings())
 	}
 	if pluginDir != "" {
 		args = append(args, "--plugin-dir", pluginDir)
 	}
-	return append(args, "--dangerously-skip-permissions")
+	return args
 }

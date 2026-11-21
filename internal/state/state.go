@@ -1,6 +1,7 @@
 package state
 
 import (
+	"cmp"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -11,11 +12,30 @@ import (
 	"github.com/tanq16/claudex/internal/fsutil"
 )
 
+const (
+	ModeDetached = "detached"
+	ModeAttached = "attached"
+)
+
 type Project struct {
-	RCName     string `json:"rcName"`
-	Account    string `json:"account"`
-	Connectors bool   `json:"connectors"`
-	LastActive int64  `json:"lastActive,omitzero"`
+	RCName     string    `json:"rcName"`
+	Account    string    `json:"account"`
+	Connectors bool      `json:"connectors"`
+	LastActive int64     `json:"lastActive,omitzero"`
+	Mode       string    `json:"mode,omitzero"`
+	Attached   *Attached `json:"attached,omitzero"`
+}
+
+type Attached struct {
+	Model          string `json:"model,omitzero"`
+	Effort         string `json:"effort,omitzero"`
+	PermissionMode string `json:"permissionMode,omitzero"`
+	PID            int    `json:"pid,omitzero"`
+	StartedAt      int64  `json:"startedAt,omitzero"`
+}
+
+func (p Project) SessionMode() string {
+	return cmp.Or(p.Mode, ModeDetached)
 }
 
 type RemotePreset struct {
