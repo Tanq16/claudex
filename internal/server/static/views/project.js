@@ -247,6 +247,8 @@
             <section>
                 ${sectionHead('Actions')}
                 <ul class="flex flex-col gap-0.5">
+                    ${actionRow('clipboard-copy', 'Copy session', 'The conversation as Markdown', 'project-copy-session')}
+                    ${actionRow('square-terminal', 'Run a command', 'A shell in the project directory', 'project-shell')}
                     ${multi ? actionRow('arrow-left-right', 'Switch account', p.active ? 'Stop, move conversations, continue' : 'Move conversations to another account', 'project-switch') : ''}
                     ${actionRow('brush-cleaning', 'Run clean-cwd', 'Remove claudex files, stash the resume file', 'project-clean', { danger: true })}
                     ${actionRow('folder-x', 'Untrack', p.active ? 'Stop the session first' : 'Remove from the dashboard', 'project-untrack', { danger: true, disabled: p.active })}
@@ -1165,6 +1167,11 @@
     ui.on('project-back', () => app.go('#/'));
     ui.on('project-continue', () => views.newSession.open({ name: S.name, mode: 'continue' }));
     ui.on('project-new', () => views.newSession.open({ name: S.name, mode: 'new' }));
+    ui.on('project-copy-session', (b) => ui.menu(b, [
+        { icon: 'tags', label: 'Copy with tags', hint: 'Each message starts with [user] or [agent]', onSelect: () => views.chat.copySession(S.name, true) },
+        { icon: 'clipboard-copy', label: 'Copy without tags', hint: 'Messages separated by blank lines', onSelect: () => views.chat.copySession(S.name, false) },
+    ]));
+    ui.on('project-shell', () => views.shell.open(S.name));
     ui.on('project-restart', restart);
     ui.on('project-stop', async () => {
         const p = project();
