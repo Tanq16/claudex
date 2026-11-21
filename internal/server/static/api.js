@@ -48,6 +48,17 @@ const api = (() => {
         applyPresets: (name, presets) => put(`${project(name)}/presets`, { presets }),
         setMcp: (name, servers) => put(`${project(name)}/mcp`, { servers }),
 
+        history: (name) => get(`${project(name)}/history`),
+        shell: (name, command) => post(`${project(name)}/shell`, { command }),
+        prompt: (name, text) => post(`${project(name)}/prompt`, { text }),
+        answer: (name, id, payload) => post(`${project(name)}/approvals/${enc(id)}`, payload),
+        interrupt: (name) => post(`${project(name)}/interrupt`),
+        stopTask: (name, id) => post(`${project(name)}/tasks/${enc(id)}/stop`),
+        taskOutput: (name, id) => get(`${project(name)}/tasks/${enc(id)}/output`),
+        setModel: (name, model) => put(`${project(name)}/model`, { model }),
+        setEffort: (name, effort) => put(`${project(name)}/effort`, { effort }),
+        setPermissionMode: (name, mode) => put(`${project(name)}/permission-mode`, { mode }),
+
         tree: (name) => get(`${project(name)}/tree`),
         file: (name, path) => get(`${project(name)}/file?path=${enc(path)}`),
         rawUrl: (name, path) => `${project(name)}/raw?path=${enc(path)}`,

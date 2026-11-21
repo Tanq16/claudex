@@ -13,6 +13,7 @@ const app = {
         ui.initDelegation();
         ui.initScrollObserver();
         app.renderNav();
+        live.start();
         window.addEventListener('hashchange', () => app.route());
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'visible') app.refresh();
@@ -75,10 +76,12 @@ const app = {
             { name: 'settings', hash: '#/settings', icon: 'settings-2', label: 'Settings' },
         ];
         const navLinks = document.getElementById('nav-links');
+        const waiting = live.awayPending();
         navLinks.innerHTML = links.map((l) => {
             const on = app.current === l.name;
+            const dot = l.name === 'dashboard' && waiting ? `<span title="${waiting} waiting for approval">${ui.dot('yellow', { pulse: true })}</span>` : '';
             return `<a href="${l.hash}" class="flex h-9 items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : ''}>
-                <i data-lucide="${l.icon}" class="size-4 ${on ? 'text-mauve' : ''}"></i><span class="${on ? '' : 'max-sm:hidden'}">${l.label}</span></a>`;
+                <i data-lucide="${l.icon}" class="size-4 ${on ? 'text-mauve' : ''}"></i><span class="${on ? '' : 'max-sm:hidden'}">${l.label}</span>${dot}</a>`;
         }).join('');
         const status = document.getElementById('nav-status');
         status.innerHTML = store.loading ? '<i data-lucide="loader-circle" class="size-4 animate-spin"></i>' : '';
@@ -213,6 +216,7 @@ const ui = {
             ghost: 'text-overlay1 hover:bg-surface0 hover:text-text aria-pressed:bg-surface0 aria-pressed:text-text',
             inset: 'text-overlay1 hover:bg-surface1 hover:text-text aria-pressed:bg-surface1 aria-pressed:text-text',
             secondary: 'bg-surface0 text-text hover:bg-surface1',
+            primary: 'bg-mauve text-crust hover:bg-mauve/85',
             danger: 'text-red hover:bg-red/15',
         };
         const sizes = { sm: 'size-8', md: 'size-10' };
@@ -229,7 +233,40 @@ const ui = {
             blue: 'bg-blue/15 text-blue',
             yellow: 'bg-yellow/15 text-yellow',
         };
-        return `<span ${title ? `title="${ui.esc(title)}"` : ''} class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${tones[tone]} ${mono ? 'font-mono' : ''}">${icon ? `<i data-lucide="${icon}" class="size-3 shrink-0"></i>` : ''}<span class="truncate">${ui.esc(text)}</span></span>`;
+        return `<span ${title ? `title="${ui.esc(title)}"` : ''} class="inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${tones[tone] || `bg-${tone}/15 text-${tone}`} ${mono ? 'font-mono' : ''}">${icon ? `<i data-lucide="${icon}" class="size-3 shrink-0"></i>` : ''}<span class="truncate">${ui.esc(text)}</span></span>`;
+    },
+
+    count(n, tone = 'neutral') {
+        return `<span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 font-mono text-[11px] tabular-nums ${tone === 'neutral' ? 'bg-surface0 text-subtext0' : `bg-${tone}/15 text-${tone}`}">${n}</span>`;
+    },
+
+    dot(tone = 'overlay0', { pulse = false } = {}) {
+        return `<span class="inline-block size-2 shrink-0 rounded-full bg-${tone} ${pulse ? 'animate-pulse' : ''}"></span>`;
+    },
+
+    tile(icon, tone = 'mauve', size = 'md') {
+        const s = { sm: 'size-8 rounded-xl [&_svg]:size-4', md: 'size-10 rounded-2xl [&_svg]:size-5' }[size];
+        return `<span class="flex ${s} shrink-0 items-center justify-center bg-${tone}/15 text-${tone}"><i data-lucide="${icon}"></i></span>`;
+    },
+
+    kbd(keys) {
+        return keys.map((k) => `<kbd class="inline-flex h-5 min-w-5 items-center justify-center rounded-md bg-surface1 px-1 font-mono text-[11px] text-subtext1">${ui.esc(k)}</kbd>`).join('');
+    },
+
+    spinner(cls = 'size-4') {
+        return `<i data-lucide="loader-circle" class="${cls} animate-spin"></i>`;
+    },
+
+    meter(pct, tone = 'mauve', h = 'h-2') {
+        return `<span class="block ${h} overflow-hidden rounded-full bg-surface0"><span class="block h-full rounded-full bg-${tone} transition-[width] duration-300" style="width:${Math.max(0, Math.min(100, pct))}%"></span></span>`;
+    },
+
+    banner({ tone = 'blue', icon = 'info', title = '', body = '', actions = '' }) {
+        return `<div class="flex flex-wrap items-start gap-3 rounded-2xl bg-${tone}/10 p-4 text-sm">
+            <i data-lucide="${icon}" class="mt-0.5 size-4 shrink-0 text-${tone}"></i>
+            <div class="min-w-48 flex-1">${title ? `<p class="font-medium text-${tone}">${ui.esc(title)}</p>` : ''}${body ? `<div class="${title ? 'mt-0.5' : ''} text-subtext0">${body}</div>` : ''}</div>
+            ${actions ? `<div class="flex flex-wrap items-center gap-2">${actions}</div>` : ''}
+        </div>`;
     },
 
     status(active) {
@@ -278,10 +315,10 @@ const ui = {
         </span>`;
     },
 
-    select({ name, value = '', options, placeholder = 'Select', searchable = false, icon }) {
+    select({ name, value = '', options, placeholder = 'Select', searchable = false, icon, pill = false, attrs = '' }) {
         const current = options.find((o) => o.value === value);
         ui.selectOptions[name] = { options, searchable, placeholder };
-        return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="listbox" aria-expanded="false" class="flex w-full items-center gap-2.5 rounded-2xl bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40 pointer-coarse:text-[16px]">
+        return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="listbox" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto max-w-full rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40 pointer-coarse:text-[16px]" ${attrs}>
             ${icon ? `<i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>` : ''}
             <span data-select-label class="min-w-0 flex-1 truncate ${current ? 'text-text' : 'text-overlay0'}">${ui.esc(current ? current.label : placeholder)}</span>
             <i data-lucide="chevrons-up-down" class="size-4 shrink-0 text-overlay1"></i>
@@ -474,7 +511,7 @@ const ui = {
         });
     },
 
-    toast(message, { tone = 'neutral', icon = 'info', timeout = 3500 } = {}) {
+    toast(message, { tone = 'neutral', icon = 'info', timeout = 3500, action } = {}) {
         let host = document.getElementById('toasts');
         if (!host) {
             host = document.createElement('div');
@@ -482,18 +519,22 @@ const ui = {
             host.className = 'pointer-events-none fixed inset-x-3 bottom-3 z-[80] flex flex-col items-center gap-2 md:inset-x-auto md:right-5 md:bottom-5 md:items-end';
             document.getElementById('layer-root').appendChild(host);
         }
-        const tones = { neutral: 'text-text', green: 'text-green', red: 'text-red', peach: 'text-peach', mauve: 'text-mauve' };
         const el = document.createElement('div');
-        el.className = 'pointer-events-auto flex max-w-md items-center gap-3 rounded-full bg-surface0 py-2.5 pl-4 pr-5 text-sm text-text shadow-xl shadow-crust/70 [animation:toast-in_.18s_ease-out]';
-        el.innerHTML = `<i data-lucide="${icon}" class="size-4 shrink-0 ${tones[tone]}"></i><span>${ui.esc(message)}</span>`;
+        el.className = `pointer-events-auto flex min-h-11 max-w-md items-center gap-3 rounded-full bg-surface0 py-2 pl-4 ${action ? 'pr-2' : 'pr-5'} text-sm text-text shadow-xl shadow-crust/70 [animation:toast-in_.18s_ease-out]`;
+        el.innerHTML = `<i data-lucide="${icon}" class="size-4 shrink-0 ${tone === 'neutral' ? 'text-text' : `text-${tone}`}"></i><span class="min-w-0">${ui.esc(message)}</span>${action ? `<button type="button" class="ml-1 h-7 shrink-0 rounded-full px-3 text-xs font-medium text-mauve transition-colors hover:bg-surface1">${ui.esc(action.label)}</button>` : ''}`;
         host.appendChild(el);
         ui.icons(el);
-        setTimeout(() => {
+        const dismiss = () => {
             el.style.transition = 'opacity .25s, transform .25s';
             el.style.opacity = '0';
             el.style.transform = 'translateY(8px)';
             setTimeout(() => el.remove(), 260);
-        }, timeout);
+        };
+        el.querySelector('button')?.addEventListener('click', () => {
+            action.onClick?.();
+            dismiss();
+        });
+        setTimeout(dismiss, timeout);
     },
 
     empty({ icon, title, hint = '', action = '' }) {
@@ -797,6 +838,32 @@ const column = {
 };
 ui.on('column-toggle', (b) => column.toggle(b));
 
+const fmt = {
+    tokens(n) {
+        if (n < 1000) return String(n);
+        if (n < 1e6) return `${(n / 1000).toFixed(n < 1e4 ? 1 : 0).replace(/\.0$/, '')}k`;
+        return `${(n / 1e6).toFixed(1).replace(/\.0$/, '')}M`;
+    },
+    dur(ms) {
+        const s = Math.max(0, Math.round(ms / 1000));
+        if (s < 60) return `${s}s`;
+        if (s < 3600) return `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`;
+        return `${Math.floor(s / 3600)}h ${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`;
+    },
+    ms(ms) {
+        return ms < 1000 ? `${Math.round(ms)}ms` : fmt.dur(ms);
+    },
+    time(epochSec) {
+        return new Date(epochSec * 1000).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    },
+    day(epochSec) {
+        return new Date(epochSec * 1000).toLocaleDateString([], { weekday: 'short', hour: 'numeric' });
+    },
+    plural(n, word) {
+        return `${n} ${word}${n === 1 ? '' : 's'}`;
+    },
+};
+
 const md = {
     ready: false,
 
@@ -837,9 +904,9 @@ const md = {
         });
     },
 
-    render(container, source) {
+    render(container, source, opts) {
         md.init();
-        container.innerHTML = DOMPurify.sanitize(marked.parse(source));
+        container.innerHTML = DOMPurify.sanitize(marked.parse(source, opts));
         md.mermaid(container);
         ui.icons(container);
     },

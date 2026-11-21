@@ -5,6 +5,8 @@
 
     const tierOf = () => (ui.media.mobile() ? 'mobile' : ui.media.wide() ? 'wide' : 'laptop');
     const project = () => store.state?.projects.find((p) => p.name === S.name);
+    const isAttached = (p) => p?.mode === 'attached';
+    const running = (p) => p.active || (isAttached(p) && views.chat.state(p.name) === 'exited');
     const accountOf = (dir) => store.state?.accounts.find((a) => a.dir === dir);
     const dirname = (path) => path.split('/').slice(0, -1).join('/');
     const folderLabel = (folder) => (folder ? `${folder}/` : 'project root');
@@ -179,7 +181,7 @@
         collapse: true,
     });
 
-    const primary = (p, size) => (p.active
+    const primary = (p, size) => (running(p)
         ? [
             busyButton('restart', 'Restart', { icon: 'rotate-cw', action: 'project-restart', size }),
             busyButton('stop', 'Stop', { icon: 'square', variant: 'danger', action: 'project-stop', size }),
@@ -191,7 +193,7 @@
 
     const railActions = (p) => {
         const b = (key, icon, title, action, variant = 'ghost') => ui.iconButton(S.busy === key ? 'loader-circle' : icon, { title, action, variant, spin: S.busy === key, disabled: !!S.busy });
-        return p.active
+        return running(p)
             ? b('restart', 'rotate-cw', 'Restart', 'project-restart') + b('stop', 'square', 'Stop', 'project-stop', 'danger')
             : b('continue', 'play', 'Continue', 'project-continue') + b('new', 'plus', 'New session', 'project-new');
     };
@@ -211,10 +213,14 @@
         const remote = p.rcName
             ? `<span class="flex items-center gap-1.5"><i data-lucide="radio-tower" class="size-3.5 shrink-0 text-overlay1"></i><span class="min-w-0 wrap-anywhere">${ui.esc(p.rcName)}</span></span>`
             : '<span class="text-overlay1">Off</span>';
+        const state = isAttached(p) ? views.chat.state(p.name) : null;
+        const snap = isAttached(p) ? views.chat.snapshot(p.name) : null;
         return `
             <section>
                 <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-5 gap-y-3 px-2 pt-1 text-sm">
-                    ${row('Status', ui.status(p.active))}
+                    ${row('Status', state ? live.stateChip(state) : ui.status(p.active))}
+                    ${snap ? row('Model', views.chat.modelLabel(snap)) : ''}
+                    ${snap ? row('Permissions', ui.esc(views.chat.modeLabel(snap.permissionMode || 'default'))) : ''}
                     ${row('Started', p.active && p.startedAt ? ui.timeAgo(p.startedAt) : 'Not running')}
                     ${row('Last active', ui.timeAgo(p.lastActive))}
                     ${p.mode === 'attached' ? '' : row('Remote Control', remote)}
@@ -223,6 +229,7 @@
                     ${row('Connectors', p.active ? ui.toggle({ name: 'project-connectors', checked: p.connectors, label: 'Connectors', disabled: busy }) : '<span class="text-overlay1">n/a</span>')}
                 </dl>
             </section>
+            ${isAttached(p) ? '<div data-p-live class="flex flex-col gap-6 empty:hidden"></div>' : ''}
             ${p.stash ? `
             <section class="flex items-center gap-3 rounded-2xl bg-peach/10 p-3">
                 <i data-lucide="archive-restore" class="size-5 shrink-0 text-peach"></i>
@@ -270,6 +277,7 @@
             ${ui.iconButton('info', { title: 'Session details', action: 'project-toggle-details' })}`);
         paint($('[data-p-details-body]'), detailsHtml(p));
         if (S.sheet?.el.isConnected) paint(S.sheet.el.querySelector('[data-p-sheet]'), detailsHtml(p));
+        if (isAttached(p)) views.chat.paintLive();
     };
 
     const treeRows = (node, depth) => node.children.map((c) => {
@@ -355,6 +363,7 @@
         }
         S.selected = path;
         S.folder = dirname(path);
+        showPane('file');
         if (expandTo(path) || !$(`[data-p-tree-list] [data-path="${CSS.escape(path)}"]`)) renderTree();
         markSelected();
         if (S.tier === 'mobile') setDrawer(false);
@@ -648,11 +657,40 @@
 
     const panelBtn = (icon, title, action, attrs = '') => ui.iconButton(icon, { title, action, size: 'sm', attrs });
 
-    const centerHtml = () => `
-        <header data-p-viewer-header class="flex min-h-14 shrink-0 flex-wrap items-center gap-2 px-3 py-2 md:min-h-16 md:px-4 3xl:px-6"></header>
+    const viewerHtml = (head) => `
+        <header data-p-viewer-header class="flex ${head} shrink-0 flex-wrap items-center gap-2 px-3 md:px-4 3xl:px-6"></header>
         <div data-p-content class="relative flex min-h-0 flex-1 flex-col"></div>`;
 
+    const centerHtml = () => (S.centerMode === 'attached'
+        ? `<header data-p-center-tabs class="flex min-h-14 shrink-0 items-center gap-2 px-3 py-2 md:min-h-16 md:px-4 3xl:px-6"></header>
+            <div data-p-pane="chat" class="flex min-h-0 flex-1 flex-col">${views.chat.html()}</div>
+            <div data-p-pane="file" hidden class="flex min-h-0 flex-1 flex-col">${viewerHtml('pb-2')}</div>`
+        : viewerHtml('min-h-14 py-2 md:min-h-16'));
+
+    const renderTabs = () => {
+        const host = $('[data-p-center-tabs]');
+        if (!host) return;
+        const options = [{ value: 'chat', label: 'Chat', icon: 'message-square' }];
+        if (S.selected) options.push({ value: 'file', label: S.selected.split('/').pop(), icon: fileIcon(S.index.get(S.selected) || { name: S.selected })[0] });
+        host.innerHTML = `<span class="min-w-0 overflow-x-auto">${ui.segmented({ name: 'project-pane', value: S.pane, options })}</span>
+            <span class="ml-auto ${S.pane === 'chat' ? '' : 'hidden'}">${ui.iconButton('fold-horizontal', { title: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>`;
+        ui.icons(host);
+    };
+
+    const showPane = (which) => {
+        if (S.centerMode !== 'attached') return;
+        if (S.pane === 'chat' && which !== 'chat') views.chat.saveScroll();
+        S.pane = which;
+        S.el.querySelectorAll('[data-p-pane]').forEach((el) => { el.hidden = el.dataset.pPane !== which; });
+        if (which === 'chat') views.chat.restoreScroll();
+        renderTabs();
+    };
+
     const mountCenter = () => {
+        if (S.centerMode === 'attached') {
+            views.chat.mount($('[data-p-pane="chat"]'), S.name, { onSession: renderSession });
+            renderTabs();
+        }
         const content = $('[data-p-content]');
         content.addEventListener('click', markdownLinks);
         new ResizeObserver(() => {
@@ -716,11 +754,14 @@
     };
 
     const render = () => {
+        views.chat.unmount();
         S.tier = tierOf();
         S.panels = {};
         S.sheet?.close();
         reader.close();
         const p = project();
+        S.centerMode = p?.mode === 'attached' ? 'attached' : 'detached';
+        if (S.centerMode !== 'attached') S.pane = 'chat';
         if (!p) {
             S.el.innerHTML = `<section class="h-full rounded-3xl bg-mantle">${ui.empty({
                 icon: 'folder-x',
@@ -749,6 +790,7 @@
         });
         $('[data-p-tree-list]').addEventListener('keydown', treeKeys);
         root.addEventListener('ui-change', (e) => {
+            if (e.detail.name === 'project-pane') showPane(e.detail.value);
             if (e.detail.name !== 'project-mode') return;
             S.mode = e.detail.value;
             renderViewer(true);
@@ -760,11 +802,12 @@
         if (S.tree) {
             renderTree();
             renderViewer(false);
+            showPane(S.pane);
         } else {
             renderViewer(true);
             loadTree().then(() => {
                 renderTree();
-                openFile(defaultPath());
+                if (S.centerMode !== 'attached') openFile(defaultPath());
             });
         }
     };
@@ -1125,7 +1168,10 @@
     ui.on('project-restart', restart);
     ui.on('project-stop', async () => {
         const p = project();
-        const yes = await ui.confirm({ title: `Stop ${p.name}?`, icon: 'square', danger: true, confirmLabel: 'Stop session', message: `Closes the <span class="font-mono text-text">claudex:${ui.esc(p.name)}</span> tmux window. The conversation stays on disk, so Continue picks it up later.` });
+        const message = isAttached(p)
+            ? 'Stops the claude process, its turn, and its background tasks. The conversation stays on disk, so Continue picks it up later.'
+            : `Closes the <span class="font-mono text-text">claudex:${ui.esc(p.name)}</span> tmux window. The conversation stays on disk, so Continue picks it up later.`;
+        const yes = await ui.confirm({ title: `Stop ${p.name}?`, icon: 'square', danger: true, confirmLabel: 'Stop session', message });
         if (!yes) return;
         const r = await runBusy('stop', 'Stop', () => api.stop(p.name), { success: `Stopped ${p.name}` });
         if (r.ok) app.go('#/');
@@ -1219,6 +1265,8 @@
                 dragDepth: 0,
                 headings: [],
                 sheet: null,
+                centerMode: 'detached',
+                pane: 'chat',
             };
             document.addEventListener('dragenter', onDragEnter);
             document.addEventListener('dragover', onDragOver);
@@ -1238,11 +1286,16 @@
                 render();
                 return;
             }
+            if ((p.mode === 'attached' ? 'attached' : 'detached') !== S.centerMode) {
+                render();
+                return;
+            }
             renderSession();
             const cur = S;
             await loadTree();
             if (S !== cur || !$('[data-project]')) return;
             renderTree();
+            if (S.centerMode === 'attached' && !S.selected) return;
             const node = S.index.get(S.selected);
             if (!node || node.type === 'dir') return openFile(defaultPath());
             markSelected();
@@ -1264,6 +1317,7 @@
             document.removeEventListener('keydown', onKey);
             mqs.forEach((q) => q.removeEventListener('change', onMedia));
             reader.close();
+            views.chat.unmount();
             S.sheet?.close();
             S = null;
         },

@@ -14,10 +14,13 @@ views.dashboard = {
         this.root.addEventListener('ui-change', (e) => {
             if (e.detail.name === 'dash-tab') this.setTab(e.detail.value);
         });
+        this.onLive = () => this.paint();
+        document.addEventListener('live-summary', this.onLive);
         this.update();
     },
 
     unmount() {
+        document.removeEventListener('live-summary', this.onLive);
         this.root = null;
     },
 
@@ -169,6 +172,8 @@ views.dashboard = {
     card(p) {
         const busy = this.local.busy.get(p.name);
         const name = ui.esc(p.name);
+        const attached = p.mode === 'attached';
+        const run = live.summary[p.name];
         const meta = [
             { icon: 'clock', label: 'Started', value: ui.esc(ui.timeAgo(p.startedAt)) },
             this.multiAccount() && { icon: 'user-round', label: 'Account', value: ui.esc(this.accountLabel(p.account)) },
@@ -177,11 +182,12 @@ views.dashboard = {
         return `<li>
             <article data-action="dash-open" data-name="${name}" class="flex h-full cursor-pointer flex-col gap-3 rounded-3xl bg-mantle p-4 transition-colors hover:bg-base ${busy ? 'opacity-70' : ''}">
                 <header class="flex items-center gap-3">
-                    <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="folder-git-2" class="size-5"></i></span>
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="${attached ? 'messages-square' : 'folder-git-2'}" class="size-5"></i></span>
                     <div class="min-w-0 flex-1">
                         <h3 class="font-display leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${name}</a></h3>
                         <p class="truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
                     </div>
+                    ${attached && run ? `<span class="flex shrink-0 flex-col items-end gap-1">${live.stateChip(run.state)}${run.pending ? ui.chip(`${run.pending} pending`, { tone: 'yellow', icon: 'shield-question' }) : ''}</span>` : ''}
                 </header>
                 <dl class="grid grid-cols-2 gap-x-4 gap-y-3">
                     ${meta.map((m) => `<div class="min-w-0">
@@ -236,10 +242,12 @@ views.dashboard = {
 
     row(p) {
         const name = ui.esc(p.name);
+        const exited = p.mode === 'attached' && live.summary[p.name]?.state === 'exited';
         return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
             <span class="min-w-0 flex-1">
                 <span class="flex items-baseline gap-2">
                     <span class="min-w-0 text-sm font-medium wrap-anywhere text-text">${name}</span>
+                    ${exited ? `<span class="shrink-0 self-center">${live.stateChip('exited')}</span>` : ''}
                     <span class="shrink-0 text-xs text-overlay1" title="Last active">${ui.esc(ui.timeAgo(p.lastActive))}</span>
                 </span>
                 <span class="block truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</span>
@@ -318,10 +326,13 @@ ui.on('dash-restart', (el) => {
 
 ui.on('dash-stop', async (el) => {
     const { name } = el.dataset;
+    const attached = store.state.projects.find((p) => p.name === name)?.mode === 'attached';
     const ok = await ui.confirm({
         title: `Stop ${name}?`,
         icon: 'square',
-        message: `This closes the tmux window <span class="font-mono text-text">claudex:${ui.esc(name)}</span> and ends its Remote Control session. The conversation stays on disk, so Continue picks it up.`,
+        message: attached
+            ? 'This stops the claude process, its turn, and its background tasks. The conversation stays on disk, so Continue picks it up.'
+            : `This closes the tmux window <span class="font-mono text-text">claudex:${ui.esc(name)}</span> and ends its Remote Control session. The conversation stays on disk, so Continue picks it up.`,
         confirmLabel: 'Stop session',
         danger: true,
     });
