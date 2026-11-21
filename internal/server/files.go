@@ -67,6 +67,8 @@ func classify(name string, head []byte) (kind, lang string) {
 	switch {
 	case ext == ".md" || ext == ".markdown" || ext == ".mdx":
 		return "markdown", ""
+	case ext == ".pdf":
+		return "pdf", ""
 	case slices.Contains(imageExts, ext):
 		return "image", ""
 	}
@@ -217,8 +219,8 @@ func (s *Server) handleFile(r *http.Request) (any, error) {
 	size := info.Size()
 	view.Size = &size
 	kind, lang := classify(info.Name(), nil)
-	if kind == "image" {
-		view.Kind, view.URL = "image", rawURL(name, query)
+	if kind == "image" || kind == "pdf" {
+		view.Kind, view.URL = kind, rawURL(name, query)
 		return view, nil
 	}
 	if size > maxTextFile {

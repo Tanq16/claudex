@@ -189,6 +189,8 @@ const ui = {
         panel: 'rounded-3xl bg-mantle',
         well: 'rounded-2xl bg-base',
         row: 'rounded-2xl transition-colors hover:bg-surface0',
+        group: 'px-3 pt-4 pb-1 text-[11px] font-medium uppercase tracking-wider text-overlay0',
+        reveal: 'opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100 has-[[aria-expanded=true]]:opacity-100 max-md:opacity-100',
     },
 
     button(label, { icon, variant = 'secondary', size = 'md', action, attrs = '', disabled = false, collapse = false, spin = false, type = 'button' } = {}) {
@@ -206,14 +208,15 @@ const ui = {
         return `<button type="${type}" class="inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none ${collapse ? 'max-sm:w-10 max-sm:px-0' : ''} ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${collapse ? `title="${ui.esc(label)}"` : ''} ${attrs}>${iconHtml}${labelHtml}</button>`;
     },
 
-    iconButton(icon, { title = '', action, variant = 'ghost', size = 'md', attrs = '', spin = false, disabled = false } = {}) {
+    iconButton(icon, { title = '', action, variant = 'ghost', size = 'md', attrs = '', spin = false, disabled = false, pressed } = {}) {
         const variants = {
-            ghost: 'text-overlay1 hover:bg-surface0 hover:text-text',
+            ghost: 'text-overlay1 hover:bg-surface0 hover:text-text aria-pressed:bg-surface0 aria-pressed:text-text',
+            inset: 'text-overlay1 hover:bg-surface1 hover:text-text aria-pressed:bg-surface1 aria-pressed:text-text',
             secondary: 'bg-surface0 text-text hover:bg-surface1',
             danger: 'text-red hover:bg-red/15',
         };
         const sizes = { sm: 'size-8', md: 'size-10' };
-        return `<button type="button" title="${ui.esc(title)}" aria-label="${ui.esc(title)}" class="inline-flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}><i data-lucide="${icon}" class="size-4 ${spin ? 'animate-spin' : ''}"></i></button>`;
+        return `<button type="button" title="${ui.esc(title)}" aria-label="${ui.esc(title)}" ${pressed === undefined ? '' : `aria-pressed="${pressed}"`} class="inline-flex shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-50 disabled:pointer-events-none ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}><i data-lucide="${icon}" class="size-4 ${spin ? 'animate-spin' : ''}"></i></button>`;
     },
 
     chip(text, { tone = 'neutral', icon, mono = false, title = '' } = {}) {
@@ -247,6 +250,10 @@ const ui = {
             <span class="min-w-0 flex-1"><span class="block text-sm text-text">${ui.esc(label)}</span>${hint ? `<span class="block text-xs text-overlay1">${ui.esc(hint)}</span>` : ''}</span>
             <span class="flex h-6 w-11 shrink-0 items-center rounded-full bg-surface1 p-0.5 transition-colors group-aria-checked:bg-mauve"><span class="size-5 rounded-full bg-text shadow transition-transform group-aria-checked:translate-x-5 group-aria-checked:bg-crust"></span></span>
         </button>`;
+    },
+
+    toggle({ name, checked = false, label, disabled = false }) {
+        return `<button type="button" role="switch" data-ui="switch" data-name="${ui.esc(name)}" aria-checked="${checked}" aria-label="${ui.esc(label)}" ${disabled ? 'disabled' : ''} class="group flex h-6 w-11 shrink-0 items-center rounded-full bg-surface1 p-0.5 transition-colors aria-checked:bg-mauve disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40"><span class="size-5 rounded-full bg-text transition-transform group-aria-checked:translate-x-5 group-aria-checked:bg-crust"></span></button>`;
     },
 
     segmented({ name, value, options, full = false }) {
@@ -307,7 +314,7 @@ const ui = {
 
         const pop = ui.popover.open(button, `
             ${searchable ? `<input data-select-search class="${ui.cls.input} mb-1" placeholder="Search">` : ''}
-            <ul role="listbox" data-scroll class="max-h-72 overflow-y-auto">${listHtml()}</ul>`, {
+            <ul role="listbox" data-scroll="lane" class="-mr-1.5 max-h-72 overflow-y-auto">${listHtml()}</ul>`, {
             matchWidth: true,
             onClose: () => button.setAttribute('aria-expanded', 'false'),
         });
@@ -395,10 +402,10 @@ const ui = {
     },
 
     menu(anchor, items) {
-        const el = ui.popover.open(anchor, items.map((item, i) => item === '-' ? '<span class="my-1 block h-px"></span>' : `
+        const el = ui.popover.open(anchor, `<div data-scroll class="max-h-[min(28rem,70dvh)] overflow-y-auto">${items.map((item, i) => item === '-' ? '<span class="my-1 block h-px"></span>' : `
             <button type="button" data-menu-index="${i}" ${item.disabled ? 'disabled' : ''} class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors disabled:opacity-40 ${item.danger ? 'text-red hover:bg-red/10' : 'text-subtext0 hover:bg-surface0 hover:text-text'}">
                 <i data-lucide="${item.icon}" class="size-4 shrink-0"></i><span class="min-w-0 flex-1"><span class="block">${ui.esc(item.label)}</span>${item.hint ? `<span class="block text-xs text-overlay1">${ui.esc(item.hint)}</span>` : ''}</span>
-            </button>`).join(''), { align: 'end', width: 260 });
+            </button>`).join('')}</div>`, { align: 'end', width: 260 });
         el.addEventListener('click', (e) => {
             const b = e.target.closest('[data-menu-index]');
             if (!b) return;
@@ -526,20 +533,31 @@ const ui = {
         return 'just now';
     },
 
-    async copy(text) {
+    async copy(text, button) {
         try {
             await navigator.clipboard.writeText(text);
         } catch {
-            const ta = document.createElement('textarea');
-            ta.value = text;
-            ta.style.position = 'fixed';
-            ta.style.opacity = '0';
+            const ta = Object.assign(document.createElement('textarea'), { value: text });
+            ta.style.cssText = 'position:fixed;opacity:0';
             document.body.appendChild(ta);
             ta.select();
             document.execCommand('copy');
             ta.remove();
         }
-        ui.toast('Copied to clipboard', { tone: 'green', icon: 'clipboard-check', timeout: 1800 });
+        if (!button) {
+            ui.toast('Copied to clipboard', { tone: 'green', icon: 'clipboard-check', timeout: 1800 });
+            return;
+        }
+        button.dataset.titleIdle ??= button.title;
+        button.innerHTML = '<i data-lucide="check" class="size-4 text-green"></i>';
+        button.title = 'Copied';
+        ui.icons(button);
+        clearTimeout(button._copied);
+        button._copied = setTimeout(() => {
+            button.innerHTML = '<i data-lucide="copy" class="size-4"></i>';
+            button.title = button.dataset.titleIdle;
+            ui.icons(button);
+        }, 1500);
     },
 
     initScrollObserver() {
@@ -553,64 +571,132 @@ const ui = {
         }).observe(document.body, { childList: true, subtree: true });
     },
 
+    scrollLane: 14,
+
+    anchor(el) {
+        if (!/(^|\s)(relative|absolute|fixed|sticky)(\s|$)/.test(el.className)) el.classList.add('relative');
+    },
+
     scrollbar(el) {
         if (el._scrollbar) return;
         el._scrollbar = true;
         const host = el.parentElement;
-        if (getComputedStyle(el).position === 'static') el.style.position = 'relative';
-        if (getComputedStyle(host).position === 'static') host.style.position = 'relative';
-        const thumb = document.createElement('span');
-        thumb.setAttribute('aria-hidden', 'true');
-        thumb.className = 'absolute top-0 z-20 w-1.5 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,background-color] duration-300 hover:w-2 hover:bg-overlay1 cursor-default';
-        host.appendChild(thumb);
+        ui.anchor(el);
+        ui.anchor(host);
+        const thumb = (cls) => {
+            const t = document.createElement('span');
+            t.setAttribute('aria-hidden', 'true');
+            t.className = `absolute z-20 rounded-full bg-overlay0/60 opacity-0 transition-[opacity,width,height,background-color] duration-300 hover:bg-overlay1 cursor-default ${cls}`;
+            t.style.pointerEvents = 'none';
+            host.appendChild(t);
+            return t;
+        };
+        const ty = thumb('top-0 w-1.5 hover:w-2');
+        const tx = thumb('left-0 h-1.5 hover:h-2');
         let hideTimer;
         let dragging = null;
+        let lane = -1;
+        let tall = false;
+        let wide = false;
+        let track = [6, 6];
+        let trackX = [6, 6];
+
+        const fit = () => {
+            const px = (node, prop) => parseFloat(getComputedStyle(node)[prop]) || 0;
+            const want = el.dataset.scroll === 'lane' ? Math.max(0, ui.scrollLane - px(el, 'paddingRight')) : 0;
+            if (want !== lane) {
+                lane = want;
+                el.style.borderRight = lane ? `${lane}px solid transparent` : '';
+            }
+            wide = ['auto', 'scroll'].includes(getComputedStyle(el).overflowX) && el.scrollWidth - el.clientWidth > 1;
+            tall = el.scrollHeight - el.clientHeight > 1;
+            const above = el.offsetTop;
+            const below = host.clientHeight - el.offsetTop - el.offsetHeight;
+            const corner = Math.max(px(el, 'borderBottomRightRadius') / 2, px(host, 'borderBottomRightRadius') / 2 - below);
+            track = [
+                Math.max(6, px(el, 'borderTopRightRadius') / 2, px(host, 'borderTopRightRadius') / 2 - above),
+                Math.max(6, corner, wide ? ui.scrollLane : 0),
+            ];
+            trackX = [
+                Math.max(6, px(el, 'borderBottomLeftRadius') / 2, px(host, 'borderBottomLeftRadius') / 2 - below),
+                Math.max(6, corner, tall ? ui.scrollLane - lane : 0),
+            ];
+        };
 
         const place = () => {
-            const { scrollTop, scrollHeight, clientHeight } = el;
-            const overflow = scrollHeight - clientHeight;
-            if (overflow <= 1) {
-                thumb.style.display = 'none';
-                return false;
+            fit();
+            ty.style.display = tall ? '' : 'none';
+            tx.style.display = wide ? '' : 'none';
+            if (tall) {
+                const { scrollTop, scrollHeight, clientHeight } = el;
+                const room = clientHeight - track[0] - track[1];
+                const h = Math.max(28, (clientHeight / scrollHeight) * room);
+                ty.style.right = `${host.clientWidth - el.offsetLeft - el.offsetWidth + 4}px`;
+                ty.style.height = `${h}px`;
+                ty.style.transform = `translateY(${el.offsetTop + track[0] + (scrollTop / (scrollHeight - clientHeight)) * (room - h)}px)`;
             }
-            thumb.style.display = '';
-            const h = Math.max(28, (clientHeight / scrollHeight) * clientHeight - 8);
-            const top = el.offsetTop + 4 + (scrollTop / overflow) * (clientHeight - h - 8);
-            thumb.style.right = `${host.clientWidth - el.offsetLeft - el.clientWidth + 2}px`;
-            thumb.style.height = `${h}px`;
-            thumb.style.transform = `translateY(${top}px)`;
-            return true;
+            if (wide) {
+                const { scrollLeft, scrollWidth, clientWidth } = el;
+                const room = clientWidth - trackX[0] - trackX[1];
+                const w = Math.max(28, (clientWidth / scrollWidth) * room);
+                tx.style.bottom = `${host.clientHeight - el.offsetTop - el.offsetHeight + 4}px`;
+                tx.style.width = `${w}px`;
+                tx.style.transform = `translateX(${el.offsetLeft + trackX[0] + (scrollLeft / (scrollWidth - clientWidth)) * (room - w)}px)`;
+            }
+            return tall || wide;
+        };
+        const hide = () => {
+            if (dragging || ty.matches(':hover') || tx.matches(':hover')) return;
+            for (const t of [ty, tx]) {
+                t.style.opacity = '0';
+                t.style.pointerEvents = 'none';
+            }
         };
         const show = () => {
             if (!place()) return;
-            thumb.style.opacity = '1';
+            for (const t of [ty, tx]) {
+                t.style.opacity = '1';
+                t.style.pointerEvents = '';
+            }
             clearTimeout(hideTimer);
-            hideTimer = setTimeout(() => { if (!dragging) thumb.style.opacity = '0'; }, 900);
+            hideTimer = setTimeout(hide, 900);
         };
         el.addEventListener('scroll', show, { passive: true });
         el.addEventListener('pointerenter', show);
+        el.addEventListener('pointermove', (e) => {
+            const r = el.getBoundingClientRect();
+            if (r.right - e.clientX < 16 || r.bottom - e.clientY < 16) show();
+        });
         new ResizeObserver(() => place()).observe(el);
         new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
-        thumb.addEventListener('pointerdown', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            thumb.setPointerCapture(e.pointerId);
-            dragging = { y: e.clientY, top: el.scrollTop };
-        });
-        thumb.addEventListener('pointermove', (e) => {
-            if (!dragging) return;
-            const ratio = (el.scrollHeight - el.clientHeight) / (el.clientHeight - thumb.offsetHeight - 8);
-            el.scrollTop = dragging.top + (e.clientY - dragging.y) * ratio;
-        });
-        thumb.addEventListener('pointerup', () => {
-            dragging = null;
-            show();
-        });
+        const drag = (t, vertical) => {
+            t.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                t.setPointerCapture(e.pointerId);
+                dragging = vertical ? { at: e.clientY, from: el.scrollTop } : { at: e.clientX, from: el.scrollLeft };
+            });
+            t.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                if (vertical) el.scrollTop = dragging.from + ((e.clientY - dragging.at) * (el.scrollHeight - el.clientHeight)) / (el.clientHeight - t.offsetHeight - track[0] - track[1]);
+                else el.scrollLeft = dragging.from + ((e.clientX - dragging.at) * (el.scrollWidth - el.clientWidth)) / (el.clientWidth - t.offsetWidth - trackX[0] - trackX[1]);
+            });
+            t.addEventListener('pointerup', () => {
+                dragging = null;
+                show();
+            });
+            t.addEventListener('pointerleave', () => {
+                clearTimeout(hideTimer);
+                hideTimer = setTimeout(hide, 900);
+            });
+        };
+        drag(ty, true);
+        drag(tx, false);
         place();
     },
 
-    sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collapsed = false }) {
+    sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collapsed = false, divider = false }) {
         const load = (k, fallback) => {
             try {
                 const v = localStorage.getItem(`claudex.${key}.${k}`);
@@ -624,22 +710,26 @@ const ui = {
         };
         const state = { width: load('width', initial), collapsed: load('collapsed', collapsed) };
         panel.style.flexShrink = '0';
-        if (getComputedStyle(panel).position === 'static') panel.style.position = 'relative';
+        ui.anchor(panel);
 
         const handle = document.createElement('span');
         handle.setAttribute('role', 'separator');
         handle.setAttribute('aria-orientation', 'vertical');
         handle.title = 'Drag to resize, double-click to reset';
-        handle.className = `group/handle absolute inset-y-0 ${side === 'left' ? '-right-2.5' : '-left-2.5'} z-30 flex w-3 cursor-col-resize touch-none items-center justify-center`;
-        handle.innerHTML = '<span class="h-10 w-1 rounded-full bg-surface1 opacity-0 transition-opacity group-hover/handle:opacity-100 group-active/handle:bg-mauve group-active/handle:opacity-100"></span>';
+        handle.className = `group/handle absolute inset-y-0 ${side === 'left' ? '-right-2.5' : '-left-2.5'} z-30 flex w-3 cursor-col-resize touch-none justify-center ${divider ? 'items-start' : 'items-center'}`;
+        handle.innerHTML = divider
+            ? '<span class="mt-9 h-12 w-px rounded-full bg-surface1 transition-[width,background-color] group-hover/handle:w-1 group-hover/handle:bg-surface2 group-active/handle:w-1 group-active/handle:bg-mauve"></span>'
+            : '<span class="h-10 w-1 rounded-full bg-surface1 opacity-0 transition-opacity group-hover/handle:opacity-100 group-active/handle:bg-mauve group-active/handle:opacity-100"></span>';
         panel.appendChild(handle);
 
         const apply = (animate) => {
             panel.style.transition = animate ? 'width .2s ease, opacity .2s ease, margin .2s ease' : 'none';
             panel.style.width = state.collapsed ? '0px' : `${state.width}px`;
+            panel.style.margin = state.collapsed ? '0' : '';
             panel.style.opacity = state.collapsed ? '0' : '1';
             panel.style.overflow = state.collapsed ? 'hidden' : '';
             panel.style.pointerEvents = state.collapsed ? 'none' : '';
+            panel.inert = state.collapsed;
             panel.dataset.collapsed = String(state.collapsed);
             handle.style.display = state.collapsed ? 'none' : '';
             ctl.onToggle?.(state.collapsed);
@@ -690,4 +780,182 @@ const ui = {
         mobile: () => matchMedia('(max-width: 767px)').matches,
         wide: () => matchMedia('(min-width: 1920px)').matches,
     },
+};
+
+const column = {
+    confined: localStorage.getItem('claudex.column') === 'confined',
+    cls: () => (column.confined ? 'max-w-4xl' : 'max-w-full'),
+    toggle(b) {
+        column.confined = !column.confined;
+        try { localStorage.setItem('claudex.column', column.confined ? 'confined' : 'full'); } catch {}
+        document.querySelectorAll('[data-column]').forEach((n) => {
+            n.classList.toggle('max-w-4xl', column.confined);
+            n.classList.toggle('max-w-full', !column.confined);
+        });
+        b.setAttribute('aria-pressed', String(column.confined));
+    },
+};
+ui.on('column-toggle', (b) => column.toggle(b));
+
+const md = {
+    ready: false,
+
+    slug(text) {
+        return String(text).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    },
+
+    init() {
+        if (md.ready) return;
+        md.ready = true;
+        const icons = { tip: 'lightbulb', info: 'info', danger: 'triangle-alert', warning: 'triangle-alert', note: 'sticky-note' };
+        marked.use({
+            renderer: {
+                code({ text, lang }) {
+                    if (lang === 'mermaid') return `<div class="mermaid" data-scroll>${ui.esc(text)}</div>`;
+                    const language = hljs.getLanguage(lang) ? lang : 'plaintext';
+                    let html = ui.esc(text);
+                    try {
+                        html = hljs.highlight(text, { language }).value;
+                    } catch {}
+                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { title: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                },
+                checkbox({ checked }) {
+                    return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
+                },
+                heading({ tokens, depth }) {
+                    const text = this.parser.parseInline(tokens);
+                    return `<h${depth} id="${md.slug(text.replace(/<[^>]*>/g, ''))}">${text}</h${depth}>`;
+                },
+                blockquote(token) {
+                    const body = this.parser.parse(token.tokens);
+                    const match = token.text.match(/^\[!(TIP|NOTE|INFO|WARNING|DANGER)\]/i);
+                    if (!match) return `<blockquote>${body}</blockquote>`;
+                    const type = match[1].toLowerCase();
+                    return `<div class="callout ${type}"><span class="callout-icon"><i data-lucide="${icons[type]}"></i></span><div class="callout-content">${body.replace(/<p>\s*\[!\w+\]\s*/i, '<p>')}</div></div>`;
+                },
+            },
+        });
+    },
+
+    render(container, source) {
+        md.init();
+        container.innerHTML = DOMPurify.sanitize(marked.parse(source));
+        md.mermaid(container);
+        ui.icons(container);
+    },
+
+    mermaid(container) {
+        const nodes = [...container.querySelectorAll('.mermaid')];
+        if (!nodes.length) return;
+        nodes.forEach((n) => {
+            n.dataset.src ??= n.textContent;
+            n.removeAttribute('data-processed');
+            n.textContent = n.dataset.src;
+        });
+        mermaid.initialize(mermaidConfig());
+        document.fonts.ready
+            .then(() => mermaid.run({ nodes }))
+            .catch((err) => ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
+    },
+};
+ui.on('md-copy', (b) => ui.copy(b.closest('.group').querySelector('code').textContent, b));
+
+const mermaidConfig = () => {
+    const css = getComputedStyle(document.documentElement);
+    const c = (name) => css.getPropertyValue(`--ctp-${name}`).trim();
+    return {
+        startOnLoad: false,
+        theme: 'base',
+        fontFamily: 'Inter',
+        ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
+        themeVariables: {
+            darkMode: !document.documentElement.classList.contains('light'),
+            background: c('base'),
+            mainBkg: c('base'),
+
+            primaryColor: c('surface0'),
+            primaryTextColor: c('text'),
+            primaryBorderColor: c('blue'),
+            secondaryColor: c('surface1'),
+            secondaryTextColor: c('text'),
+            secondaryBorderColor: c('overlay1'),
+            tertiaryColor: c('surface0'),
+            tertiaryTextColor: c('text'),
+            tertiaryBorderColor: c('surface2'),
+
+            lineColor: c('blue'),
+            arrowheadColor: c('blue'),
+            textColor: c('text'),
+            titleColor: c('mauve'),
+            noteBkgColor: c('surface1'),
+            noteTextColor: c('yellow'),
+            noteBorderColor: c('surface2'),
+
+            nodeBkg: c('surface0'),
+            nodeBorder: c('blue'),
+            clusterBkg: c('mantle'),
+            clusterBorder: c('surface2'),
+            defaultLinkColor: c('blue'),
+            edgeLabelBackground: c('surface0'),
+            nodeTextColor: c('text'),
+
+            actorBkg: c('surface0'),
+            actorBorder: c('blue'),
+            actorTextColor: c('text'),
+            actorLineColor: c('surface2'),
+            signalColor: c('pink'),
+            signalTextColor: c('text'),
+            labelBoxBkgColor: c('surface1'),
+            labelBoxBorderColor: c('surface2'),
+            labelTextColor: c('text'),
+            loopTextColor: c('yellow'),
+            activationBorderColor: c('mauve'),
+            activationBkgColor: c('surface1'),
+            sequenceNumberColor: c('base'),
+
+            sectionBkgColor: c('mantle'),
+            altSectionBkgColor: c('base'),
+            sectionBkgColor2: c('crust'),
+            taskBkgColor: c('blue'),
+            taskBorderColor: c('lavender'),
+            taskTextColor: c('base'),
+            taskTextLightColor: c('base'),
+            taskTextDarkColor: c('text'),
+            taskTextOutsideColor: c('text'),
+            taskTextClickableColor: c('sky'),
+            activeTaskBkgColor: c('mauve'),
+            activeTaskBorderColor: c('pink'),
+            doneTaskBkgColor: c('surface1'),
+            doneTaskBorderColor: c('surface2'),
+            critBkgColor: c('red'),
+            critBorderColor: c('maroon'),
+            gridColor: c('surface0'),
+            todayLineColor: c('red'),
+
+            pie1: c('mauve'), pie2: c('blue'), pie3: c('green'), pie4: c('yellow'),
+            pie5: c('red'), pie6: c('teal'), pie7: c('peach'), pie8: c('sky'),
+            pie9: c('pink'), pie10: c('sapphire'), pie11: c('maroon'), pie12: c('lavender'),
+            pieTitleTextColor: c('text'),
+            pieSectionTextColor: c('base'),
+            pieLegendTextColor: c('text'),
+            pieStrokeColor: c('base'),
+            pieOuterStrokeColor: c('surface0'),
+
+            git0: c('blue'), git1: c('mauve'), git2: c('green'), git3: c('yellow'),
+            git4: c('red'), git5: c('teal'), git6: c('peach'), git7: c('sapphire'),
+            gitInv0: c('base'), gitInv1: c('base'), gitInv2: c('base'), gitInv3: c('base'),
+            gitInv4: c('base'), gitInv5: c('base'), gitInv6: c('base'), gitInv7: c('base'),
+            commitLabelColor: c('subtext1'),
+            commitLabelBackground: c('base'),
+            tagLabelColor: c('base'),
+            tagLabelBackground: c('yellow'),
+            tagLabelBorder: c('peach'),
+
+            labelBackgroundColor: c('surface0'),
+
+            cScale0: c('surface0'), cScale1: c('blue'), cScale2: c('mauve'), cScale3: c('green'),
+            cScale4: c('yellow'), cScale5: c('red'), cScale6: c('teal'), cScale7: c('peach'),
+            cScale8: c('sky'), cScale9: c('pink'), cScale10: c('sapphire'), cScale11: c('lavender'),
+        },
+    };
 };
