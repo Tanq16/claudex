@@ -40,6 +40,8 @@ const api = (() => {
         restart: (name) => post(`${project(name)}/restart`),
         switchAccount: (name, account) => post(`${project(name)}/switch`, { account }),
         untrack: (name) => del(project(name)),
+        track: (name, foreignChoice) => post(`${project(name)}/track`, { foreignChoice }),
+        setConnectors: (name, connectors) => put(`${project(name)}/connectors`, { connectors }),
 
         cleanCwd: (name) => post(`${project(name)}/clean`),
         restoreResume: (name) => post(`${project(name)}/restore-resume`),

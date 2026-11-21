@@ -107,6 +107,8 @@ func (s *Server) Setup() error {
 	s.mux.HandleFunc("POST /api/projects/{name}/restart", s.api(s.handleRestart))
 	s.mux.HandleFunc("POST /api/projects/{name}/switch", s.api(s.handleSwitch))
 	s.mux.HandleFunc("DELETE /api/projects/{name}", s.api(s.handleUntrack))
+	s.mux.HandleFunc("POST /api/projects/{name}/track", s.api(s.handleTrack))
+	s.mux.HandleFunc("PUT /api/projects/{name}/connectors", s.api(s.handleSetConnectors))
 
 	s.mux.HandleFunc("POST /api/projects/{name}/clean", s.api(s.handleClean))
 	s.mux.HandleFunc("POST /api/projects/{name}/restore-resume", s.api(s.handleRestoreResume))
