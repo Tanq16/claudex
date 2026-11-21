@@ -8,7 +8,7 @@
 
 ---
 
-ClaudeX is a companion CLI and local web UI for Claude Code. It configures every Claude account on the machine identically, writes an `AGENTS.md` and skills layout into a project, and runs Claude sessions under the account you pick, either in your terminal or in tmux behind Remote Control.
+ClaudeX is a companion CLI and local web UI for Claude Code. It configures every Claude account on the machine identically, writes an `AGENTS.md` and skills layout into a project, and runs Claude sessions under the account you pick, either in your terminal, in tmux with optional Remote Control, or as a chat in the web UI.
 
 It exists for juggling several Claude subscriptions, and everything except account selection works the same with one. It does not replace `claude`, which it execs or runs in tmux.
 
@@ -21,7 +21,7 @@ It exists for juggling several Claude subscriptions, and everything except accou
 | Category | Commands | Description |
 |----------|----------|-------------|
 | Accounts | `configure`, `switch` | Provision every account, move a project between accounts |
-| Sessions | `launch`, `serve` | Exec `claude` under one account, or manage tmux sessions from a web UI |
+| Sessions | `launch`, `serve` | Exec `claude` under one account, or manage tmux and chat sessions from a web UI |
 | Project layout | `apply`, `apply-preset`, `clean-cwd` | Write and remove the `AGENTS.md` and skills layout |
 | Presets | `create-preset`, `pull-preset` | Scaffold your own bundle of skills and rules, or pull one from a repository |
 
@@ -214,7 +214,9 @@ An attached session is a `claude -p` stream-json process that `serve` hosts itse
 
 A project shows as active while its session runs, and a restart continues the conversation with `claude --continue`.
 
-The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
+The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`. It picks the session mode, Remote Control, and whether to continue the last conversation, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, runs shell commands in the project directory, and copies the conversation as Markdown. It also holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls.
+
+An attached session's page centers on the chat, which shows replies, tool calls, subagents, background commands, workflows, and to-dos as they happen. Approval cards answer tool permissions, questions, plans, and MCP prompts. The composer switches the model, effort, and permission mode, suggests slash commands, and Esc stops the turn. A pending approval in a project that is not on screen raises a toast and marks the Dashboard link. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
 
 The defaults editor lists every key in Claude Code's published settings schema (https://json.schemastore.org/claude-code-settings.json), cached at `~/.config/claudex/settings-schema.json` and refreshed from the page. A key is either active, meaning it is in your defaults, or default, meaning Anthropic's own value applies. Accept copies Anthropic's default into your defaults, and Edit sets your own value. Add key covers settings and environment variables the schema does not list yet.
 
