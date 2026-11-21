@@ -396,6 +396,7 @@ views.chat = (() => {
         if (t.startsWith('[Request interrupted')) return interrupted();
         if (m.isCompactSummary) return notice('shrink', 'Conversation compacted');
         C.turn.interrupted = false;
+        C.turn.tools = 0;
         userBubble(text, images);
     };
 
