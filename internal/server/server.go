@@ -136,6 +136,7 @@ func (s *Server) Setup() error {
 
 	s.mux.HandleFunc("GET /api/events", s.handleEvents)
 	s.mux.HandleFunc("GET /api/images/{file}", s.handleImage)
+	s.mux.HandleFunc("GET /api/projects/{name}/history", s.api(s.handleHistory))
 	s.mux.HandleFunc("POST /api/projects/{name}/prompt", s.api(s.handlePrompt))
 	s.mux.HandleFunc("POST /api/projects/{name}/approvals/{id}", s.api(s.handleAnswer))
 	s.mux.HandleFunc("POST /api/projects/{name}/interrupt", s.api(s.handleInterrupt))
