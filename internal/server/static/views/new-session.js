@@ -35,8 +35,14 @@ views.newSession = (() => {
             foreignChoice: 'preserve',
             rcName: '',
             rcTouched: false,
+            rc: true,
             account: '',
-            mode: prefill.mode === 'continue' ? 'continue' : 'new',
+            sessionMode: 'detached',
+            modeTouched: false,
+            continue: prefill.continue === true || prefill.mode === 'continue',
+            model: '',
+            effort: '',
+            permissionMode: '',
             presets: new Set(),
             extraPresets: [],
             mcp: new Set(),
@@ -56,7 +62,8 @@ views.newSession = (() => {
         const target = () => ({ existing: s.dir, empty: s.emptyName.trim(), clone: s.cloneName.trim() })[s.source];
         const taken = (name) => state().projects.some((p) => p.name === name) || (s.dirs || []).some((d) => d.name === name);
         const canContinue = () => Boolean(project() || untracked());
-        const mode = () => (canContinue() ? s.mode : 'new');
+        const continuing = () => canContinue() && s.continue;
+        const attached = () => s.sessionMode === 'attached';
         const multiAccount = () => state().accounts.length > 1;
         const defaultAccount = () => (state().accounts.find((a) => a.isDefault) || state().accounts[0])?.dir || '';
         const library = () => [
@@ -83,14 +90,19 @@ views.newSession = (() => {
                 if (!s.repo) return 'Pick a repository';
                 if (!nameCheck(target()).ok) return 'Enter a valid directory name';
             }
-            if (!s.rcName.trim()) return 'Enter a Remote Control name';
             return '';
         };
 
+        const savedRc = () => {
+            const p = project();
+            return p?.rcName && p.rcName !== p.name ? p.rcName : '';
+        };
+
         const syncRc = () => {
-            if (s.rcTouched) return;
-            s.rcName = project()?.rcName || target() || '';
             const input = el.querySelector('[data-name="ns-rc"]');
+            if (input) input.placeholder = target() || 'Defaults to the directory name';
+            if (s.rcTouched) return;
+            s.rcName = savedRc();
             if (input) input.value = s.rcName;
         };
 
@@ -107,6 +119,8 @@ views.newSession = (() => {
             s.mcp = new Set(p ? p.mcp : []);
             s.connectors = p ? p.connectors : true;
             s.account = p?.account || defaultAccount();
+            if (!s.modeTouched) s.sessionMode = p?.mode === 'attached' ? 'attached' : 'detached';
+            s.rc = p?.mode === 'detached' ? Boolean(p.rcName) : true;
         };
 
         const directoryOptions = () => [
@@ -114,7 +128,7 @@ views.newSession = (() => {
                 value: p.name,
                 label: p.name,
                 icon: 'folder-git-2',
-                hint: [p.active ? 'Active' : 'Tracked', p.rcName !== p.name ? `RC ${p.rcName}` : '', multiAccount() ? state().accounts.find((a) => a.dir === p.account)?.label : ''].filter(Boolean).join(' · '),
+                hint: [p.active ? 'Active' : 'Tracked', p.mode === 'attached' ? 'Attached' : '', p.rcName && p.rcName !== p.name ? `RC ${p.rcName}` : '', multiAccount() ? state().accounts.find((a) => a.dir === p.account)?.label : ''].filter(Boolean).join(' · '),
             })),
             ...(s.dirs || []).map((d) => ({
                 value: d.name,
@@ -231,10 +245,23 @@ views.newSession = (() => {
                 <div data-region="source-body" class="flex flex-col gap-3">${sourceBodyHtml()}</div>`,
         });
 
-        const modeHintHtml = () => {
-            if (!canContinue()) return note('muted', 'info', 'Continue needs an existing directory, so this starts a new conversation.');
-            if (mode() === 'continue') return note('muted', 'history', 'Picks up the newest conversation in this directory, or starts a new one if there is none.');
-            return note('muted', 'sparkles', 'Starts a fresh conversation. Earlier ones stay available to Continue.');
+        const saved = (options, hint) => [{ value: '', label: 'Saved', hint }, ...options];
+
+        const modeFieldsHtml = () => {
+            if (attached()) {
+                const hint = "The project's last setting, or claude's default";
+                const pick = (label, control) => `<span class="flex min-w-0 flex-col gap-1.5"><span class="${ui.cls.label} px-1">${label}</span>${control}</span>`;
+                return `<div class="grid gap-3 sm:grid-cols-3">
+                    ${pick('Model', ui.select({ name: 'ns-model', value: s.model, icon: 'sparkles', options: saved(['default', 'opus', 'fable', 'sonnet', 'haiku'].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), hint) }))}
+                    ${pick('Effort', ui.select({ name: 'ns-effort', value: s.effort, icon: 'gauge', options: saved(Object.entries(views.chat.efforts).map(([value, label]) => ({ value, label })), hint) }))}
+                    ${pick('Permissions', ui.select({ name: 'ns-permission', value: s.permissionMode, icon: 'shield', options: saved(views.chat.modes.map((m) => ({ value: m.value, label: m.label, icon: m.icon })), hint) }))}
+                </div>`;
+            }
+            return `<span class="-mx-3 block">${ui.switch({ name: 'ns-rc-on', label: 'Remote Control', hint: 'Reachable from claude.ai and the Claude app', checked: s.rc })}</span>
+                ${s.rc ? `<label class="relative block">
+                    <i data-lucide="radio-tower" class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-overlay1"></i>
+                    <input id="ns-rc" data-name="ns-rc" class="${ui.cls.input} pl-10" value="${ui.esc(s.rcName)}" placeholder="${ui.esc(target() || 'Defaults to the directory name')}" autocomplete="off" spellcheck="false" aria-label="Remote Control name">
+                </label>` : ''}`;
         };
 
         const sessionHtml = () => {
@@ -243,24 +270,21 @@ views.newSession = (() => {
                    ${ui.select({ name: 'ns-account', value: s.account, icon: 'user-round', options: state().accounts.map((a) => ({ value: a.dir, label: a.label, hint: a.isDefault ? `${a.dir} · default` : a.dir, icon: 'user-round' })) })}`
                 : '';
             return `
-                <label for="ns-rc" class="${ui.cls.label} -mb-2 px-1">Remote Control name</label>
-                <label class="relative block">
-                    <i data-lucide="radio-tower" class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input id="ns-rc" data-name="ns-rc" class="${ui.cls.input} pl-10" value="${ui.esc(s.rcName)}" placeholder="session-name" autocomplete="off" spellcheck="false">
-                </label>
-                ${accountField}
-                <p class="${ui.cls.label} -mb-2 px-1">Conversation</p>
-                ${ui.segmented({
-                    name: 'ns-mode',
-                    value: mode(),
-                    full: true,
+                ${ui.choices({
+                    name: 'ns-session-mode',
+                    value: s.sessionMode,
+                    columns: 2,
                     options: [
-                        { value: 'new', label: 'New', icon: 'message-square-plus' },
-                        { value: 'continue', label: 'Continue', icon: 'history', disabled: !canContinue() },
+                        { value: 'detached', label: 'Detached', icon: 'square-terminal', hint: 'Terminal claude in tmux' },
+                        { value: 'attached', label: 'Attached', icon: 'messages-square', hint: 'A chat on the project page' },
                     ],
                 })}
-                <div data-region="mode-hint">${modeHintHtml()}</div>
-                <span class="-mx-3 -mb-2 block">${ui.switch({ name: 'ns-connectors', label: 'claude.ai connectors', hint: 'Sets ENABLE_CLAUDEAI_MCP_SERVERS for this session', checked: s.connectors })}</span>`;
+                <div data-region="mode-fields" class="flex flex-col gap-3">${modeFieldsHtml()}</div>
+                ${accountField}
+                <span class="-mx-3 -my-2 flex flex-col">
+                    ${ui.switch({ name: 'ns-continue', label: 'Continue the last conversation', hint: canContinue() ? 'Picks up the newest conversation in this directory' : 'Needs an existing directory', checked: continuing(), disabled: !canContinue() })}
+                    ${ui.switch({ name: 'ns-connectors', label: 'claude.ai connectors', hint: 'Sets ENABLE_CLAUDEAI_MCP_SERVERS for this session', checked: s.connectors })}
+                </span>`;
         };
 
         const presetListHtml = () => `<ul class="-mx-3 flex flex-col">${library().map((p) => `<li>${ui.checkbox({ name: `ns-preset:${p.name}`, label: p.name, hint: p.hint, checked: s.presets.has(p.name) })}</li>`).join('')}</ul>`;
@@ -289,8 +313,15 @@ views.newSession = (() => {
             if (multiAccount() && account !== defaultAccount()) parts.push(['env', `CLAUDE_CONFIG_DIR=${account}`]);
             if (s.connectors) parts.push(['env', 'ENABLE_CLAUDEAI_MCP_SERVERS=true']);
             parts.push(['bin', 'claude']);
-            if (mode() === 'continue') parts.push(['flag', '--continue']);
-            parts.push(['flag', '--remote-control'], ['value', s.rcName.trim() ? quote(s.rcName.trim()) : '<name>']);
+            if (attached()) parts.push(['flag', '-p'], ['flag', '--input-format'], ['value', 'stream-json'], ['flag', '--output-format'], ['value', 'stream-json']);
+            if (continuing()) parts.push(['flag', '--continue']);
+            if (attached()) {
+                if (s.model) parts.push(['flag', '--model'], ['value', s.model]);
+                if (s.effort) parts.push(['flag', '--effort'], ['value', s.effort]);
+                if (s.permissionMode && s.permissionMode !== 'default') parts.push(['flag', '--permission-mode'], ['value', s.permissionMode]);
+            } else if (s.rc) {
+                parts.push(['flag', '--remote-control'], ['value', quote(s.rcName.trim() || target() || '<name>')]);
+            }
             return parts;
         };
 
@@ -301,7 +332,7 @@ views.newSession = (() => {
 
         const footerHtml = () => `
             <p class="flex min-w-0 basis-full items-center gap-1 rounded-full bg-base py-1 pl-4 pr-1 md:mr-auto md:basis-0 md:flex-1">
-                <code data-region="command" class="min-w-0 flex-1 overflow-x-auto whitespace-nowrap font-mono text-xs">${commandHtml()}</code>
+                <span class="relative min-w-0 flex-1"><code data-region="command" data-scroll class="block overflow-x-auto whitespace-nowrap pt-1.5 pb-2.5 font-mono text-xs">${commandHtml()}</code></span>
                 ${ui.iconButton('copy', { title: 'Copy command', size: 'sm', attrs: 'data-ns="copy"' })}
             </p>
             <span data-region="footer-actions" class="contents">${actionsHtml()}</span>`;
@@ -309,7 +340,7 @@ views.newSession = (() => {
         const actionsHtml = () => {
             const reason = validity();
             return `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-ns="cancel"', disabled: s.launching })}
-                ${ui.button(s.launching ? 'Launching' : mode() === 'continue' ? 'Continue' : 'Launch', {
+                ${ui.button(s.launching ? 'Launching' : continuing() ? 'Continue' : 'Launch', {
                     icon: s.launching ? 'loader-circle' : 'rocket',
                     spin: s.launching,
                     variant: 'primary',
@@ -319,12 +350,11 @@ views.newSession = (() => {
         };
 
         applyDefaults();
-        if (!s.rcTouched) s.rcName = project()?.rcName || target() || '';
+        s.rcName = savedRc();
 
         const m = ui.modal.open({
             title: 'New session',
             icon: 'square-terminal',
-            subtitle: 'Runs in the <span class="font-mono">claudex</span> tmux session',
             size: 'xl',
             body: `
                 <div class="flex flex-col gap-3 3xl:contents">
@@ -459,20 +489,28 @@ views.newSession = (() => {
             const req = {
                 name: target(),
                 source: s.source,
-                rcName: s.rcName.trim(),
                 account: s.account || defaultAccount(),
-                mode: mode(),
+                mode: s.sessionMode,
+                continue: continuing(),
                 presets: library().map((p) => p.name).filter((n) => s.presets.has(n)),
                 mcp: [...s.mcp],
                 connectors: s.connectors,
             };
+            if (attached()) {
+                if (s.model) req.model = s.model;
+                if (s.effort) req.effort = s.effort;
+                if (s.permissionMode) req.permissionMode = s.permissionMode;
+            } else {
+                req.remoteControl = s.rc;
+                if (s.rc) req.rcName = s.rcName.trim();
+            }
             if (s.source === 'clone') req.repo = s.repo;
             if (untracked()?.foreign.length) req.foreignChoice = s.foreignChoice;
             s.launching = true;
             body.inert = true;
             body.classList.add('opacity-60');
             paintFooter();
-            const r = await app.act('Launch', () => api.start(req), { success: `${req.rcName} is starting` });
+            const r = await app.act('Launch', () => api.start(req), { success: `${req.name} is starting` });
             s.launching = false;
             if (r.ok) {
                 const wasClosed = s.closed;
@@ -500,9 +538,21 @@ views.newSession = (() => {
                 s.foreignChoice = value;
             } else if (name === 'ns-account') {
                 s.account = value;
-            } else if (name === 'ns-mode') {
-                s.mode = value;
-                paint('mode-hint', modeHintHtml());
+            } else if (name === 'ns-session-mode') {
+                s.sessionMode = value;
+                s.modeTouched = true;
+                paint('mode-fields', modeFieldsHtml());
+            } else if (name === 'ns-rc-on') {
+                s.rc = value;
+                paint('mode-fields', modeFieldsHtml());
+            } else if (name === 'ns-continue') {
+                s.continue = value;
+            } else if (name === 'ns-model') {
+                s.model = value;
+            } else if (name === 'ns-effort') {
+                s.effort = value;
+            } else if (name === 'ns-permission') {
+                s.permissionMode = value;
             } else if (name === 'ns-connectors') {
                 s.connectors = value;
             } else if (name.startsWith('ns-preset:')) {

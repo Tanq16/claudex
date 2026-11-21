@@ -339,7 +339,7 @@ ui.on('dash-stop', async (el) => {
     if (ok) views.dashboard.run(name, 'stop', 'Stop', () => api.stop(name), `${name} stopped`);
 });
 
-ui.on('dash-new', (el) => views.newSession.open({ name: el.dataset.name, mode: 'new' }));
+ui.on('dash-new', (el) => views.newSession.open({ name: el.dataset.name }));
 
 ui.on('dash-new-untracked', (el) => views.newSession.open({ name: el.dataset.name }));
 

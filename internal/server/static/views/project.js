@@ -1165,8 +1165,8 @@
 
 
     ui.on('project-back', () => app.go('#/'));
-    ui.on('project-continue', () => views.newSession.open({ name: S.name, mode: 'continue' }));
-    ui.on('project-new', () => views.newSession.open({ name: S.name, mode: 'new' }));
+    ui.on('project-continue', () => views.newSession.open({ name: S.name, continue: true }));
+    ui.on('project-new', () => views.newSession.open({ name: S.name }));
     ui.on('project-copy-session', (b) => ui.menu(b, [
         { icon: 'tags', label: 'Copy with tags', hint: 'Each message starts with [user] or [agent]', onSelect: () => views.chat.copySession(S.name, true) },
         { icon: 'clipboard-copy', label: 'Copy without tags', hint: 'Messages separated by blank lines', onSelect: () => views.chat.copySession(S.name, false) },
