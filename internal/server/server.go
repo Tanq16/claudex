@@ -158,8 +158,11 @@ func (s *Server) Setup() error {
 
 	s.mux.HandleFunc("GET /api/settings", s.api(s.handleSettings))
 	s.mux.HandleFunc("POST /api/accounts/apply-defaults", s.api(s.handleApplyDefaults))
+	s.mux.HandleFunc("POST /api/accounts/adopt", s.api(s.handleAdoptKey))
+	s.mux.HandleFunc("POST /api/accounts/remove-key", s.api(s.handleRemoveKey))
 	s.mux.HandleFunc("GET /api/defaults", s.api(s.handleDefaults))
 	s.mux.HandleFunc("PUT /api/defaults", s.api(s.handleSetDefault))
+	s.mux.HandleFunc("PUT /api/defaults/document", s.api(s.handleReplaceDefaults))
 	s.mux.HandleFunc("DELETE /api/defaults", s.api(s.handleResetDefault))
 	s.mux.HandleFunc("POST /api/defaults/refresh", s.api(s.handleRefreshSchema))
 	s.mux.HandleFunc("POST /api/presets/remote", s.api(s.handleAddRemotePreset))

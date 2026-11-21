@@ -13,8 +13,10 @@ views.settings = (() => {
         error: '',
         defaults: null,
         defaultsError: '',
-        dfilter: 'active',
+        dmode: 'keys',
         dquery: '',
+        open: new Set(),
+        json: { text: '', dirty: false, error: '', saving: false },
         loading: Promise.resolve(),
         scroll: {},
         revealed: new Set(),
@@ -48,7 +50,7 @@ views.settings = (() => {
 
     const pageHead = () => {
         const c = counts();
-        const attention = s.data?.accounts.some((a) => compliance(a).tone !== 'green');
+        const attention = s.data?.accounts.some((a) => compliance(a).tone !== 'green' || a.unmanaged?.length);
         return `<header class="flex shrink-0 flex-wrap items-center justify-between gap-3">
             <h1 class="font-display text-2xl text-text max-md:hidden">Settings</h1>
             <nav aria-label="Settings sections" class="inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-mantle p-1 max-md:w-full 3xl:hidden">
@@ -73,9 +75,23 @@ views.settings = (() => {
         </p>
     </li>`;
 
+    const unmanagedRow = (a, k) => {
+        const attrs = `data-dir="${esc(a.dir)}" data-key="${esc(k.key)}"`;
+        const pending = busy(`key:${a.dir}:${k.key}`);
+        return `<li class="flex items-center gap-2 rounded-xl bg-mantle py-1.5 pr-1.5 pl-3">
+            <p class="min-w-0 flex-1 font-mono text-xs">
+                <span title="${esc(k.key)}" class="block truncate text-subtext1">${esc(k.key)}</span>
+                <span title="${esc(k.value)}" class="block truncate text-blue">${esc(k.value)}</span>
+            </p>
+            ${ui.button('Adopt', { icon: pending ? 'loader-circle' : 'import', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-adopt', attrs })}
+            ${ui.iconButton('trash-2', { title: 'Remove from this account', size: 'sm', variant: 'danger', action: 'settings-remove-key', disabled: pending, attrs })}
+        </li>`;
+    };
+
     const accountCard = (a) => {
         const c = compliance(a);
         const pending = busy(`apply:${a.dir}`);
+        const unmanaged = a.unmanaged || [];
         return `<li class="flex flex-col gap-3 rounded-2xl bg-base p-4">
             <header class="flex items-start gap-3">
                 ${circle(icon('user-round'))}
@@ -85,8 +101,12 @@ views.settings = (() => {
                 </hgroup>
                 ${a.isDefault ? ui.chip('Default', { icon: 'star' }) : ''}
             </header>
-            <p class="flex flex-wrap items-center gap-2">${ui.chip(c.text, { tone: c.tone, icon: c.icon })}${ui.chip(plural(a.projects, 'project'), { icon: 'folder' })}</p>
+            <p class="flex flex-wrap items-center gap-2">${ui.chip(c.text, { tone: c.tone, icon: c.icon })}${unmanaged.length ? ui.chip(`${plural(unmanaged.length, 'key')} unmanaged`, { tone: 'blue', icon: 'shield-question' }) : ''}${ui.chip(plural(a.projects, 'project'), { icon: 'folder' })}</p>
             ${a.drift.length ? `<ul class="flex flex-col gap-1.5">${a.drift.map(driftRow).join('')}</ul>` : ''}
+            ${unmanaged.length ? `<section class="flex flex-col gap-1.5">
+                ${groupHeader('Not in the defaults', unmanaged.length)}
+                <ul class="flex flex-col gap-1.5">${unmanaged.map((k) => unmanagedRow(a, k)).join('')}</ul>
+            </section>` : ''}
             ${a.settingsFound ? '' : `<p class="text-sm text-overlay1">Applying defaults creates <span class="font-mono text-subtext1">${esc(a.dir)}/settings.json</span>.</p>`}
             ${c.tone === 'green' ? '' : `<footer class="flex justify-end">${ui.button(pending ? 'Applying' : 'Apply defaults', { icon: pending ? 'loader-circle' : 'wand-sparkles', spin: pending, disabled: pending, size: 'sm', action: 'settings-apply', attrs: `data-dir="${esc(a.dir)}"` })}</footer>`}
         </li>`;
@@ -107,34 +127,82 @@ views.settings = (() => {
         </a>
         <ul class="grid items-start gap-3 xl:grid-cols-2 3xl:grid-cols-1">${s.data.accounts.map(accountCard).join('')}</ul>`;
 
-    const listLimit = 100;
     const valueText = (v) => (v === '' ? '""' : fmt(v));
+    const groupOf = (key) => (key.includes('.') ? key.split('.')[0] : '');
+    const summary = (v) => (Array.isArray(v) ? plural(v.length, 'item') : v && typeof v === 'object' ? plural(Object.keys(v).length, 'key') : valueText(v));
 
     const schemaLine = (sc) => (sc.error
         ? `<p class="flex items-center gap-2 rounded-2xl bg-red/10 px-4 py-3 text-sm text-red">${icon('cloud-off', 'size-4')}<span class="min-w-0 flex-1">${esc(sc.error)}</span></p>`
         : `<p class="flex items-center gap-2 px-1 text-xs text-overlay1">${icon('file-json', 'size-3.5')}<span class="min-w-0 flex-1 truncate">${plural(sc.keys, 'key')} in the schema, fetched ${ui.timeAgo(sc.fetchedAt)}</span></p>`);
 
-    const defaultCard = (r) => {
+    const valueControl = (r) => {
+        const attrs = `data-key="${esc(r.key)}"`;
+        switch (r.kind) {
+        case 'boolean':
+            return ui.toggle({ name: `dv:${r.key}`, checked: r.value === true, label: r.key });
+        case 'enum':
+            return ui.select({ name: `dv:${r.key}`, value: r.value, pill: true, options: r.enum.map((v) => ({ value: v, label: v })) });
+        case 'string':
+        case 'number':
+        case 'integer':
+            return `<input data-dv="${esc(r.key)}" value="${esc(r.value)}" ${r.kind === 'string' ? '' : 'inputmode="decimal"'} aria-label="${esc(r.key)}" autocomplete="off" spellcheck="false" class="${ui.cls.input} h-9 py-1.5 font-mono sm:w-72">`;
+        default:
+            return ui.button(summary(r.value), { icon: 'braces', size: 'sm', action: 'settings-default-edit', attrs });
+        }
+    };
+
+    const keyRow = (r, group) => {
         const attrs = `data-key="${esc(r.key)}"`;
         const pending = busy(`default:${r.key}`);
-        const hasDefault = r.default != null;
-        const actions = r.active
-            ? `${ui.iconButton('pencil', { title: 'Edit', size: 'sm', action: 'settings-default-edit', disabled: pending, attrs })}
-               ${ui.iconButton(pending ? 'loader-circle' : 'rotate-ccw', { title: 'Reset', size: 'sm', action: 'settings-default-reset', spin: pending, disabled: pending, attrs })}`
-            : `${hasDefault ? ui.button('Accept', { icon: pending ? 'loader-circle' : 'check', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-default-accept', attrs }) : ''}
-               ${ui.iconButton('pencil', { title: 'Edit', size: 'sm', action: 'settings-default-edit', disabled: pending, attrs })}`;
-        return `<li class="flex flex-col gap-2 rounded-2xl bg-base p-3">
-            <header class="flex items-start gap-2">
-                <h4 class="min-w-0 flex-1 pt-1.5 font-mono text-sm break-all text-text">${esc(r.key)}</h4>
-                ${r.inSchema ? '' : `<span class="pt-1">${ui.chip('custom', { icon: 'pencil-line' })}</span>`}
-                ${actions}
-            </header>
-            ${r.active
-                ? `<p class="line-clamp-6 rounded-xl bg-mantle px-3 py-2 font-mono text-xs break-all text-green">${esc(valueText(r.value))}</p>`
-                : `<p class="px-1 font-mono text-xs break-all text-overlay1">${hasDefault ? `default ${esc(valueText(r.default))}` : 'no default'}</p>`}
-            ${r.description ? `<p title="${esc(r.description)}" class="line-clamp-2 px-1 text-xs text-subtext0">${esc(r.description)}</p>` : ''}
+        const open = s.open.has(r.key);
+        return `<li class="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl px-3 py-1.5 transition-colors hover:bg-surface0/50">
+            <span title="${esc(r.key)}" class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
+            ${r.inSchema ? '' : ui.chip('custom', { icon: 'pencil-line' })}
+            <span class="flex shrink-0 items-center gap-1 ${['string', 'number', 'integer'].includes(r.kind) ? 'max-sm:basis-full' : ''}">
+                ${pending ? ui.spinner('size-4 text-overlay1') : ''}
+                ${valueControl(r)}
+                ${r.description ? ui.iconButton('info', { title: open ? 'Hide description' : 'Show description', size: 'sm', action: 'settings-default-info', pressed: open, attrs }) : '<span class="size-8 shrink-0"></span>'}
+                <span class="${ui.cls.reveal}">${ui.iconButton('rotate-ccw', { title: 'Reset', size: 'sm', action: 'settings-default-reset', disabled: pending, attrs })}</span>
+            </span>
+            ${open ? `<p class="basis-full pb-1 text-xs leading-relaxed text-subtext0">${esc(r.description)}</p>` : ''}
         </li>`;
     };
+
+    const keysView = (d) => {
+        const q = s.dquery.trim().toLowerCase();
+        const active = d.rows.filter((r) => r.active && (!q || r.key.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q)));
+        const groups = new Map();
+        for (const r of active) {
+            const g = groupOf(r.key);
+            if (!groups.has(g)) groups.set(g, []);
+            groups.get(g).push(r);
+        }
+        const names = [...groups.keys()].sort((a, b) => (a === '' ? -1 : b === '' ? 1 : a.localeCompare(b)));
+        const envAdd = ui.button('Variable', { icon: 'plus', size: 'sm', variant: 'ghost', action: 'settings-env-add' });
+        return `${names.length
+            ? names.map((g) => `<section class="flex flex-col gap-1">
+                ${groupHeader(g ? `<span class="font-mono normal-case tracking-normal">${esc(g)}</span>` : 'General', groups.get(g).length, g === 'env' ? envAdd : '')}
+                <ul class="flex flex-col">${groups.get(g).map((r) => keyRow(r, g)).join('')}</ul>
+            </section>`).join('')
+            : ui.empty({ icon: q ? 'search-x' : 'sliders-horizontal', title: q ? 'No matching keys' : 'No active keys', action: q ? '' : ui.button('Add key', { icon: 'plus', action: 'settings-default-add' }) })}
+            ${!q ? `<section class="flex flex-col gap-2">
+                ${groupHeader('Managed by claudex', d.owned.length, ui.chip('per account', { icon: 'lock' }))}
+                <p class="flex flex-wrap gap-2 px-1">${d.owned.map((k) => ui.chip(k, { mono: true })).join('')}</p>
+            </section>` : ''}`;
+    };
+
+    const sorted = (v) => (Array.isArray(v) ? v.map(sorted) : v && typeof v === 'object' ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, sorted(v[k])])) : v);
+    const documentText = () => (s.json.dirty ? s.json.text : JSON.stringify(sorted(s.defaults.document), null, 2));
+
+    const jsonView = () => `<section class="flex min-h-0 flex-1 flex-col gap-2">
+        <textarea data-field="defaults.json" aria-label="Defaults as settings.json" spellcheck="false" class="${ui.cls.input} min-h-64 flex-1 resize-none font-mono text-xs leading-relaxed">${esc(documentText())}</textarea>
+        <p data-json-error role="alert" class="${s.json.error ? '' : 'hidden'} px-1 text-sm whitespace-pre-line text-red">${esc(s.json.error)}</p>
+        <footer class="flex flex-wrap items-center justify-end gap-2">
+            <span class="mr-auto px-1 text-xs text-overlay1">statusLine stays out of this document</span>
+            ${ui.button('Revert', { icon: 'undo-2', size: 'sm', variant: 'ghost', action: 'settings-json-revert', disabled: !s.json.dirty || s.json.saving, attrs: 'data-json-btn' })}
+            ${ui.button(s.json.saving ? 'Saving' : 'Save', { icon: s.json.saving ? 'loader-circle' : 'check', spin: s.json.saving, size: 'sm', variant: 'primary', action: 'settings-json-save', disabled: !s.json.dirty || s.json.saving, attrs: 'data-json-btn' })}
+        </footer>
+    </section>`;
 
     const defaultsBody = () => {
         const d = s.defaults;
@@ -142,29 +210,16 @@ views.settings = (() => {
             return ui.empty({ icon: 'circle-alert', title: 'Could not load defaults', hint: esc(s.defaultsError), action: ui.button('Retry', { icon: 'refresh-cw', action: 'settings-retry' }) });
         }
         if (!d) return `<p class="flex flex-1 items-center justify-center text-overlay1">${icon('loader-circle', 'size-5 animate-spin')}</p>`;
-        const active = d.rows.filter((r) => r.active);
-        const inactive = d.rows.filter((r) => !r.active);
-        const q = s.dquery.trim().toLowerCase();
-        const matched = (s.dfilter === 'active' ? active : inactive)
-            .filter((r) => !q || r.key.toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q));
-        const shown = matched.slice(0, listLimit);
         return `${schemaLine(d.schema)}
             <div class="flex flex-wrap items-center gap-2">
-                ${ui.segmented({ name: 'defaults-filter', value: s.dfilter, options: [{ value: 'active', label: `Active ${active.length}` }, { value: 'default', label: `Default ${inactive.length}` }] })}
-                <label class="relative min-w-40 flex-1">
+                ${ui.segmented({ name: 'defaults-mode', value: s.dmode, options: [{ value: 'keys', label: 'Keys', icon: 'list' }, { value: 'json', label: 'JSON', icon: 'braces' }] })}
+                ${s.dmode === 'keys' ? `<label class="relative min-w-40 flex-1">
                     <span class="sr-only">Filter keys</span>
                     <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input data-field="defaults.query" value="${esc(s.dquery)}" placeholder="Filter keys" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
-                </label>
+                    <input data-field="defaults.query" value="${esc(s.dquery)}" placeholder="Filter active keys" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
+                </label>` : ''}
             </div>
-            ${shown.length
-                ? `<ul class="flex flex-col gap-2">${shown.map(defaultCard).join('')}</ul>
-                   ${matched.length > shown.length ? `<p class="px-1 text-center text-xs text-overlay1">Showing ${shown.length} of ${matched.length}; filter to narrow</p>` : ''}`
-                : ui.empty({ icon: 'search-x', title: q ? 'No matching keys' : s.dfilter === 'active' ? 'No active keys' : 'Every schema key is active' })}
-            ${s.dfilter === 'active' && !q ? `<section class="flex flex-col gap-2">
-                ${groupHeader('Managed by claudex', d.owned.length, ui.chip('per account', { icon: 'lock' }))}
-                <p class="flex flex-wrap gap-2 px-1">${d.owned.map((k) => ui.chip(k, { mono: true })).join('')}</p>
-            </section>` : ''}`;
+            ${s.dmode === 'json' ? jsonView() : keysView(d)}`;
     };
 
     const builtinCard = (p) => `<li class="flex flex-col gap-3 rounded-2xl bg-base p-4">
@@ -570,7 +625,7 @@ views.settings = (() => {
         }
     };
 
-    const openDefault = (row) => {
+    const openDefault = (row, presetKey = '') => {
         const ed = { kind: row?.kind ?? 'string', saving: false };
         const initial = row ? (row.active ? row.value : row.default) : undefined;
         const m = ui.modal.open({
@@ -581,7 +636,7 @@ views.settings = (() => {
                     ? (row.description ? `<p class="text-sm leading-relaxed text-subtext0">${esc(row.description)}</p>` : '')
                     : `<label class="flex flex-col gap-1.5">
                         <span class="px-1 ${ui.cls.label}">Key</span>
-                        <input data-default-key placeholder="env.MY_VARIABLE" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">
+                        <input data-default-key value="${esc(presetKey)}" placeholder="env.MY_VARIABLE" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">
                     </label>
                     <div class="flex flex-col items-start gap-1.5">
                         <span class="px-1 ${ui.cls.label}">Type</span>
@@ -640,17 +695,173 @@ views.settings = (() => {
                 showError(out.error.message);
             }
         });
-        if (!ui.media.mobile()) form.querySelector('[data-default-key], [data-default-input]')?.focus();
+        if (!ui.media.mobile()) form.querySelector(presetKey ? '[data-default-input]' : '[data-default-key], [data-default-input]')?.focus();
+    };
+
+    const openPicker = (initial = '') => {
+        const inactive = s.defaults.rows.filter((r) => !r.active);
+        const known = new Set(s.defaults.rows.map((r) => r.key));
+        const limit = 50;
+        let query = initial;
+        let active = 0;
+        let items = [];
+        let total = 0;
+        const m = ui.modal.open({
+            title: 'Add a key',
+            icon: 'plus',
+            body: `<div class="flex flex-col gap-3 pt-1">
+                <label class="relative block">
+                    <span class="sr-only">Search keys</span>
+                    <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
+                    <input data-picker-q value="${esc(initial)}" placeholder="Search ${plural(inactive.length, 'key')}, or type a new one" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
+                </label>
+                <ul data-picker-list role="listbox" class="flex flex-col gap-0.5"></ul>
+            </div>`,
+        });
+        const input = m.el.querySelector('[data-picker-q]');
+        const list = m.el.querySelector('[data-picker-list]');
+        const compute = () => {
+            const q = query.trim();
+            const lower = q.toLowerCase();
+            const matched = q
+                ? inactive.map((r) => ({ r, score: Math.max(ui.fuzzy(q, r.key), (r.description || '').toLowerCase().includes(lower) ? 1 : -1) }))
+                    .filter((x) => x.score >= 0).sort((a, b) => b.score - a.score).map((x) => x.r)
+                : inactive;
+            total = matched.length;
+            items = matched.slice(0, limit).map((row) => ({ key: row.key, row }));
+            if (/^[A-Za-z0-9_-]+(\.[A-Za-z0-9_-]+)*$/.test(q) && !known.has(q)) items.push({ key: q, custom: true });
+            active = Math.min(active, Math.max(0, items.length - 1));
+        };
+        const draw = () => {
+            list.innerHTML = items.length
+                ? items.map((it, i) => `<li role="option" data-index="${i}" aria-selected="${i === active}" class="flex flex-col gap-0.5 rounded-xl px-3 py-2 ${i === active ? 'bg-surface0' : ''}">
+                    <span class="flex items-center gap-2"><span class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(it.key)}</span>${it.custom ? ui.chip('new key', { icon: 'pencil-line' }) : ui.chip(it.row.kind, { mono: true })}</span>
+                    ${it.row?.description ? `<span class="line-clamp-1 text-xs text-overlay1">${esc(it.row.description)}</span>` : ''}
+                </li>`).join('') + (total > limit ? `<li class="px-3 py-2 text-center text-xs text-overlay1">Showing ${limit} of ${total}; keep typing to narrow</li>` : '')
+                : '<li class="px-3 py-6 text-center text-sm text-overlay1">No matching keys</li>';
+            ui.icons(list);
+            list.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+        };
+        const choose = (i) => {
+            const it = items[i];
+            if (!it) return;
+            m.close();
+            if (it.custom) openDefault(null, it.key);
+            else openDefault(it.row);
+        };
+        input.addEventListener('input', () => {
+            query = input.value;
+            active = 0;
+            compute();
+            draw();
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                active = Math.min(items.length - 1, active + 1);
+                draw();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                active = Math.max(0, active - 1);
+                draw();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                choose(active);
+            }
+        });
+        list.addEventListener('click', (e) => {
+            const li = e.target.closest('[data-index]');
+            if (li) choose(Number(li.dataset.index));
+        });
+        compute();
+        draw();
+        input.focus();
+        input.setSelectionRange(input.value.length, input.value.length);
+    };
+
+    const saveValue = (key, value) => run(`default:${key}`, 'Save default', () => api.setDefault(key, value), `${key} saved`);
+
+    const saveInput = (el) => {
+        const row = s.defaults.rows.find((r) => r.key === el.dataset.dv);
+        if (!row) return;
+        const raw = el.value;
+        if (row.kind === 'string') {
+            if (raw !== row.value) saveValue(row.key, raw);
+            return;
+        }
+        const n = Number(raw.trim());
+        if (raw.trim() === '' || !Number.isFinite(n) || (row.kind === 'integer' && !Number.isInteger(n))) {
+            ui.toast(`${row.key} takes ${row.kind === 'integer' ? 'a whole number' : 'a number'}`, { tone: 'red', icon: 'circle-alert' });
+            render();
+            return;
+        }
+        if (n !== row.value) saveValue(row.key, n);
+    };
+
+    const showJsonError = (msg) => {
+        s.json.error = msg;
+        const node = s.el?.querySelector('[data-json-error]');
+        if (!node) return;
+        node.textContent = msg;
+        node.classList.toggle('hidden', !msg);
+    };
+
+    const saveJson = async () => {
+        if (s.json.saving || !s.json.dirty) return;
+        let doc;
+        try {
+            doc = JSON.parse(s.json.text);
+        } catch (err) {
+            showJsonError(`Not valid JSON: ${err.message}`);
+            return;
+        }
+        if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+            showJsonError('The document must be a JSON object');
+            return;
+        }
+        s.json.saving = true;
+        render();
+        const out = await app.act('Save defaults', () => api.replaceDefaults(doc), { success: (r) => `Saved ${plural(r.keys, 'default key')}` });
+        await s.loading;
+        s.json.saving = false;
+        if (out.ok) s.json = { text: '', dirty: false, error: '', saving: false };
+        else s.json.error = out.error.message;
+        render();
     };
 
     const rowOf = (el) => s.defaults.rows.find((r) => r.key === el.dataset.key);
 
-    ui.on('settings-default-add', () => openDefault(null));
+    ui.on('settings-default-add', () => openPicker());
+    ui.on('settings-env-add', () => openPicker('env.'));
     ui.on('settings-default-edit', (el) => openDefault(rowOf(el)));
 
-    ui.on('settings-default-accept', (el) => {
-        const row = rowOf(el);
-        run(`default:${row.key}`, 'Accept default', () => api.setDefault(row.key, row.default), `${row.key} is active`);
+    ui.on('settings-default-info', (el) => {
+        const key = el.dataset.key;
+        if (!s.open.delete(key)) s.open.add(key);
+        render();
+    });
+
+    ui.on('settings-json-save', () => saveJson());
+    ui.on('settings-json-revert', () => {
+        s.json = { text: '', dirty: false, error: '', saving: false };
+        render();
+    });
+
+    ui.on('settings-adopt', (el) => {
+        const { dir, key } = el.dataset;
+        run(`key:${dir}:${key}`, 'Adopt key', () => api.adoptKey(dir, key), `${key} added to the defaults`);
+    });
+
+    ui.on('settings-remove-key', async (el) => {
+        const { dir, key } = el.dataset;
+        const ok = await ui.confirm({
+            title: `Remove ${key}?`,
+            icon: 'trash-2',
+            danger: true,
+            confirmLabel: 'Remove',
+            message: `Deletes <span class="font-mono text-text">${esc(key)}</span> from <span class="font-mono text-text">${esc(dir)}/settings.json</span>.`,
+        });
+        if (ok) await run(`key:${dir}:${key}`, 'Remove key', () => api.removeKey(dir, key), `${key} removed from ${dir}`);
     });
 
     ui.on('settings-default-reset', async (el) => {
@@ -753,6 +964,15 @@ views.settings = (() => {
             s.listeners = [
                 ['input', (e) => {
                     const key = e.target.dataset.field;
+                    if (key === 'defaults.json') {
+                        s.json.text = e.target.value;
+                        if (!s.json.dirty) {
+                            s.json.dirty = true;
+                            s.el.querySelectorAll('[data-json-btn]').forEach((b) => { b.disabled = false; });
+                        }
+                        if (s.json.error) showJsonError('');
+                        return;
+                    }
                     if (key === 'defaults.query') {
                         s.dquery = e.target.value;
                         render();
@@ -765,6 +985,12 @@ views.settings = (() => {
                         s.el.querySelector('[data-form="track"] [role="alert"]')?.remove();
                     }
                 }],
+                ['change', (e) => {
+                    if (e.target.dataset.dv !== undefined) saveInput(e.target);
+                }],
+                ['keydown', (e) => {
+                    if (e.key === 'Enter' && e.target.dataset.dv !== undefined) e.target.blur();
+                }],
                 ['submit', (e) => {
                     if (e.target.dataset.form !== 'track') return;
                     e.preventDefault();
@@ -772,10 +998,11 @@ views.settings = (() => {
                 }],
                 ['ui-change', (e) => {
                     if (e.detail.name === 'settings-section') show(e.detail.value);
-                    if (e.detail.name === 'defaults-filter') {
-                        s.dfilter = e.detail.value;
+                    if (e.detail.name === 'defaults-mode') {
+                        s.dmode = e.detail.value;
                         render();
                     }
+                    if (e.detail.name?.startsWith('dv:')) saveValue(e.detail.name.slice(3), e.detail.value);
                 }],
             ];
             s.listeners.forEach(([type, fn]) => el.addEventListener(type, fn));

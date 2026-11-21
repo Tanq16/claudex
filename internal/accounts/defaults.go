@@ -132,25 +132,143 @@ func (d *Defaults) stale(dir string) []string {
 	return keys
 }
 
+func (d *Defaults) Manages(key string) bool {
+	if Owned(key) {
+		return true
+	}
+	for active := range d.Settings {
+		if key == active || strings.HasPrefix(key, active+".") {
+			return true
+		}
+	}
+	return false
+}
+
+func (d *Defaults) Document() map[string]any {
+	doc := map[string]any{}
+	for key, value := range d.Settings {
+		setPath(doc, key, value)
+	}
+	return doc
+}
+
+func (d *Defaults) Flatten(doc map[string]any, schemaKeys []string) (map[string]any, error) {
+	flat := map[string]any{}
+	var errs []error
+	walk(doc, "", d.splitter(schemaKeys), func(key string, value any) {
+		switch {
+		case Owned(key):
+			errs = append(errs, fmt.Errorf("%s is managed by claudex", key))
+		case value == nil:
+			errs = append(errs, fmt.Errorf("%s needs a value", key))
+		default:
+			flat[key] = value
+		}
+	})
+	return flat, errors.Join(errs...)
+}
+
+func (d *Defaults) splitter(schemaKeys []string) func(string) bool {
+	keys := slices.Concat(schemaKeys, slices.Collect(maps.Keys(d.Settings)))
+	return func(path string) bool {
+		return slices.ContainsFunc(keys, func(k string) bool { return strings.HasPrefix(k, path+".") })
+	}
+}
+
+func walk(m map[string]any, prefix string, descend func(string) bool, visit func(string, any)) {
+	for _, name := range slices.Sorted(maps.Keys(m)) {
+		path := name
+		if prefix != "" {
+			path = prefix + "." + name
+		}
+		if child, ok := m[name].(map[string]any); ok && len(child) > 0 && descend(path) {
+			walk(child, path, descend, visit)
+			continue
+		}
+		visit(path, m[name])
+	}
+}
+
 type Drift struct {
 	Key      string `json:"key"`
 	Expected string `json:"expected"`
 	Actual   string `json:"actual"`
 }
 
-func Compliance(dir string, d *Defaults) (bool, []Drift) {
+type Unmanaged struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type Report struct {
+	Found     bool
+	Drift     []Drift
+	Unmanaged []Unmanaged
+}
+
+func readSettings(dir string) (map[string]any, error) {
 	data, err := os.ReadFile(filepath.Join(dir, "settings.json"))
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
+	if err != nil {
+		return nil, err
 	}
 	settings := map[string]any{}
-	if err == nil {
-		err = json.Unmarshal(data, &settings)
+	if err := json.Unmarshal(data, &settings); err != nil {
+		return nil, err
+	}
+	return settings, nil
+}
+
+func Audit(dir string, d *Defaults, schemaKeys []string) Report {
+	settings, err := readSettings(dir)
+	if errors.Is(err, os.ErrNotExist) {
+		return Report{}
 	}
 	if err != nil {
-		return true, []Drift{{Key: "settings.json", Expected: "readable JSON", Actual: err.Error()}}
+		return Report{Found: true, Drift: []Drift{{Key: "settings.json", Expected: "readable JSON", Actual: err.Error()}}}
 	}
+	return Report{Found: true, Drift: drift(dir, settings, d), Unmanaged: d.unmanaged(settings, schemaKeys)}
+}
 
+func (d *Defaults) unmanaged(settings map[string]any, schemaKeys []string) []Unmanaged {
+	split := d.splitter(schemaKeys)
+	var found []Unmanaged
+	walk(settings, "", func(path string) bool { return !d.Manages(path) && split(path) }, func(key string, value any) {
+		if !d.Manages(key) {
+			found = append(found, Unmanaged{Key: key, Value: display(value)})
+		}
+	})
+	return found
+}
+
+func Lookup(dir, key string) (any, error) {
+	settings, err := readSettings(dir)
+	if err != nil {
+		return nil, err
+	}
+	value, ok := getPath(settings, key)
+	if !ok {
+		return nil, fmt.Errorf("%s is not set in %s", key, filepath.Join(dir, "settings.json"))
+	}
+	return value, nil
+}
+
+func RemoveKey(dir, key string) error {
+	settings, err := readSettings(dir)
+	if err != nil {
+		return err
+	}
+	if _, ok := getPath(settings, key); !ok {
+		return fmt.Errorf("%s is not set in %s", key, filepath.Join(dir, "settings.json"))
+	}
+	deletePath(settings, key)
+	out, err := json.Marshal(settings, jsontext.WithIndent("  "))
+	if err != nil {
+		return err
+	}
+	return fsutil.WriteFileAtomic(filepath.Join(dir, "settings.json"), append(out, '\n'), 0o644)
+}
+
+func drift(dir string, settings map[string]any, d *Defaults) []Drift {
 	want := maps.Clone(d.Settings)
 	maps.Copy(want, owned)
 	var drift []Drift
@@ -178,7 +296,7 @@ func Compliance(dir string, d *Defaults) (bool, []Drift) {
 			drift = append(drift, Drift{Key: key, Expected: "unset", Actual: display(got)})
 		}
 	}
-	return true, drift
+	return drift
 }
 
 func display(v any) string {

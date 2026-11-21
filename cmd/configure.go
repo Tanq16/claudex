@@ -2,11 +2,13 @@ package cmd
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/accounts"
 	"github.com/tanq16/claudex/internal/embedded"
 	"github.com/tanq16/claudex/internal/plugins"
+	"github.com/tanq16/claudex/internal/schema"
 	u "github.com/tanq16/claudex/utils"
 )
 
@@ -32,6 +34,11 @@ func runConfigure(cmd *cobra.Command, args []string) {
 	if err != nil {
 		u.PrintFatal("failed to read the defaults", err)
 	}
+	catalog, _ := schema.Load(u.SettingsSchemaFile())
+	var schemaKeys []string
+	for _, e := range catalog.Entries {
+		schemaKeys = append(schemaKeys, e.Key)
+	}
 
 	if configureFlags.account != "" {
 		dir := u.ResolveConfigDir(configureFlags.account)
@@ -40,6 +47,7 @@ func runConfigure(cmd *cobra.Command, args []string) {
 			u.PrintFatal("failed to configure account", err)
 		}
 		reportAccount(dir, configureFlags.label, paths)
+		reportUnmanaged(dir, defaults, schemaKeys)
 	} else {
 		configured := 0
 		for _, dir := range u.DiscoverAccountPaths() {
@@ -49,6 +57,7 @@ func runConfigure(cmd *cobra.Command, args []string) {
 				continue
 			}
 			reportAccount(dir, "", paths)
+			reportUnmanaged(dir, defaults, schemaKeys)
 			configured++
 		}
 		if configured == 0 {
@@ -71,6 +80,18 @@ func reportAccount(dir, label string, paths accounts.Paths) {
 	u.PrintSuccess(fmt.Sprintf("Configured %s (label: %s)", u.AbbreviatePath(dir), label))
 	u.PrintGeneric("  statusline: " + paths.Statusline)
 	u.PrintGeneric("  settings:   " + paths.Settings)
+}
+
+func reportUnmanaged(dir string, defaults *accounts.Defaults, schemaKeys []string) {
+	unmanaged := accounts.Audit(dir, defaults, schemaKeys).Unmanaged
+	if len(unmanaged) == 0 {
+		return
+	}
+	keys := make([]string, len(unmanaged))
+	for i, k := range unmanaged {
+		keys[i] = k.Key
+	}
+	u.PrintIndentedWarn(fmt.Sprintf("%d keys not managed by claudex: %s", len(keys), strings.Join(keys, ", ")), nil)
 }
 
 func applyGlobalDefaults() {

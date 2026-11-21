@@ -60,3 +60,7 @@ func ResumeStash(projectDir string) string {
 func DefaultsFile() string {
 	return paths.DefaultsFile(HomeDir())
 }
+
+func SettingsSchemaFile() string {
+	return paths.SettingsSchemaFile(HomeDir())
+}

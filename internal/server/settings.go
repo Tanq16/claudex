@@ -30,9 +30,10 @@ type accountView struct {
 
 type accountSettings struct {
 	accountView
-	SettingsFound bool             `json:"settingsFound"`
-	Drift         []accounts.Drift `json:"drift"`
-	Projects      int              `json:"projects"`
+	SettingsFound bool                 `json:"settingsFound"`
+	Drift         []accounts.Drift     `json:"drift"`
+	Unmanaged     []accounts.Unmanaged `json:"unmanaged"`
+	Projects      int                  `json:"projects"`
 }
 
 type builtinPreset struct {
@@ -111,13 +112,15 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, _ := s.catalog(r.Context())
+	schemaKeys := catalogKeys(c)
 	var views []accountSettings
 	for _, a := range s.accounts() {
 		dir := paths.Expand(s.home, a.Dir)
-		found, drift := accounts.Compliance(dir, defaults)
-		for i := range drift {
-			drift[i].Expected = s.abbrev(drift[i].Expected)
-			drift[i].Actual = s.abbrev(drift[i].Actual)
+		report := accounts.Audit(dir, defaults, schemaKeys)
+		for i := range report.Drift {
+			report.Drift[i].Expected = s.abbrev(report.Drift[i].Expected)
+			report.Drift[i].Actual = s.abbrev(report.Drift[i].Actual)
 		}
 		count := 0
 		for _, p := range st.Projects {
@@ -125,7 +128,7 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 				count++
 			}
 		}
-		views = append(views, accountSettings{accountView: a, SettingsFound: found, Drift: drift, Projects: count})
+		views = append(views, accountSettings{accountView: a, SettingsFound: report.Found, Drift: report.Drift, Unmanaged: report.Unmanaged, Projects: count})
 	}
 	return map[string]any{
 		"root":          s.abbrev(s.root),
