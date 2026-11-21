@@ -85,6 +85,10 @@ func RemotePresetsDir(home string) string {
 	return filepath.Join(ConfigDir(home), "remote-presets")
 }
 
+func ImagesDir(home string) string {
+	return filepath.Join(ConfigDir(home), "images")
+}
+
 func StateFile(home string) string {
 	return filepath.Join(ConfigDir(home), "state.json")
 }
