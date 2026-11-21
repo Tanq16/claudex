@@ -208,7 +208,11 @@ claudex serve                                   # http://127.0.0.1:8080, project
 claudex serve --root ~/code -p 9000
 ```
 
-Each session is a window in a tmux session named `claudex`, running `claude --remote-control <name>` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Sessions outlive `serve`, since tmux is its own process. A project shows as active while its window runs and inactive otherwise, and Continue restarts it with `claude --continue`.
+A session runs detached or attached, chosen when it starts. A detached session is a window in a tmux session named `claudex`, running `claude` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Detached sessions outlive `serve`, since tmux is its own process. Remote Control is an optional launch toggle for them, and its name defaults to the project name.
+
+An attached session is a `claude -p` stream-json process that `serve` hosts itself and shows as a chat on the project page. Attached sessions stop with `serve` and come back with `claude --continue` at its next start. Ctrl+C on `serve` exits at once when every attached session is idle, and otherwise lists what is still running and asks first. `SIGTERM`, or a `serve` without a terminal, stops them without asking.
+
+A project shows as active while its session runs, and a restart continues the conversation with `claude --continue`.
 
 The new-session dialog starts from an existing directory under the root, a new empty one, or a clone from `gh`, then applies presets, picks MCP servers from the library, and launches. A project page browses and renders the project's files, takes new files and uploads, and holds restart, stop, account switch, `clean-cwd`, preset, and MCP controls. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
 
