@@ -1,7 +1,8 @@
 views.dashboard = {
-    local: { tab: 'active', filter: '', busy: new Map() },
+    local: { tab: 'active', filter: '', busy: new Map(), dirs: null },
     root: null,
     shape: null,
+    dirSeq: 0,
 
     mount(el) {
         el.innerHTML = `<section class="flex h-full flex-col gap-3 md:gap-4 3xl:gap-6">
@@ -21,10 +22,29 @@ views.dashboard = {
     },
 
     update() {
+        this.paint();
+        this.loadDirs();
+    },
+
+    async loadDirs() {
+        const seq = ++this.dirSeq;
+        let dirs;
+        try {
+            dirs = await api.directories();
+        } catch (err) {
+            ui.toast(`Untracked directories failed to load: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
+            return;
+        }
+        if (seq !== this.dirSeq || !this.root) return;
+        this.local.dirs = dirs;
+        this.paint();
+    },
+
+    paint() {
         if (!this.root || !store.state) return;
         const { projects } = store.state;
         this.renderHeader();
-        const shape = projects.length ? 'full' : 'empty';
+        const shape = projects.length || this.local.dirs?.length ? 'full' : 'empty';
         if (shape !== this.shape) {
             this.shape = shape;
             this.renderBody();
@@ -89,7 +109,7 @@ views.dashboard = {
                     <h2 class="flex-1 font-display text-lg font-medium text-text">Active sessions</h2>
                     ${ui.button('New session', { icon: 'plus', variant: 'primary', size: 'sm', action: 'new-session' })}
                 </header>
-                <div data-scroll class="min-h-0 flex-1 overflow-y-auto rounded-3xl">
+                <div data-scroll="lane" class="-mr-3.5 min-h-0 flex-1 overflow-y-auto rounded-3xl">
                     <ul data-list="active" class="grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-3 3xl:grid-cols-[repeat(auto-fill,minmax(26rem,1fr))] 3xl:gap-4"></ul>
                 </div>
             </section>
@@ -102,7 +122,7 @@ views.dashboard = {
                         <span data-dash-clear class="absolute top-1/2 right-1 -translate-y-1/2 ${this.local.filter ? '' : 'hidden'}">${ui.iconButton('x', { title: 'Clear filter', action: 'dash-clear-filter', size: 'sm' })}</span>
                     </label>
                 </header>
-                <div data-scroll class="min-h-0 flex-1 overflow-y-auto px-2 pb-2 md:px-3 md:pb-3">
+                <div data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto px-2 pb-2 md:px-3 md:pb-3">
                     <ul data-list="tracked" class="flex flex-col gap-1"></ul>
                 </div>
             </section>`;
@@ -138,7 +158,7 @@ views.dashboard = {
             list.innerHTML = `<li class="col-span-full h-full rounded-3xl bg-mantle">${ui.empty({
                 icon: 'moon',
                 title: 'No active sessions',
-                hint: `${tracked} tracked ${tracked === 1 ? 'directory is' : 'directories are'} idle. Continue one from Inactive, or start something new.`,
+                hint: `${tracked} tracked ${tracked === 1 ? 'directory is' : 'directories are'} idle. Start a session from Inactive, or start something new.`,
                 action: ui.button('New session', { icon: 'plus', action: 'new-session' }),
             })}</li>`;
             return;
@@ -159,7 +179,7 @@ views.dashboard = {
                 <header class="flex items-center gap-3">
                     <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="folder-git-2" class="size-5"></i></span>
                     <div class="min-w-0 flex-1">
-                        <h3 class="font-display leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${ui.esc(p.rcName)}</a></h3>
+                        <h3 class="font-display leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${name}</a></h3>
                         <p class="truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
                     </div>
                 </header>
@@ -184,25 +204,34 @@ views.dashboard = {
     renderTracked() {
         const list = this.root.querySelector('[data-list="tracked"]');
         const inactive = store.state.projects.filter((p) => !p.active);
+        const untracked = this.local.dirs || [];
         const q = this.local.filter.trim();
-        const rows = q
-            ? inactive.map((p) => ({ p, s: ui.fuzzy(q, `${p.name} ${p.dir} ${p.rcName}`) })).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || b.p.lastActive - a.p.lastActive).map((x) => x.p)
-            : [...inactive].sort((a, b) => b.lastActive - a.lastActive);
-        list.classList.toggle('h-full', !rows.length);
-        if (!inactive.length) {
+        const match = (items, text, recent) => (q
+            ? items.map((x) => ({ x, s: ui.fuzzy(q, text(x)) })).filter((m) => m.s >= 0).sort((a, b) => b.s - a.s || recent(b.x) - recent(a.x)).map((m) => m.x)
+            : [...items].sort((a, b) => recent(b) - recent(a)));
+        const rows = match(inactive, (p) => `${p.name} ${p.dir}`, (p) => p.lastActive);
+        const dirs = match(untracked, (d) => d.name, () => 0);
+        list.classList.toggle('h-full', !rows.length && !dirs.length);
+        if (!inactive.length && !untracked.length) {
             list.innerHTML = `<li class="h-full">${ui.empty({ icon: 'check-check', title: 'Everything is running', hint: 'Every tracked directory has an active session.' })}</li>`;
             return;
         }
-        if (!rows.length) {
+        if (!rows.length && !dirs.length) {
             list.innerHTML = `<li class="h-full">${ui.empty({
                 icon: 'search-x',
                 title: 'No matches',
-                hint: `No tracked directory matches <span class="font-mono text-subtext0">${ui.esc(q)}</span>.`,
+                hint: `No directory matches <span class="font-mono text-subtext0">${ui.esc(q)}</span>.`,
                 action: ui.button('Clear filter', { icon: 'x', size: 'sm', variant: 'ghost', action: 'dash-clear-filter' }),
             })}</li>`;
             return;
         }
-        list.innerHTML = rows.map((p) => this.row(p)).join('');
+        const group = (label, n) => `<li class="${ui.cls.group} flex items-center gap-2 first:pt-1">${label}${ui.chip(String(n))}</li>`;
+        list.innerHTML = [
+            rows.length && dirs.length ? group('Tracked', rows.length) : '',
+            ...rows.map((p) => this.row(p)),
+            dirs.length ? group('Untracked', dirs.length) : '',
+            ...dirs.map((d) => this.untrackedRow(d)),
+        ].join('');
     },
 
     row(p) {
@@ -210,25 +239,73 @@ views.dashboard = {
         return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
             <span class="min-w-0 flex-1">
                 <span class="flex items-baseline gap-2">
-                    <span class="min-w-0 text-sm font-medium wrap-anywhere text-text">${ui.esc(p.rcName)}</span>
+                    <span class="min-w-0 text-sm font-medium wrap-anywhere text-text">${name}</span>
                     <span class="shrink-0 text-xs text-overlay1" title="Last active">${ui.esc(ui.timeAgo(p.lastActive))}</span>
                 </span>
                 <span class="block truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</span>
                 ${this.multiAccount() ? `<span class="mt-0.5 flex items-center gap-1.5 text-xs text-overlay1"><i data-lucide="user-round" class="size-3 shrink-0"></i><span class="truncate">${ui.esc(this.accountLabel(p.account))}</span></span>` : ''}
             </span>
             <span class="hidden max-w-[45%] flex-wrap justify-end gap-1.5 3xl:flex">${p.presets.map((x) => ui.chip(x)).join('')}</span>
-            ${ui.iconButton('play', { title: 'Continue', size: 'sm', variant: 'secondary', action: 'dash-continue', attrs: `data-name="${name}"` })}
-            ${ui.iconButton('plus', { title: 'New conversation', size: 'sm', variant: 'secondary', action: 'dash-new', attrs: `data-name="${name}"` })}
+            ${ui.iconButton('plus', { title: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new', attrs: `data-name="${name}"` })}
             ${ui.iconButton('ellipsis-vertical', { title: 'More', size: 'sm', action: 'dash-tracked-menu', attrs: `data-name="${name}"` })}
         </li>`;
     },
 
+    untrackedRow(d) {
+        const name = ui.esc(d.name);
+        const path = `${store.state.root}/${d.name}`;
+        const busy = this.local.busy.get(d.name);
+        return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
+            <i data-lucide="folder" class="size-4 shrink-0 text-overlay0"></i>
+            <span class="min-w-0 flex-1">
+                <span class="block text-sm wrap-anywhere text-subtext0">${name}</span>
+                <span class="block truncate font-mono text-xs text-overlay0" title="${ui.esc(path)}">${ui.esc(path)}</span>
+                ${d.foreign.length ? `<span class="mt-0.5 flex items-center gap-1.5 text-xs text-peach"><i data-lucide="file-warning" class="size-3 shrink-0"></i><span class="truncate">${d.foreign.length} ${d.foreign.length === 1 ? 'file' : 'files'} claudex did not create</span></span>` : ''}
+            </span>
+            ${ui.iconButton(busy === 'track' ? 'loader-circle' : 'folder-plus', { title: 'Start tracking', size: 'sm', variant: 'secondary', action: 'dash-track', spin: busy === 'track', disabled: !!busy, attrs: `data-name="${name}"` })}
+            ${ui.iconButton('plus', { title: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new-untracked', disabled: !!busy, attrs: `data-name="${name}"` })}
+        </li>`;
+    },
+
+    askForeign(d) {
+        return new Promise((resolve) => {
+            let answered = false;
+            const m = ui.modal.open({
+                title: `Start tracking ${d.name}?`,
+                icon: 'file-warning',
+                size: 'sm',
+                body: `<div class="flex flex-col gap-4 pt-1">
+                    <p class="text-sm leading-relaxed text-subtext0">It holds files claudex did not create. Claudex moves them aside before tracking it.</p>
+                    <p class="flex flex-wrap gap-1.5">${d.foreign.map((f) => ui.chip(f, { tone: 'peach', mono: true })).join('')}</p>
+                    ${ui.choices({
+                        name: 'dash-foreign',
+                        value: 'preserve',
+                        options: [
+                            { value: 'preserve', label: 'Preserve', icon: 'archive', hint: 'Zip them into .agents/old-ai-files.zip' },
+                            { value: 'clean', label: 'Clean', icon: 'eraser', hint: 'Delete them without a backup' },
+                        ],
+                    })}
+                </div>`,
+                footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-confirm="no"' })}${ui.button('Start tracking', { icon: 'folder-plus', variant: 'primary', attrs: 'data-confirm="yes"' })}`,
+                onClose: () => { if (!answered) resolve(null); },
+            });
+            m.el.addEventListener('click', (e) => {
+                const b = e.target.closest('[data-confirm]');
+                if (!b) return;
+                answered = true;
+                const choice = ui.value(m.el, 'dash-foreign');
+                m.close();
+                resolve(b.dataset.confirm === 'yes' ? choice : null);
+            });
+        });
+    },
+
     async run(name, kind, label, fn, success) {
         this.local.busy.set(name, kind);
-        this.update();
+        this.paint();
         await app.act(label, fn, { success });
         this.local.busy.delete(name);
-        this.update();
+        this.paint();
     },
 };
 
@@ -241,20 +318,30 @@ ui.on('dash-restart', (el) => {
 
 ui.on('dash-stop', async (el) => {
     const { name } = el.dataset;
-    const p = store.state.projects.find((x) => x.name === name);
     const ok = await ui.confirm({
         title: `Stop ${name}?`,
         icon: 'square',
-        message: `This closes the tmux window <span class="font-mono text-text">claudex:${ui.esc(p?.rcName ?? name)}</span> and ends its Remote Control session. The conversation stays on disk, so Continue picks it up.`,
+        message: `This closes the tmux window <span class="font-mono text-text">claudex:${ui.esc(name)}</span> and ends its Remote Control session. The conversation stays on disk, so Continue picks it up.`,
         confirmLabel: 'Stop session',
         danger: true,
     });
     if (ok) views.dashboard.run(name, 'stop', 'Stop', () => api.stop(name), `${name} stopped`);
 });
 
-ui.on('dash-continue', (el) => views.newSession.open({ name: el.dataset.name, mode: 'continue' }));
-
 ui.on('dash-new', (el) => views.newSession.open({ name: el.dataset.name, mode: 'new' }));
+
+ui.on('dash-new-untracked', (el) => views.newSession.open({ name: el.dataset.name }));
+
+ui.on('dash-track', async (el) => {
+    const { name } = el.dataset;
+    const dir = views.dashboard.local.dirs?.find((d) => d.name === name);
+    let choice;
+    if (dir?.foreign.length) {
+        choice = await views.dashboard.askForeign(dir);
+        if (!choice) return;
+    }
+    views.dashboard.run(name, 'track', 'Start tracking', () => api.track(name, choice), `${name} is tracked`);
+});
 
 ui.on('dash-tracked-menu', (el) => {
     const { name } = el.dataset;
