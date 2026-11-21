@@ -296,14 +296,15 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 		p.RCName = cmp.Or(strings.TrimSpace(req.RCName), req.Name)
 	}
 	if mode == state.ModeAttached {
-		p.Attached = &state.Attached{}
+		last := state.Attached{}
 		if previous.Attached != nil {
-			*p.Attached = *previous.Attached
+			last = *previous.Attached
 		}
-		p.Attached.PID, p.Attached.StartedAt = 0, 0
-		p.Attached.Model = cmp.Or(strings.TrimSpace(req.Model), p.Attached.Model)
-		p.Attached.Effort = cmp.Or(strings.TrimSpace(req.Effort), p.Attached.Effort)
-		p.Attached.PermissionMode = cmp.Or(strings.TrimSpace(req.PermissionMode), p.Attached.PermissionMode)
+		p.Attached = &state.Attached{
+			Model:          cmp.Or(strings.TrimSpace(req.Model), last.Model),
+			Effort:         cmp.Or(strings.TrimSpace(req.Effort), last.Effort),
+			PermissionMode: cmp.Or(strings.TrimSpace(req.PermissionMode), last.PermissionMode),
+		}
 	}
 	st.Projects[dir] = p
 	if err := s.saveState(st); err != nil {
