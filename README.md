@@ -222,7 +222,7 @@ Moves every session of the current directory, with its history entries, out of t
 
 - **tmux is required for `serve`.** `gh` is needed only to list and clone repositories in the new-session dialog.
 - **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
-- **Preset skills are symlinks.** They point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` are real copies extracted from the binary, so re-running `apply` is what updates them.
+- **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`, which is rewritten from the binary along with the built-in presets.
 - **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
 - **Language server binaries are yours to install.** ClaudeX writes the `.lsp.json`, and a server whose binary is missing is skipped while the rest still start. Install commands and the `typescript@5` pin are in [docs/language-servers.md](docs/language-servers.md).
 - **Another repo's agent files.** `.git/info/exclude` only reaches untracked files, so a `GEMINI.md` or `.cursor/` that the repository itself tracks stays in your working tree. [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers the sparse-checkout that removes them.

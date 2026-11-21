@@ -45,6 +45,10 @@ func PresetsDir() string {
 	return paths.PresetsDir(HomeDir())
 }
 
+func BaseSkillsDir() string {
+	return paths.BaseSkillsDir(HomeDir())
+}
+
 func RemotePresetsDir() string {
 	return paths.RemotePresetsDir(HomeDir())
 }

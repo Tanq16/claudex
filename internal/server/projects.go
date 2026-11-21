@@ -516,8 +516,7 @@ func (s *Server) applyPresets(st *state.State, dir string, refs []string) error 
 	return workspace.Apply(workspace.ApplyConfig{
 		Root:          dir,
 		Base:          embedded.AgentsBase,
-		BaseSkills:    embedded.DefaultSkillsFS,
-		BaseSkillsDir: "default-skills",
+		BaseSkills:    paths.BaseSkillsDir(s.home),
 		LocalPresets:  local,
 		RemotePresets: remote,
 		Presets:       refs,

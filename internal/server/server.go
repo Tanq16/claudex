@@ -73,8 +73,11 @@ func (s *Server) Setup() error {
 	}
 	s.root = root
 
-	if err := workspace.EnsurePresets(embedded.PresetsFS, "presets", paths.PresetsDir(home)); err != nil {
+	if err := workspace.Extract(embedded.PresetsFS, "presets", paths.PresetsDir(home)); err != nil {
 		return fmt.Errorf("laying down the built-in presets: %w", err)
+	}
+	if err := workspace.Extract(embedded.DefaultSkillsFS, "default-skills", paths.BaseSkillsDir(home)); err != nil {
+		return fmt.Errorf("laying down the base skills: %w", err)
 	}
 	if err := workspace.EnsureRemotePresets(paths.RemotePresetsDir(home)); err != nil {
 		return fmt.Errorf("creating the remote presets directory: %w", err)
