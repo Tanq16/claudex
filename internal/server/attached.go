@@ -46,6 +46,23 @@ func (s *Server) startAttached(name, dir string, p state.Project, continueLast b
 	return s.host.Start(cfg)
 }
 
+func logAttached(r attached.Report) {
+	switch r.Kind {
+	case attached.Exited:
+		log.Info().Str("session", r.Session).Int("code", r.Code).Msg("attached session exited")
+	case attached.InitializeFailed:
+		log.Warn().Err(r.Err).Str("session", r.Session).Msg("initialize failed")
+	case attached.ImageNotStored:
+		log.Warn().Err(r.Err).Str("session", r.Session).Msg("could not store an image from a tool result")
+	case attached.WriteFailed:
+		log.Debug().Err(r.Err).Str("session", r.Session).Msg("write to claude failed")
+	case attached.LineUnreadable:
+		log.Debug().Err(r.Err).Str("session", r.Session).Msg("unreadable line from claude")
+	case attached.ContextRefreshFailed:
+		log.Debug().Err(r.Err).Str("session", r.Session).Msg("context refresh failed")
+	}
+}
+
 func (s *Server) syncAttached() {
 	s.mu.Lock()
 	defer s.mu.Unlock()

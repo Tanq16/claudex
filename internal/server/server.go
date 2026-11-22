@@ -107,7 +107,7 @@ func (s *Server) Setup() error {
 	if s.images, err = images.New(paths.ImagesDir(home), "/api/images/"); err != nil {
 		return fmt.Errorf("creating the image store: %w", err)
 	}
-	s.host = attached.NewHost(s.images)
+	s.host = attached.NewHost(s.images, logAttached)
 	if err := s.resumeAttached(); err != nil {
 		return err
 	}

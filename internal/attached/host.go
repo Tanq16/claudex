@@ -31,8 +31,27 @@ type Anchor struct {
 	Whole  bool
 }
 
+type ReportKind int
+
+const (
+	Exited ReportKind = iota
+	InitializeFailed
+	ImageNotStored
+	WriteFailed
+	LineUnreadable
+	ContextRefreshFailed
+)
+
+type Report struct {
+	Session string
+	Kind    ReportKind
+	Err     error
+	Code    int
+}
+
 type Host struct {
 	images  *images.Store
+	report  func(Report)
 	persist chan struct{}
 
 	mu       sync.Mutex
@@ -43,9 +62,10 @@ type Host struct {
 	watchers map[chan struct{}]struct{}
 }
 
-func NewHost(store *images.Store) *Host {
+func NewHost(store *images.Store, report func(Report)) *Host {
 	return &Host{
 		images:   store,
+		report:   report,
 		persist:  make(chan struct{}, 1),
 		sessions: map[string]*Session{},
 		watchers: map[chan struct{}]struct{}{},

@@ -20,8 +20,6 @@ import (
 	"syscall"
 	"time"
 	"uuid"
-
-	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -202,7 +200,7 @@ func (s *Session) write(stdin io.WriteCloser) {
 		select {
 		case line := <-s.queue:
 			if _, err := stdin.Write(line); err != nil {
-				log.Debug().Err(err).Str("session", s.name).Msg("write to claude failed")
+				s.report(WriteFailed, err)
 				return
 			}
 		case <-s.exited:
@@ -246,7 +244,7 @@ func (s *Session) wait(stdout *os.File) {
 	s.r.snap.Tasks = []Task{}
 	s.changedLocked()
 	s.mu.Unlock()
-	log.Info().Str("session", s.name).Int("code", exit.Code).Msg("attached session exited")
+	s.host.report(Report{Session: s.name, Kind: Exited, Code: exit.Code})
 	close(s.finished)
 	s.host.notify()
 	s.host.persistLater()
@@ -255,7 +253,7 @@ func (s *Session) wait(stdout *os.File) {
 func (s *Session) initialize() {
 	reply, err := s.request(context.Background(), "initialize", map[string]any{"perTaskStopAffordance": true})
 	if err != nil {
-		log.Warn().Err(err).Str("session", s.name).Msg("initialize failed")
+		s.report(InitializeFailed, err)
 		return
 	}
 	s.mu.Lock()
@@ -276,7 +274,7 @@ func (s *Session) handle(line []byte) {
 		RequestID string `json:"request_id"`
 	}
 	if err := json.Unmarshal(line, &h, lenient); err != nil {
-		log.Debug().Err(err).Str("session", s.name).Msg("unreadable line from claude")
+		s.report(LineUnreadable, err)
 		return
 	}
 	kind := h.Type
@@ -300,7 +298,7 @@ func (s *Session) handle(line []byte) {
 	case "user":
 		rewritten, err := s.host.images.Rewrite(line)
 		if err != nil {
-			log.Warn().Err(err).Str("session", s.name).Msg("could not store an image from a tool result")
+			s.report(ImageNotStored, err)
 		}
 		line = rewritten
 	}
@@ -649,8 +647,12 @@ func (s *Session) refreshContext() {
 	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
 	defer cancel()
 	if _, err := s.ContextUsage(ctx, "summary"); err != nil && !errors.Is(err, ErrNotRunning) {
-		log.Debug().Err(err).Str("session", s.name).Msg("context refresh failed")
+		s.report(ContextRefreshFailed, err)
 	}
+}
+
+func (s *Session) report(kind ReportKind, err error) {
+	s.host.report(Report{Session: s.name, Kind: kind, Err: err})
 }
 
 func (s *Session) update(fn func(r *reduced)) {
