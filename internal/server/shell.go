@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/tanq16/claudex/internal/accounts"
@@ -26,5 +27,10 @@ func (s *Server) handleShell(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	return shell.Run(r.Context(), dir, accounts.Env(p.Account, s.launcher.DefaultAccount), req.Command)
+	return shell.Run(r.Context(), shell.Config{
+		Shell:   os.Getenv("SHELL"),
+		Dir:     dir,
+		Env:     accounts.Env(p.Account, s.launcher.DefaultAccount),
+		Command: req.Command,
+	})
 }

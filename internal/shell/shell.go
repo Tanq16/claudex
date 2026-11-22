@@ -5,7 +5,6 @@ import (
 	"cmp"
 	"context"
 	"errors"
-	"os"
 	"os/exec"
 	"strings"
 	"syscall"
@@ -26,12 +25,19 @@ type Result struct {
 	Truncated  bool   `json:"truncated"`
 }
 
-func Run(ctx context.Context, dir string, env []string, command string) (Result, error) {
+type Config struct {
+	Shell   string
+	Dir     string
+	Env     []string
+	Command string
+}
+
+func Run(ctx context.Context, cfg Config) (Result, error) {
 	ctx, cancel := context.WithTimeout(ctx, Timeout)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, cmp.Or(os.Getenv("SHELL"), "/bin/sh"), "-c", command)
-	cmd.Dir = dir
-	cmd.Env = env
+	cmd := exec.CommandContext(ctx, cmp.Or(cfg.Shell, "/bin/sh"), "-c", cfg.Command)
+	cmd.Dir = cfg.Dir
+	cmd.Env = cfg.Env
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 	cmd.Cancel = func() error { return syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL) }
 	cmd.WaitDelay = 2 * time.Second
