@@ -74,6 +74,8 @@ const live = (() => {
             }
             fn(data, e);
         });
+        // listen() records the time heard, which keeps the watchdog from reconnecting an idle stream.
+        listen('ping', () => {});
         listen('summary', (data) => applySummary(data));
         listen('reset', (data, e) => {
             s.lastId = data.session ? e.lastEventId : '';

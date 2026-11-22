@@ -50,7 +50,12 @@ const api = (() => {
 
         history: (name) => get(`${project(name)}/history`),
         shell: (name, command) => post(`${project(name)}/shell`, { command }),
-        prompt: (name, text) => post(`${project(name)}/prompt`, { text }),
+        prompt: (name, text, files = []) => {
+            const form = new FormData();
+            form.append('text', text);
+            for (const f of files) form.append('files', f);
+            return post(`${project(name)}/prompt`, form);
+        },
         answer: (name, id, payload) => post(`${project(name)}/approvals/${enc(id)}`, payload),
         interrupt: (name) => post(`${project(name)}/interrupt`),
         stopTask: (name, id) => post(`${project(name)}/tasks/${enc(id)}/stop`),

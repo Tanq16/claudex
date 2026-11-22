@@ -40,6 +40,7 @@ const (
 	WriteFailed
 	LineUnreadable
 	ContextRefreshFailed
+	SettingsRefreshFailed
 )
 
 type Report struct {

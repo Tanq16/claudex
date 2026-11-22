@@ -60,6 +60,8 @@ func logAttached(r attached.Report) {
 		log.Debug().Err(r.Err).Str("session", r.Session).Msg("unreadable line from claude")
 	case attached.ContextRefreshFailed:
 		log.Debug().Err(r.Err).Str("session", r.Session).Msg("context refresh failed")
+	case attached.SettingsRefreshFailed:
+		log.Debug().Err(r.Err).Str("session", r.Session).Msg("settings refresh failed")
 	}
 }
 
@@ -153,19 +155,25 @@ func payloadOrEmpty(v jsontext.Value) jsontext.Value {
 }
 
 func (s *Server) handlePrompt(r *http.Request) (any, error) {
-	var req struct {
-		Text string `json:"text"`
-	}
-	if err := decode(r, &req); err != nil {
-		return nil, err
-	}
 	sess, err := s.attachedSession(r.PathValue("name"))
 	if err != nil {
 		return nil, err
 	}
+	if err := r.ParseMultipartForm(maxUploadMem); err != nil {
+		return nil, fail(http.StatusBadRequest, "the prompt is not a multipart form: %v", err)
+	}
+	defer r.MultipartForm.RemoveAll()
+	text := r.FormValue("text")
+	blocks, saved, err := s.attachments(r, r.MultipartForm.File["files"])
+	if err != nil {
+		return nil, err
+	}
+	if len(saved) > 0 {
+		text = strings.TrimSpace(text + "\n\nAttached files, saved in the project:\n- " + strings.Join(saved, "\n- "))
+	}
 	ctx, cancel := commandContext(r)
 	defer cancel()
-	id, err := sess.Prompt(ctx, req.Text)
+	id, err := sess.Prompt(ctx, text, blocks)
 	if err != nil {
 		return nil, err
 	}
@@ -337,7 +345,7 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 		case <-r.Context().Done():
 			return
 		case <-beat:
-			fmt.Fprint(w, ": ping\n\n")
+			sw.event("", "ping", []byte("{}"))
 		case ev, ok := <-live:
 			if !ok {
 				return

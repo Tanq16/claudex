@@ -38,6 +38,12 @@ views.chat = (() => {
     };
 
     let C = null;
+    const drafts = new Map();
+    const draftKey = (name) => `claudex.draft.${name}`;
+    const draftOf = (name) => {
+        if (!drafts.has(name)) drafts.set(name, { files: [], focus: null });
+        return drafts.get(name);
+    };
 
     const $ = (sel) => C.pane.querySelector(sel);
     const ts = (m) => Date.parse(m?.timestamp) || 0;
@@ -101,9 +107,12 @@ views.chat = (() => {
             <div data-column class="mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}">
                 <div data-chat-banner></div>
                 <div data-chat-status class="flex h-9 items-center gap-2 px-2 text-xs"></div>
-                <form data-chat-composer novalidate class="rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40">
-                    <textarea data-chat-input data-scroll rows="1" spellcheck="false" placeholder="Message, or / for commands" class="block max-h-48 w-full resize-none bg-transparent px-3 py-2 text-sm leading-relaxed text-text placeholder:text-overlay0 outline-none disabled:cursor-not-allowed pointer-coarse:text-[16px]"></textarea>
-                    <div class="flex items-center gap-1.5 pt-1">
+                <form data-chat-composer novalidate class="rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40 data-drag:ring-2 data-drag:ring-mauve/40">
+                    <div data-chat-files hidden class="flex flex-wrap items-center gap-2 px-2 pt-2 pb-1"></div>
+                    <textarea data-chat-input data-scroll rows="1" spellcheck="false" placeholder="Message, or / for commands" class="block max-h-48 w-full resize-none bg-transparent px-3 pt-2 text-sm leading-relaxed text-text placeholder:text-overlay0 outline-none disabled:cursor-not-allowed pointer-coarse:text-[16px]"></textarea>
+                    <input type="file" multiple hidden data-chat-file-input>
+                    <div class="flex items-center gap-1.5 pt-3">
+                        <span data-chat-attach></span>
                         <span data-chat-model class="min-w-0"></span>
                         <span data-chat-effort class="max-sm:hidden"></span>
                         <span data-chat-mode class="max-md:hidden"></span>
@@ -141,9 +150,41 @@ views.chat = (() => {
             ...transcript(),
         };
         C.log.innerHTML = `<li data-chat-empty class="flex items-center justify-center gap-2 py-16 text-sm text-overlay1">${ui.spinner()}Loading the conversation</li>`;
+        try {
+            C.input.value = localStorage.getItem(draftKey(name)) || '';
+        } catch {}
         C.input.addEventListener('input', () => {
             autosize();
+            saveDraft();
             slash.update();
+        });
+        C.input.addEventListener('paste', (e) => {
+            const files = [...(e.clipboardData?.files || [])];
+            if (!files.length) return;
+            e.preventDefault();
+            addFiles(files);
+        });
+        const form = pane.querySelector('[data-chat-composer]');
+        form.addEventListener('dragover', (e) => {
+            if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            form.dataset.drag = '';
+        });
+        form.addEventListener('dragleave', (e) => {
+            if (!form.contains(e.relatedTarget)) delete form.dataset.drag;
+        });
+        form.addEventListener('drop', (e) => {
+            delete form.dataset.drag;
+            const files = [...(e.dataTransfer?.files || [])];
+            if (!files.length) return;
+            e.preventDefault();
+            addFiles(files);
+        });
+        pane.querySelector('[data-chat-file-input]').addEventListener('change', (e) => {
+            const files = [...e.target.files];
+            e.target.value = '';
+            if (files.length) addFiles(files);
         });
         C.input.addEventListener('keydown', (e) => {
             if (slash.keys(e)) return;
@@ -153,7 +194,7 @@ views.chat = (() => {
             }
         });
         C.input.addEventListener('blur', () => setTimeout(() => slash.close(), 150));
-        pane.querySelector('[data-chat-composer]').addEventListener('submit', (e) => {
+        form.addEventListener('submit', (e) => {
             e.preventDefault();
             submit();
         });
@@ -163,11 +204,20 @@ views.chat = (() => {
         C.poller = setInterval(pollTails, 2000);
         renderComposer();
         renderStatus();
+        renderFiles();
+        autosize();
+        const d = draftOf(name);
+        if (d.focus) {
+            C.input.focus();
+            C.input.setSelectionRange(...d.focus);
+            d.focus = null;
+        }
         live.watch(name, onLive);
     }
 
-    function unmount() {
+    function unmount(remount = false) {
         if (!C) return;
+        if (remount && document.activeElement === C.input) draftOf(C.name).focus = [C.input.selectionStart, C.input.selectionEnd];
         clearInterval(C.ticker);
         clearInterval(C.poller);
         slash.close();
@@ -365,13 +415,16 @@ views.chat = (() => {
 
     const thumbs = (urls, cls = '') => (urls.length ? `<div class="flex flex-wrap gap-2 ${cls}">${urls.map((u) => `<button type="button" data-action="chat-image" data-src="${ui.esc(u)}" class="group relative overflow-hidden rounded-2xl bg-base ${ui.cls.focus}"><img src="${ui.esc(u)}" alt="" loading="lazy" class="h-36 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"><span class="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-crust/70 text-text opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"><i data-lucide="maximize-2" class="size-3.5"></i></span></button>`).join('')}</div>` : '');
 
-    const imageUrls = (content) => (Array.isArray(content) ? content.filter((b) => b.type === 'image' && b.source?.type === 'url' && b.source.url).map((b) => b.source.url) : []);
+    const sourceUrls = (content, type) => (Array.isArray(content) ? content.filter((b) => b.type === type && b.source?.type === 'url' && b.source.url).map((b) => b.source.url) : []);
+    const imageUrls = (content) => sourceUrls(content, 'image');
 
-    const userBubble = (text, images = []) => {
+    const docLinks = (urls) => (urls.length ? `<div class="flex flex-wrap justify-end gap-2">${urls.map((u) => `<a href="${ui.esc(u)}" target="_blank" rel="noopener" class="inline-flex h-8 items-center gap-1.5 rounded-full bg-surface0 px-3 text-xs text-text transition-colors hover:bg-surface1 ${ui.cls.focus}"><i data-lucide="file-text" class="size-3.5 text-overlay1"></i>PDF</a>`).join('')}</div>` : '');
+
+    const userBubble = (text, images = [], docs = []) => {
         closeGroup();
         const li = append(`<li data-user class="group flex items-end justify-end gap-1 ${rise()}">
             <span class="${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', action: 'chat-copy-prompt' })}</span>
-            <div class="flex max-w-[85%] min-w-0 flex-col items-end gap-2">${text ? '<div class="min-w-0 max-w-full rounded-3xl rounded-br-lg bg-surface0 px-4 py-2.5"><div class="markdown-body user-md"></div></div>' : ''}${thumbs(images, 'justify-end')}</div>
+            <div class="flex max-w-[85%] min-w-0 flex-col items-end gap-2">${text ? '<div class="min-w-0 max-w-full rounded-3xl rounded-br-lg bg-surface0 px-4 py-2.5"><div class="markdown-body user-md"></div></div>' : ''}${thumbs(images, 'justify-end')}${docLinks(docs)}</div>
         </li>`);
         li.dataset.text = text;
         if (text) md.render(li.querySelector('.user-md'), text, { breaks: true });
@@ -384,7 +437,7 @@ views.chat = (() => {
         return [name, tag('command-args')].filter(Boolean).join(' ');
     };
 
-    const prompt = (text, images, m) => {
+    const prompt = (text, images, m, docs = []) => {
         const t = text.trimStart();
         if (t.startsWith('<command-name>') || t.startsWith('<command-message>')) return userBubble(commandPrompt(t));
         if (t.startsWith('<local-command-stdout>')) return commandTile(t.replace(/<\/?local-command-stdout>/g, '').trim());
@@ -397,7 +450,7 @@ views.chat = (() => {
         if (m.isCompactSummary) return notice('shrink', 'Conversation compacted');
         C.turn.interrupted = false;
         C.turn.tools = 0;
-        userBubble(text, images);
+        userBubble(text, images, docs);
     };
 
     const interrupted = () => {
@@ -428,7 +481,8 @@ views.chat = (() => {
         if (results.length) return;
         const text = textOf(content);
         const images = imageUrls(content);
-        if (text || images.length) prompt(text, images, m);
+        const docs = sourceUrls(content, 'document');
+        if (text || images.length || docs.length) prompt(text, images, m, docs);
     };
 
     const assistant = (m) => {
@@ -1325,25 +1379,69 @@ views.chat = (() => {
 
     const autosize = () => {
         C.input.style.height = 'auto';
-        C.input.style.height = `${Math.min(C.input.scrollHeight, 192)}px`;
+        if (C.input.scrollHeight) C.input.style.height = `${Math.min(C.input.scrollHeight, 192)}px`;
+    };
+
+    const saveDraft = () => {
+        try {
+            if (C.input.value) localStorage.setItem(draftKey(C.name), C.input.value);
+            else localStorage.removeItem(draftKey(C.name));
+        } catch {}
+    };
+
+    const addFiles = (list) => {
+        const d = draftOf(C.name);
+        for (const file of list) d.files.push({ file, url: file.type.startsWith('image/') ? URL.createObjectURL(file) : '' });
+        renderFiles();
+        C.input.focus();
+    };
+
+    const renderFiles = () => {
+        const files = draftOf(C.name).files;
+        const remove = (f, i, cls) => `<button type="button" data-action="chat-file-remove" data-index="${i}" aria-label="Remove ${ui.esc(f.file.name)}" class="grid place-items-center rounded-full text-overlay1 transition-colors hover:bg-surface2 hover:text-text ${cls}"><i data-lucide="x" class="size-3"></i></button>`;
+        const el = paint('[data-chat-files]', files.map((f, i) => (f.url
+            ? `<span data-tip="${ui.esc(f.file.name)}" class="relative"><img src="${ui.esc(f.url)}" alt="" class="size-14 rounded-xl bg-surface1 object-cover">${remove(f, i, 'absolute -top-1.5 -right-1.5 size-5 bg-surface1')}</span>`
+            : `<span class="inline-flex h-8 max-w-60 items-center gap-1.5 rounded-full bg-surface1 pr-1 pl-3 text-xs text-text"><i data-lucide="${f.file.type === 'application/pdf' ? 'file-text' : 'file'}" class="size-3.5 shrink-0 text-overlay1"></i><span data-tip="${ui.esc(f.file.name)}" class="truncate">${ui.esc(f.file.name)}</span>${remove(f, i, 'size-6')}</span>`)).join(''));
+        el.hidden = !files.length;
+    };
+
+    const restoreDraft = (name, value, files) => {
+        const d = draftOf(name);
+        if (d.files.length) files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
+        else d.files = files;
+        if (C?.name !== name) {
+            try {
+                if (!localStorage.getItem(draftKey(name))) localStorage.setItem(draftKey(name), value);
+            } catch {}
+            return;
+        }
+        if (!C.input.value) {
+            C.input.value = value;
+            autosize();
+            saveDraft();
+        }
+        renderFiles();
     };
 
     const submit = async () => {
         const value = C.input.value.trim();
-        if (!value || C.snap?.state !== 'idle' || C.sending) return;
+        const d = draftOf(C.name);
+        const files = d.files;
+        if ((!value && !files.length) || C.snap?.state !== 'idle' || C.sending) return;
         const cur = C;
         C.sending = true;
         C.input.value = '';
+        d.files = [];
+        saveDraft();
+        renderFiles();
         autosize();
         slash.close();
         renderComposer();
         try {
-            await api.prompt(C.name, value);
+            await api.prompt(C.name, value, files.map((f) => f.file));
+            files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
         } catch (err) {
-            if (cur === C && !C.input.value) {
-                C.input.value = value;
-                autosize();
-            }
+            restoreDraft(cur.name, value, files);
             ui.toast(`Send failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
         }
         if (cur !== C) return;
@@ -1397,8 +1495,8 @@ views.chat = (() => {
         const snap = C.snap;
         const ok = isLive();
         const busy = BUSY.has(snap?.state);
-        C.input.disabled = !ok;
-        C.input.placeholder = ok ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
+        C.input.disabled = C.loaded && !ok;
+        C.input.placeholder = ok || !C.loaded ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
         paint('[data-chat-send]', busy
             ? ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })
             : ui.iconButton(C.sending ? 'loader-circle' : 'arrow-up', { tip: 'Send', variant: 'primary', spin: C.sending, action: 'chat-send', disabled: !ok || C.sending }));
@@ -1406,8 +1504,9 @@ views.chat = (() => {
         const model = list.find((m) => m.value === (snap?.model || 'default'));
         const efforts = model?.efforts?.length ? model.efforts : Object.keys(EFFORTS);
         const off = !ok ? 'disabled' : '';
+        paint('[data-chat-attach]', ui.iconButton('paperclip', { tip: 'Attach files', action: 'chat-attach', size: 'sm', disabled: C.loaded && !ok }));
         paint('[data-chat-model]', ui.select({ name: 'chat-model', value: snap?.model || 'default', pill: true, icon: 'sparkles', options: list, attrs: off }));
-        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.effort || '', placeholder: 'Effort', pill: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
+        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.appliedEffort || snap?.effort || '', placeholder: 'Effort', pill: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
         paint('[data-chat-mode]', ui.select({ name: 'chat-mode', value: snap?.permissionMode || 'default', pill: true, icon: MODES.find((x) => x.value === (snap?.permissionMode || 'default'))?.icon || 'shield', options: MODES, attrs: off }));
         paint('[data-chat-ring]', ringHtml());
     };
@@ -1546,6 +1645,7 @@ views.chat = (() => {
 
         choose(name) {
             C.input.value = `/${name} `;
+            saveDraft();
             slash.close();
             C.input.focus();
             autosize();
@@ -1652,6 +1752,13 @@ views.chat = (() => {
     });
     ui.on('chat-image', (b) => ui.modal.open({ title: 'Image', icon: 'image', size: 'xl', body: `<img src="${ui.esc(b.dataset.src)}" alt="" class="mx-auto max-w-full rounded-2xl">` }));
     ui.on('chat-send', () => C && submit());
+    ui.on('chat-attach', () => C && $('[data-chat-file-input]').click());
+    ui.on('chat-file-remove', (b) => {
+        if (!C) return;
+        const [f] = draftOf(C.name).files.splice(Number(b.dataset.index), 1);
+        if (f?.url) URL.revokeObjectURL(f.url);
+        renderFiles();
+    });
     ui.on('chat-interrupt', () => interrupt());
     ui.on('chat-task-stop', (b) => stopTask(b.dataset.task));
     ui.on('chat-continue', () => C && views.newSession.open({ name: C.name, continue: true }));
@@ -1676,7 +1783,8 @@ views.chat = (() => {
 
     const modelLabel = (s) => {
         const model = (s.model && C?.init?.models?.find((m) => m.value === s.model)) || null;
-        return `<span class="block truncate">${ui.esc(model?.displayName || s.resolvedModel || s.model || 'Default')}${s.effort ? `<span class="text-xs text-overlay1"> · ${ui.esc(EFFORTS[s.effort] || s.effort)}</span>` : ''}</span>`;
+        const effort = s.appliedEffort || s.effort;
+        return `<span class="block truncate">${ui.esc(model?.displayName || s.resolvedModel || s.model || 'Default')}${effort ? `<span class="text-xs text-overlay1"> · ${ui.esc(EFFORTS[effort] || effort)}</span>` : ''}</span>`;
     };
 
     return {
@@ -1695,6 +1803,7 @@ views.chat = (() => {
         },
         restoreScroll() {
             if (!C) return;
+            autosize();
             C.scroller.scrollTop = C.kept ?? C.scroller.scrollHeight;
         },
         state: (name) => (C?.name === name && C.loaded ? C.snap?.state || null : live.summary[name]?.state || null),

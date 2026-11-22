@@ -192,7 +192,7 @@
         ]).join('');
 
     const railActions = (p) => {
-        const b = (key, icon, title, action, variant = 'ghost') => ui.iconButton(S.busy === key ? 'loader-circle' : icon, { title, action, variant, spin: S.busy === key, disabled: !!S.busy });
+        const b = (key, icon, tip, action, variant = 'ghost') => ui.iconButton(S.busy === key ? 'loader-circle' : icon, { tip, action, variant, spin: S.busy === key, disabled: !!S.busy });
         return running(p)
             ? b('restart', 'rotate-cw', 'Restart', 'project-restart') + b('stop', 'square', 'Stop', 'project-stop', 'danger')
             : b('continue', 'play', 'Continue', 'project-continue') + b('new', 'plus', 'New session', 'project-new');
@@ -285,12 +285,11 @@
     const treeRows = (node, depth) => node.children.map((c) => {
         const pad = `style="padding-left:${depth * 14 + 8}px"`;
         const selected = c.path === S.selected ? 'data-selected' : '';
-        const base = `flex h-8 w-full items-center gap-2 rounded-xl pr-2 text-left text-sm text-subtext0 transition-colors hover:bg-surface0/50 ${ui.cls.focus} data-selected:bg-surface0 data-selected:text-text data-drop:bg-mauve/15 data-drop:text-mauve`;
+        const base = `flex h-8 w-full items-center gap-2 rounded-xl pr-2 text-left text-sm text-subtext0 transition-colors hover:bg-surface0/50 ${ui.cls.focus} data-selected:bg-surface0 data-selected:text-text data-drop:bg-mauve/15 data-drop:text-mauve ${c.ignored ? 'opacity-60' : ''}`;
         if (c.type === 'dir') {
             const open = S.expanded.has(c.path);
-            const dim = c.name.startsWith('.') ? 'opacity-60' : '';
             return `<li role="treeitem" aria-expanded="${open}">
-                <button type="button" data-action="project-tree" data-path="${ui.esc(c.path)}" data-tree-dir="${ui.esc(c.path)}" tabindex="-1" class="${base} ${dim}" ${pad}>
+                <button type="button" data-action="project-tree" data-path="${ui.esc(c.path)}" data-tree-dir="${ui.esc(c.path)}" tabindex="-1" class="${base}" ${pad}>
                     <i data-lucide="chevron-right" data-chevron class="size-3.5 shrink-0 text-overlay0 transition-transform duration-150 ${open ? 'rotate-90' : ''}"></i>
                     <i data-lucide="folder" data-closed class="size-4 shrink-0 text-overlay1 ${open ? 'hidden' : ''}"></i>
                     <i data-lucide="folder-open" data-open class="size-4 shrink-0 text-overlay1 ${open ? '' : 'hidden'}"></i>
@@ -517,7 +516,7 @@
         const ctx = document.createElement('canvas').getContext('2d');
         ctx.font = '14px Inter';
         const widest = Math.max(...S.headings.map((h) => indent(h) + ctx.measureText(h.textContent).width));
-        ui.sidebar(nav, { key: 'project.outline', min: 160, max: 320, initial: Math.round(Math.min(320, Math.max(160, widest + 32))), side: 'right', divider: true });
+        ui.sidebar(nav, { key: 'project.outline', min: 160, max: 320, initial: Math.round(Math.min(320, Math.max(160, widest + 32))), side: 'right' });
         renderOutline(true);
     };
 
@@ -649,7 +648,7 @@
         scrim.hidden = !open;
     };
 
-    const panelBtn = (icon, title, action, attrs = '') => ui.iconButton(icon, { title, action, size: 'sm', attrs });
+    const panelBtn = (icon, tip, action, attrs = '') => ui.iconButton(icon, { tip, action, size: 'sm', attrs });
 
     const viewerHtml = (head) => `
         <header data-p-viewer-header class="flex ${head} shrink-0 flex-wrap items-center gap-2 px-3 md:px-4 3xl:px-6"></header>
@@ -748,7 +747,7 @@
     };
 
     const render = () => {
-        views.chat.unmount();
+        views.chat.unmount(true);
         S.tier = tierOf();
         S.panels = {};
         S.sheet?.close();
@@ -862,7 +861,7 @@
         return row ? row.dataset.treeDir : S.folder;
     };
 
-    const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files');
+    const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes('Files') && !e.target.closest?.('[data-chat-composer]');
 
     const onDragEnter = (e) => {
         if (!hasFiles(e) || !project()) return;

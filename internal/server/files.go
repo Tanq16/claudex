@@ -3,18 +3,26 @@ package server
 import (
 	"bytes"
 	"cmp"
+	"context"
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
+
+	"github.com/tanq16/claudex/internal/workspace"
 )
 
 const (
@@ -23,6 +31,14 @@ const (
 )
 
 var skippedDirs = []string{".git", "node_modules", ".venv"}
+
+var inlineKinds = map[string]string{
+	"image/png":       "image",
+	"image/jpeg":      "image",
+	"image/gif":       "image",
+	"image/webp":      "image",
+	"application/pdf": "document",
+}
 
 var imageExts = []string{".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp", ".ico", ".bmp", ".avif"}
 
@@ -49,6 +65,7 @@ type treeNode struct {
 	Kind     string      `json:"kind,omitzero"`
 	Target   string      `json:"target,omitzero"`
 	Size     *int64      `json:"size,omitzero"`
+	Ignored  bool        `json:"ignored,omitzero"`
 	Children []*treeNode `json:"children,omitzero"`
 }
 
@@ -116,13 +133,27 @@ func (s *Server) handleTree(r *http.Request) (any, error) {
 	}
 	defer root.Close()
 	node := &treeNode{Name: name, Path: "", Type: "dir"}
-	if err := walkTree(root, ".", node); err != nil {
+	if err := walkTree(root, ".", node, ignoredPaths(r.Context(), root.Name())); err != nil {
 		return nil, err
 	}
 	return node, nil
 }
 
-func walkTree(root *os.Root, dir string, node *treeNode) error {
+func ignoredPaths(ctx context.Context, dir string) map[string]bool {
+	out, err := exec.CommandContext(ctx, "git", "-C", dir, "ls-files", "--others", "--ignored", "--exclude-standard", "--directory", "-z").Output()
+	if err != nil {
+		return nil
+	}
+	ignored := map[string]bool{}
+	for p := range strings.SplitSeq(string(out), "\x00") {
+		if p != "" {
+			ignored[strings.TrimSuffix(p, "/")] = true
+		}
+	}
+	return ignored
+}
+
+func walkTree(root *os.Root, dir string, node *treeNode, ignored map[string]bool) error {
 	entries, err := fs.ReadDir(root.FS(), dir)
 	if err != nil {
 		return err
@@ -130,7 +161,7 @@ func walkTree(root *os.Root, dir string, node *treeNode) error {
 	node.Children = []*treeNode{}
 	for _, e := range entries {
 		rel := path.Join(dir, e.Name())
-		child := &treeNode{Name: e.Name(), Path: rel}
+		child := &treeNode{Name: e.Name(), Path: rel, Ignored: node.Ignored || ignored[rel]}
 		switch {
 		case e.Type()&fs.ModeSymlink != 0:
 			child.Type, child.Kind = "symlink", "symlink"
@@ -141,7 +172,7 @@ func walkTree(root *os.Root, dir string, node *treeNode) error {
 				continue
 			}
 			child.Type = "dir"
-			if err := walkTree(root, rel, child); err != nil {
+			if err := walkTree(root, rel, child, ignored); err != nil {
 				return err
 			}
 		case e.Type().IsRegular():
@@ -337,15 +368,93 @@ func (s *Server) handleUpload(r *http.Request) (any, error) {
 		}
 	}
 	for _, fh := range files {
-		base := path.Base(strings.ReplaceAll(fh.Filename, `\`, "/"))
-		if base == "." || base == ".." || base == "/" {
-			return nil, fail(http.StatusBadRequest, "%q is not a file name", fh.Filename)
+		base, err := uploadName(fh)
+		if err != nil {
+			return nil, err
 		}
 		if err := saveUpload(root, filepath.Join(folder, base), fh); err != nil {
 			return nil, err
 		}
 	}
 	return map[string]int{"count": len(files)}, nil
+}
+
+func (s *Server) attachments(r *http.Request, files []*multipart.FileHeader) ([]any, []string, error) {
+	var blocks []any
+	var saved []string
+	var root *os.Root
+	var folder string
+	defer func() {
+		if root != nil {
+			root.Close()
+		}
+	}()
+	for _, fh := range files {
+		mt := mediaType(fh)
+		if kind, ok := inlineKinds[mt]; ok {
+			data, err := readUpload(fh)
+			if err != nil {
+				return nil, nil, err
+			}
+			blocks = append(blocks, map[string]any{"type": kind, "source": map[string]any{"type": "base64", "media_type": mt, "data": base64.StdEncoding.EncodeToString(data)}})
+			continue
+		}
+		base, err := uploadName(fh)
+		if err != nil {
+			return nil, nil, err
+		}
+		if root == nil {
+			if _, root, err = s.projectRoot(r); err != nil {
+				return nil, nil, err
+			}
+			folder = filepath.Join(workspace.AgentsDir, "attachments", time.Now().Format("20060102-150405.000"))
+			if err := root.MkdirAll(folder, 0o755); err != nil {
+				return nil, nil, err
+			}
+		}
+		rel := filepath.Join(folder, base)
+		for i := 2; ; i++ {
+			if _, err := root.Lstat(rel); errors.Is(err, fs.ErrNotExist) {
+				break
+			}
+			rel = filepath.Join(folder, fmt.Sprintf("%d-%s", i, base))
+		}
+		if err := saveUpload(root, rel, fh); err != nil {
+			return nil, nil, err
+		}
+		saved = append(saved, filepath.ToSlash(rel))
+	}
+	if root != nil {
+		if _, _, err := workspace.WriteGitExclude(root.Name()); err != nil {
+			return nil, nil, err
+		}
+	}
+	return blocks, saved, nil
+}
+
+func uploadName(fh *multipart.FileHeader) (string, error) {
+	base := path.Base(strings.ReplaceAll(fh.Filename, `\`, "/"))
+	if base == "." || base == ".." || base == "/" {
+		return "", fail(http.StatusBadRequest, "%q is not a file name", fh.Filename)
+	}
+	return base, nil
+}
+
+func mediaType(fh *multipart.FileHeader) string {
+	mt, _, err := mime.ParseMediaType(fh.Header.Get("Content-Type"))
+	if err != nil || mt == "application/octet-stream" {
+		mt, _, _ = mime.ParseMediaType(mime.TypeByExtension(filepath.Ext(fh.Filename)))
+	}
+	return mt
+}
+
+func readUpload(fh *multipart.FileHeader) ([]byte, error) {
+	src, err := fh.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+	return io.ReadAll(src)
 }
 
 func saveUpload(root *os.Root, rel string, fh *multipart.FileHeader) error {
