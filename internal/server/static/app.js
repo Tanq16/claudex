@@ -155,13 +155,13 @@ const md = {
         marked.use({
             renderer: {
                 code({ text, lang }) {
-                    if (lang === 'mermaid') return `<div class="mermaid" data-scroll>${ui.esc(text)}</div>`;
+                    if (lang === 'mermaid') return `<div class="mermaid" data-scroll data-scroll-cue>${ui.esc(text)}</div>`;
                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
                     let html = ui.esc(text);
                     try {
                         html = hljs.highlight(text, { language }).value;
                     } catch {}
-                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                    return `<div class="group relative"><pre data-scroll data-scroll-cue><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
                 },
                 checkbox({ checked }) {
                     return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
@@ -187,6 +187,7 @@ const md = {
         container.querySelectorAll('table').forEach((table) => {
             const wrap = Object.assign(document.createElement('div'), { className: 'mb-6 overflow-x-auto' });
             wrap.dataset.scroll = '';
+            wrap.dataset.scrollCue = '';
             wrap.dataset.table = '';
             table.replaceWith(wrap);
             wrap.appendChild(table);
@@ -205,8 +206,33 @@ const md = {
         });
         mermaid.initialize(mermaidConfig());
         document.fonts.ready
-            .then(() => mermaid.run({ nodes }))
+            .then(() => {
+                const attached = nodes.filter((n) => n.isConnected);
+                return attached.length ? mermaid.run({ nodes: attached }).then(() => attached) : [];
+            })
+            .then((attached) => attached.forEach((n) => {
+                md.fit(n);
+                md.fitter.observe(n);
+            }))
             .catch((err) => ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
+    },
+
+    fitter: new ResizeObserver((entries) => entries.forEach((e) => md.fit(e.target))),
+
+    fit(node) {
+        const svg = node.querySelector(':scope > svg');
+        if (!node.isConnected || !svg) {
+            md.fitter.unobserve(node);
+            return;
+        }
+        const box = svg.viewBox.baseVal;
+        if (!node.clientWidth || !box?.width) return;
+        const css = getComputedStyle(node);
+        const room = node.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+        const scale = Math.max(0.6, Math.min(1, room / box.width));
+        svg.style.maxWidth = 'none';
+        svg.style.width = `${box.width * scale}px`;
+        svg.style.height = `${box.height * scale}px`;
     },
 };
 ui.on('md-copy', (b) => ui.copy(b.closest('.group').querySelector('code').textContent, b));

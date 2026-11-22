@@ -141,10 +141,11 @@ const ui = {
         const sizes = { sm: 'h-8 px-3 text-xs gap-1.5', md: 'h-10 px-4 text-sm gap-2', lg: 'h-12 px-6 text-sm gap-2' };
         const iconSize = size === 'sm' ? 'size-3.5' : 'size-4';
         const i = (name, extra = '') => `<i data-lucide="${name}" class="${iconSize} shrink-0 ${extra}"></i>`;
-        const labelHtml = collapse ? `<span class="max-sm:hidden">${ui.esc(label)}</span>` : `<span>${ui.esc(label)}</span>`;
+        const labelHtml = collapse ? `<span data-label class="max-sm:hidden">${ui.esc(label)}</span>` : `<span>${ui.esc(label)}</span>`;
         const tipText = tip || (collapse ? label : '');
-        const btn = `<button type="${type}" ${tipText && !disabled ? `data-tip="${ui.esc(tipText)}"` : ''} class="inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} ${collapse ? 'max-sm:w-10 max-sm:px-0' : ''} ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}>${icon ? i(icon, spin ? 'animate-spin' : '') : ''}${labelHtml}${iconRight ? i(iconRight, '-mr-1 opacity-70') : ''}</button>`;
-        return disabled && tipText ? `<span data-tip="${ui.esc(tipText)}" class="inline-flex">${btn}</span>` : btn;
+        const tipAttrs = `data-tip="${ui.esc(tipText)}" ${tip ? '' : 'data-tip-collapse'}`;
+        const btn = `<button type="${type}" ${tipText && !disabled ? tipAttrs : ''} class="inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} ${collapse ? 'max-sm:w-10 max-sm:px-0' : ''} ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}>${icon ? i(icon, spin ? 'animate-spin' : '') : ''}${labelHtml}${iconRight ? i(iconRight, '-mr-1 opacity-70') : ''}</button>`;
+        return disabled && tipText ? `<span ${tipAttrs} class="inline-flex">${btn}</span>` : btn;
     },
 
     iconButton(icon, { tip = '', action, variant = 'ghost', size = 'md', attrs = '', spin = false, disabled = false, pressed } = {}) {
@@ -415,8 +416,12 @@ const ui = {
         timer: null,
         warmUntil: 0,
         target: null,
+        pointer: { x: 0, y: 0 },
 
         init() {
+            document.addEventListener('pointermove', (e) => {
+                ui.tooltip.pointer = { x: e.clientX, y: e.clientY };
+            }, { passive: true });
             document.addEventListener('pointerover', (e) => {
                 if (e.pointerType !== 'mouse') return;
                 const t = e.target.closest('[data-tip]');
@@ -448,27 +453,31 @@ const ui = {
             clearTimeout(ui.tooltip.timer);
             if (ui.tooltip.el) ui.tooltip.el.remove();
             if (ui.popover.current || !t.dataset.tip) return;
+            if (t.hasAttribute('data-tip-collapse') && t.querySelector('[data-label]')?.checkVisibility()) return;
             ui.tooltip.target = t;
             const el = document.createElement('div');
             el.setAttribute('role', 'tooltip');
             el.className = `pointer-events-none fixed z-[90] max-w-64 rounded-xl bg-surface0 px-2.5 py-1.5 text-xs text-text shadow-lg shadow-shade/60 [animation:fade-in_.1s_ease-out] ${ui.scheme(t)}`;
             el.textContent = t.dataset.tip;
             ui.layer().appendChild(el);
-            const r = t.getBoundingClientRect();
-            const side = t.dataset.tipSide || 'top';
-            const gap = 8;
-            let top;
-            let left;
-            if (side === 'right' || side === 'left') {
-                top = r.top + r.height / 2 - el.offsetHeight / 2;
-                left = side === 'right' ? r.right + gap : r.left - el.offsetWidth - gap;
-            } else {
-                left = r.left + r.width / 2 - el.offsetWidth / 2;
-                top = side === 'bottom' || r.top - el.offsetHeight - gap < 8 ? r.bottom + gap : r.top - el.offsetHeight - gap;
-            }
-            el.style.left = `${Math.max(8, Math.min(left, innerWidth - el.offsetWidth - 8))}px`;
-            el.style.top = `${Math.max(8, top)}px`;
             ui.tooltip.el = el;
+            const r = t.hasAttribute('data-tip-pointer') ? new DOMRect(ui.tooltip.pointer.x, ui.tooltip.pointer.y, 0, 0) : t.getBoundingClientRect();
+            // The Tailwind browser build compiles a first-seen class after insertion, so a synchronous measure reads an unstyled, full-width box.
+            requestAnimationFrame(() => {
+                const side = t.dataset.tipSide || 'top';
+                const gap = 8;
+                let top;
+                let left;
+                if (side === 'right' || side === 'left') {
+                    top = r.top + r.height / 2 - el.offsetHeight / 2;
+                    left = side === 'right' ? r.right + gap : r.left - el.offsetWidth - gap;
+                } else {
+                    left = r.left + r.width / 2 - el.offsetWidth / 2;
+                    top = side === 'bottom' || r.top - el.offsetHeight - gap < 8 ? r.bottom + gap : r.top - el.offsetHeight - gap;
+                }
+                el.style.left = `${Math.max(8, Math.min(left, innerWidth - el.offsetWidth - 8))}px`;
+                el.style.top = `${Math.max(8, top)}px`;
+            });
         },
 
         hide() {
@@ -659,7 +668,7 @@ const ui = {
         };
         attach(document.body);
         new MutationObserver((records) => {
-            for (const r of records) r.addedNodes.forEach((n) => n.nodeType === 1 && attach(n));
+            for (const r of records) r.addedNodes.forEach((n) => n.nodeType === 1 && n.isConnected && attach(n));
         }).observe(document.body, { childList: true, subtree: true });
     },
 
@@ -685,6 +694,7 @@ const ui = {
         };
         const ty = thumb('top-0 w-1.5 hover:w-2');
         const tx = thumb('left-0 h-1.5 hover:h-2');
+        const cue = el.hasAttribute('data-scroll-cue');
         let hideTimer;
         let dragging = null;
         let lane = -1;
@@ -734,12 +744,16 @@ const ui = {
                 tx.style.bottom = `${host.clientHeight - el.offsetTop - el.offsetHeight + 4}px`;
                 tx.style.width = `${w}px`;
                 tx.style.transform = `translateX(${el.offsetLeft + trackX[0] + (scrollLeft / (scrollWidth - clientWidth)) * (room - w)}px)`;
+                if (cue) {
+                    tx.style.opacity = '1';
+                    tx.style.pointerEvents = '';
+                }
             }
             return tall || wide;
         };
         const hide = () => {
             if (dragging || ty.matches(':hover') || tx.matches(':hover')) return;
-            for (const t of [ty, tx]) {
+            for (const t of cue && wide ? [ty] : [ty, tx]) {
                 t.style.opacity = '0';
                 t.style.pointerEvents = 'none';
             }
@@ -759,7 +773,9 @@ const ui = {
             const r = el.getBoundingClientRect();
             if (r.right - e.clientX < 16 || r.bottom - e.clientY < 16) show();
         });
-        new ResizeObserver(() => place()).observe(el);
+        const resized = new ResizeObserver(() => place());
+        resized.observe(el);
+        if (cue) resized.observe(host);
         new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
         const drag = (t, vertical) => {
@@ -788,7 +804,7 @@ const ui = {
         place();
     },
 
-    sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collapsed = false, divider = false }) {
+    sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collapsed = false }) {
         const load = (k, fallback) => {
             try {
                 const v = localStorage.getItem(`claudex.${key}.${k}`);
@@ -808,10 +824,9 @@ const ui = {
         handle.setAttribute('role', 'separator');
         handle.setAttribute('aria-orientation', 'vertical');
         handle.dataset.tip = 'Drag to resize, double-click to reset';
-        handle.className = `group/handle absolute inset-y-0 ${side === 'left' ? '-right-2.5' : '-left-2.5'} z-30 flex w-3 cursor-col-resize touch-none justify-center ${divider ? 'items-start' : 'items-center'}`;
-        handle.innerHTML = divider
-            ? '<span class="mt-9 h-12 w-px rounded-full bg-surface1 transition-[width,background-color] group-hover/handle:w-1 group-hover/handle:bg-surface2 group-active/handle:w-1 group-active/handle:bg-mauve"></span>'
-            : '<span class="h-10 w-1 rounded-full bg-surface1 opacity-0 transition-opacity group-hover/handle:opacity-100 group-active/handle:bg-mauve group-active/handle:opacity-100"></span>';
+        handle.setAttribute('data-tip-pointer', '');
+        handle.className = `group/handle absolute inset-y-0 ${side === 'left' ? '-right-2.5' : '-left-2.5'} z-30 flex w-3 cursor-col-resize touch-none items-center justify-center`;
+        handle.innerHTML = '<span class="h-10 w-1 rounded-full bg-surface1 opacity-0 transition-opacity group-hover/handle:opacity-100 group-active/handle:bg-mauve group-active/handle:opacity-100"></span>';
         panel.appendChild(handle);
 
         const apply = (animate) => {

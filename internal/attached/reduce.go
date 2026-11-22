@@ -61,6 +61,7 @@ type Snapshot struct {
 	Model          string           `json:"model,omitzero"`
 	ResolvedModel  string           `json:"resolvedModel,omitzero"`
 	Effort         string           `json:"effort,omitzero"`
+	AppliedEffort  string           `json:"appliedEffort,omitzero"`
 	PermissionMode string           `json:"permissionMode,omitzero"`
 	Context        *Context         `json:"context,omitzero"`
 	Limits         jsontext.Value   `json:"limits,omitzero"`

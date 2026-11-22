@@ -264,6 +264,7 @@ func (s *Session) initialize() {
 	s.changedLocked()
 	s.mu.Unlock()
 	s.host.notify()
+	s.refreshSettings()
 	s.refreshContext()
 }
 
@@ -318,6 +319,9 @@ func (s *Session) handle(line []byte) {
 	}
 	if kind == "result" || kind == "system/compact_boundary" {
 		go s.refreshContext()
+	}
+	if kind == "result" {
+		go s.refreshSettings()
 	}
 }
 
@@ -492,9 +496,25 @@ func (s *Session) snapshotLocked() Snapshot {
 	return snap
 }
 
-func (s *Session) Prompt(ctx context.Context, text string) (string, error) {
-	if strings.TrimSpace(text) == "" {
+func (s *Session) Prompt(ctx context.Context, text string, blocks []any) (string, error) {
+	if strings.TrimSpace(text) == "" && len(blocks) == 0 {
 		return "", fmt.Errorf("%w: the prompt is empty", ErrBadAnswer)
+	}
+	var content, shown any = text, text
+	if len(blocks) > 0 {
+		if strings.TrimSpace(text) != "" {
+			blocks = append(blocks, map[string]any{"type": "text", "text": text})
+		}
+		content, shown = blocks, blocks
+		raw, err := json.Marshal(blocks)
+		if err != nil {
+			return "", err
+		}
+		if stored, err := s.host.images.Rewrite(raw); err != nil {
+			s.report(ImageNotStored, err)
+		} else {
+			shown = jsontext.Value(stored)
+		}
 	}
 	id := uuid.New().String()
 	wire, err := json.Marshal(map[string]any{
@@ -502,7 +522,7 @@ func (s *Session) Prompt(ctx context.Context, text string) (string, error) {
 		"uuid":               id,
 		"session_id":         "",
 		"parent_tool_use_id": nil,
-		"message":            map[string]any{"role": "user", "content": text},
+		"message":            map[string]any{"role": "user", "content": content},
 	})
 	if err != nil {
 		return "", err
@@ -519,7 +539,7 @@ func (s *Session) Prompt(ctx context.Context, text string) (string, error) {
 		"session_id":         s.r.snap.SessionID,
 		"parent_tool_use_id": nil,
 		"timestamp":          time.Now().UTC().Format(time.RFC3339Nano),
-		"message":            map[string]any{"role": "user", "content": text},
+		"message":            map[string]any{"role": "user", "content": shown},
 	})
 	if err == nil {
 		anchor := id
@@ -603,6 +623,7 @@ func (s *Session) SetModel(ctx context.Context, model string) error {
 		return err
 	}
 	s.update(func(r *reduced) { r.snap.Model = model })
+	go s.refreshSettings()
 	return nil
 }
 
@@ -610,7 +631,8 @@ func (s *Session) SetEffort(ctx context.Context, effort string) error {
 	if _, err := s.request(ctx, "apply_flag_settings", map[string]any{"settings": map[string]any{"effortLevel": effort}}); err != nil {
 		return err
 	}
-	s.update(func(r *reduced) { r.snap.Effort = effort })
+	s.update(func(r *reduced) { r.snap.Effort, r.snap.AppliedEffort = effort, effort })
+	go s.refreshSettings()
 	return nil
 }
 
@@ -649,6 +671,32 @@ func (s *Session) refreshContext() {
 	if _, err := s.ContextUsage(ctx, "summary"); err != nil && !errors.Is(err, ErrNotRunning) {
 		s.report(ContextRefreshFailed, err)
 	}
+}
+
+func (s *Session) refreshSettings() {
+	ctx, cancel := context.WithTimeout(context.Background(), contextTimeout)
+	defer cancel()
+	raw, err := s.request(ctx, "get_settings", nil)
+	if err != nil {
+		if !errors.Is(err, ErrNotRunning) {
+			s.report(SettingsRefreshFailed, err)
+		}
+		return
+	}
+	var m struct {
+		Applied struct {
+			Effort string `json:"effort"`
+		} `json:"applied"`
+	}
+	if err := json.Unmarshal(raw, &m, lenient); err != nil {
+		s.report(SettingsRefreshFailed, err)
+		return
+	}
+	s.mu.Lock()
+	s.r.snap.AppliedEffort = m.Applied.Effort
+	s.changedLocked()
+	s.mu.Unlock()
+	s.host.notify()
 }
 
 func (s *Session) report(kind ReportKind, err error) {
