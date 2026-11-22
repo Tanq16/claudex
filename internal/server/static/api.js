@@ -65,6 +65,7 @@ const api = (() => {
         setPermissionMode: (name, mode) => put(`${project(name)}/permission-mode`, { mode }),
 
         tree: (name) => get(`${project(name)}/tree`),
+        git: (name) => get(`${project(name)}/git`),
         file: (name, path) => get(`${project(name)}/file?path=${enc(path)}`),
         rawUrl: (name, path) => `${project(name)}/raw?path=${enc(path)}`,
         createFile: (name, path, content) => post(`${project(name)}/files`, { path, content }),

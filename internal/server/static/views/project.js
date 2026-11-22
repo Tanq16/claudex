@@ -493,7 +493,6 @@
             a.rel = 'noopener';
         });
         article.querySelectorAll(':scope > *').forEach((n) => {
-            if (n.matches('.group, .mermaid, [data-table]')) return;
             n.dataset.column = '';
             n.classList.add('mx-auto', 'transition-[max-width]', 'duration-300', 'ease-out', column.cls());
         });
@@ -638,6 +637,55 @@
         }
     };
 
+    const PR_STATES = {
+        DRAFT: ['git-pull-request-draft', 'Draft', 'neutral'],
+        OPEN: ['git-pull-request', 'Ready', 'green'],
+        MERGED: ['git-merge', 'Merged', 'lavender'],
+        CLOSED: ['git-pull-request-closed', 'Closed', 'red'],
+    };
+
+    const checksBadge = ({ total, failed, pending }) => {
+        if (!total) return '';
+        const [icon, tone, tip] = failed
+            ? ['circle-x', 'text-red', `${failed} of ${total} checks failing`]
+            : pending
+                ? ['circle-dashed', 'text-yellow', `${pending} of ${total} checks pending`]
+                : ['circle-check', 'text-green', `All ${total} checks passed`];
+        return `<span data-tip="${tip}" class="flex shrink-0"><i data-lucide="${icon}" class="size-4 ${tone}"></i></span>`;
+    };
+
+    const renderGit = () => {
+        const host = $('[data-p-git]');
+        if (!host) return;
+        const g = S.git;
+        if (!g?.branch) {
+            host.innerHTML = '';
+            return;
+        }
+        const pr = g.pr;
+        const [icon, label, tone] = pr ? PR_STATES[pr.draft && pr.state === 'OPEN' ? 'DRAFT' : pr.state] || PR_STATES.OPEN : [];
+        host.innerHTML = `
+            <p data-tip="${g.detached ? 'Detached HEAD' : ui.esc(g.branch)}" class="flex h-8 items-center gap-2 px-3"><i data-lucide="${g.detached ? 'git-commit-horizontal' : 'git-branch'}" class="size-4 shrink-0 text-overlay1"></i><span class="truncate font-mono text-xs text-subtext1">${ui.esc(g.branch)}</span></p>
+            ${pr ? `<a href="${ui.esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="${ui.esc(pr.title)}" class="flex h-8 items-center gap-2 rounded-xl px-3 text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
+                <i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>
+                <span class="shrink-0 font-mono text-xs text-text">#${pr.number}</span>
+                <span class="min-w-0 flex-1 truncate text-subtext0">${ui.esc(pr.title)}</span>
+                ${ui.chip(label, { tone })}
+                ${checksBadge(pr.checks)}
+            </a>` : ''}`;
+        ui.icons(host);
+    };
+
+    const loadGit = async () => {
+        const cur = S;
+        try {
+            const g = await api.git(S.name);
+            if (S !== cur) return;
+            S.git = g;
+            renderGit();
+        } catch {}
+    };
+
     const setDrawer = (open) => {
         if (S.tier !== 'mobile') return;
         S.drawer = open;
@@ -716,6 +764,7 @@
                             ${panelBtn('chevrons-down-up', 'Collapse all', 'project-collapse')}
                             ${mobile ? panelBtn('x', 'Close', 'project-drawer-close') : ''}
                         </header>
+                        <section data-p-git aria-label="Git" class="flex shrink-0 flex-col gap-0.5 px-2 pb-2 empty:hidden"></section>
                         <ul role="tree" data-p-tree-list data-scroll class="min-h-0 flex-1 overflow-y-auto px-2 pb-3"></ul>
                     </aside>
                     <section data-p-center class="flex min-w-0 flex-1 flex-col rounded-3xl bg-mantle">${centerHtml()}</section>
@@ -791,6 +840,8 @@
         readerPage(root);
         mountCenter();
         renderSession();
+        renderGit();
+        loadGit();
         ui.icons(S.el);
         if (S.tree) {
             renderTree();
@@ -1265,6 +1316,8 @@
                 sheet: null,
                 centerMode: 'detached',
                 pane: 'chat',
+                git: null,
+                gitPoll: setInterval(() => document.visibilityState === 'visible' && loadGit(), 60000),
             };
             document.addEventListener('dragenter', onDragEnter);
             document.addEventListener('dragover', onDragOver);
@@ -1289,6 +1342,7 @@
                 return;
             }
             renderSession();
+            loadGit();
             const cur = S;
             await loadTree();
             if (S !== cur || !$('[data-project]')) return;
@@ -1314,6 +1368,7 @@
             document.removeEventListener('drop', onDrop);
             document.removeEventListener('keydown', onKey);
             mqs.forEach((q) => q.removeEventListener('change', onMedia));
+            clearInterval(S.gitPoll);
             reader.close();
             views.chat.unmount();
             S.sheet?.close();

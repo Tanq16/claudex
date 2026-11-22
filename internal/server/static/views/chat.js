@@ -107,11 +107,11 @@ views.chat = (() => {
             <div data-column class="mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}">
                 <div data-chat-banner></div>
                 <div data-chat-status class="flex h-9 items-center gap-2 px-2 text-xs"></div>
-                <form data-chat-composer novalidate class="rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40 data-drag:ring-2 data-drag:ring-mauve/40">
+                <form data-chat-composer novalidate class="cursor-text rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40 data-drag:ring-2 data-drag:ring-mauve/40">
                     <div data-chat-files hidden class="flex flex-wrap items-center gap-2 px-2 pt-2 pb-1"></div>
-                    <textarea data-chat-input data-scroll rows="1" spellcheck="false" placeholder="Message, or / for commands" class="block max-h-48 w-full resize-none bg-transparent px-3 pt-2 text-sm leading-relaxed text-text placeholder:text-overlay0 outline-none disabled:cursor-not-allowed pointer-coarse:text-[16px]"></textarea>
-                    <input type="file" multiple hidden data-chat-file-input>
-                    <div class="flex items-center gap-1.5 pt-3">
+                    <textarea id="chat-input" name="prompt" data-chat-input data-scroll rows="1" autocomplete="off" spellcheck="false" placeholder="Message, or / for commands" class="block max-h-48 w-full resize-none field-sizing-content bg-transparent px-3 py-1.5 text-sm leading-relaxed text-text placeholder:text-overlay0 outline-none disabled:cursor-not-allowed pointer-coarse:text-[16px]"></textarea>
+                    <input type="file" name="files" multiple hidden data-chat-file-input>
+                    <div class="flex items-center gap-1.5 pt-2">
                         <span data-chat-attach></span>
                         <span data-chat-model class="min-w-0"></span>
                         <span data-chat-effort class="max-sm:hidden"></span>
@@ -154,7 +154,6 @@ views.chat = (() => {
             C.input.value = localStorage.getItem(draftKey(name)) || '';
         } catch {}
         C.input.addEventListener('input', () => {
-            autosize();
             saveDraft();
             slash.update();
         });
@@ -165,6 +164,11 @@ views.chat = (() => {
             addFiles(files);
         });
         const form = pane.querySelector('[data-chat-composer]');
+        form.addEventListener('mousedown', (e) => {
+            if (e.target === C.input || C.input.disabled || e.target.closest('button, a, input, [role]')) return;
+            e.preventDefault();
+            C.input.focus();
+        });
         form.addEventListener('dragover', (e) => {
             if (![...(e.dataTransfer?.types || [])].includes('Files')) return;
             e.preventDefault();
@@ -205,7 +209,6 @@ views.chat = (() => {
         renderComposer();
         renderStatus();
         renderFiles();
-        autosize();
         const d = draftOf(name);
         if (d.focus) {
             C.input.focus();
@@ -1377,11 +1380,6 @@ views.chat = (() => {
         if (t && C.turn.start) t.textContent = fmt.dur(now - C.turn.start);
     };
 
-    const autosize = () => {
-        C.input.style.height = 'auto';
-        if (C.input.scrollHeight) C.input.style.height = `${Math.min(C.input.scrollHeight, 192)}px`;
-    };
-
     const saveDraft = () => {
         try {
             if (C.input.value) localStorage.setItem(draftKey(C.name), C.input.value);
@@ -1417,7 +1415,6 @@ views.chat = (() => {
         }
         if (!C.input.value) {
             C.input.value = value;
-            autosize();
             saveDraft();
         }
         renderFiles();
@@ -1434,7 +1431,6 @@ views.chat = (() => {
         d.files = [];
         saveDraft();
         renderFiles();
-        autosize();
         slash.close();
         renderComposer();
         try {
@@ -1648,7 +1644,6 @@ views.chat = (() => {
             saveDraft();
             slash.close();
             C.input.focus();
-            autosize();
         },
 
         close() {
@@ -1803,7 +1798,6 @@ views.chat = (() => {
         },
         restoreScroll() {
             if (!C) return;
-            autosize();
             C.scroller.scrollTop = C.kept ?? C.scroller.scrollHeight;
         },
         state: (name) => (C?.name === name && C.loaded ? C.snap?.state || null : live.summary[name]?.state || null),
