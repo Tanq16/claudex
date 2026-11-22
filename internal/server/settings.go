@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"encoding/json/v2"
 	"errors"
 	"io/fs"
@@ -220,8 +221,8 @@ func (s *Server) handleRepos(r *http.Request) (any, error) {
 	return repos, nil
 }
 
-func (s *Server) pullRemote(st *state.State, repo, path string) ([]string, error) {
-	res, err := workspace.PullPresets(workspace.PullConfig{Repo: repo, Path: path, Dir: paths.RemotePresetsDir(s.home)})
+func (s *Server) pullRemote(ctx context.Context, st *state.State, repo, path string) ([]string, error) {
+	res, err := workspace.PullPresets(ctx, workspace.PullConfig{Repo: repo, Path: path, Dir: paths.RemotePresetsDir(s.home)})
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +250,7 @@ func (s *Server) handleAddRemotePreset(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	refs, err := s.pullRemote(st, repo, path)
+	refs, err := s.pullRemote(r.Context(), st, repo, path)
 	if err != nil {
 		return nil, fail(http.StatusBadRequest, "pulling presets from %s failed: %v", repo, err)
 	}
@@ -276,7 +277,7 @@ func (s *Server) handleUpdateRemotePreset(r *http.Request) (any, error) {
 	if !ok || tracked.Repo == "" {
 		return nil, fail(http.StatusNotFound, "%s has no tracked repository; track it again from its repository", req.Name)
 	}
-	if _, err := s.pullRemote(st, tracked.Repo, tracked.Path); err != nil {
+	if _, err := s.pullRemote(r.Context(), st, tracked.Repo, tracked.Path); err != nil {
 		return nil, fail(http.StatusBadGateway, "updating %s failed: %v", req.Name, err)
 	}
 	if err := s.saveState(st); err != nil {

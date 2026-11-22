@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -278,7 +279,7 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 	}
 
 	if len(req.Presets) > 0 {
-		if err := s.applyPresets(st, dir, req.Presets); err != nil {
+		if err := s.applyPresets(r.Context(), st, dir, req.Presets); err != nil {
 			return nil, err
 		}
 	}
@@ -355,6 +356,7 @@ func (s *Server) prepareSource(r *http.Request, req startRequest, dir string) er
 		return fail(http.StatusBadRequest, "repo must look like owner/name")
 	}
 	cmd := exec.CommandContext(r.Context(), "gh", "repo", "clone", req.Repo, dir)
+	cmd.WaitDelay = 2 * time.Second
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fail(http.StatusBadGateway, "cloning %s failed: %s", req.Repo, cmp.Or(strings.TrimSpace(string(out)), err.Error()))
 	}
@@ -561,7 +563,7 @@ func (s *Server) handleApplyPresets(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.applyPresets(st, dir, req.Presets); err != nil {
+	if err := s.applyPresets(r.Context(), st, dir, req.Presets); err != nil {
 		return nil, err
 	}
 	if err := s.saveState(st); err != nil {
@@ -570,8 +572,10 @@ func (s *Server) handleApplyPresets(r *http.Request) (any, error) {
 	return map[string]any{"name": name, "presets": workspace.Presets(dir)}, nil
 }
 
-func (s *Server) applyPresets(st *state.State, dir string, refs []string) error {
-	s.refreshRemotePresets(st, refs)
+func (s *Server) applyPresets(ctx context.Context, st *state.State, dir string, refs []string) error {
+	if err := s.refreshRemotePresets(ctx, st, refs); err != nil {
+		return err
+	}
 	local, remote := paths.PresetsDir(s.home), paths.RemotePresetsDir(s.home)
 	for _, ref := range refs {
 		if ref == workspace.BasePreset {
@@ -593,19 +597,23 @@ func (s *Server) applyPresets(st *state.State, dir string, refs []string) error 
 	})
 }
 
-func (s *Server) refreshRemotePresets(st *state.State, refs []string) {
+func (s *Server) refreshRemotePresets(ctx context.Context, st *state.State, refs []string) error {
 	pulled := map[state.RemotePreset]bool{}
 	for _, ref := range refs {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		tracked, ok := st.RemotePresets[ref]
 		source := state.RemotePreset{Repo: tracked.Repo, Path: tracked.Path}
 		if !ok || tracked.Repo == "" || pulled[source] {
 			continue
 		}
 		pulled[source] = true
-		if _, err := s.pullRemote(st, tracked.Repo, tracked.Path); err != nil {
+		if _, err := s.pullRemote(ctx, st, tracked.Repo, tracked.Path); err != nil && ctx.Err() == nil {
 			log.Warn().Err(err).Str("preset", ref).Msg("could not update the remote preset; applying the local copy")
 		}
 	}
+	return ctx.Err()
 }
 
 func (s *Server) handleSetMCP(r *http.Request) (any, error) {

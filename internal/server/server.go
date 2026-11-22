@@ -41,6 +41,8 @@ type Config struct {
 
 type Server struct {
 	cfg         Config
+	ctx         context.Context
+	cancel      context.CancelFunc
 	home        string
 	root        string
 	launcher    session.Launcher
@@ -52,7 +54,8 @@ type Server struct {
 }
 
 func New(cfg Config) *Server {
-	return &Server{cfg: cfg, mux: http.NewServeMux()}
+	ctx, cancel := context.WithCancel(context.Background())
+	return &Server{cfg: cfg, ctx: ctx, cancel: cancel, mux: http.NewServeMux()}
 }
 
 func (s *Server) Setup() error {
@@ -183,7 +186,12 @@ func (s *Server) Setup() error {
 func (s *Server) Run() error {
 	addr := net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port))
 	log.Info().Str("addr", addr).Str("root", s.root).Msg("starting")
-	return http.ListenAndServe(addr, http.NewCrossOriginProtection().Handler(s.mux))
+	srv := &http.Server{
+		Addr:        addr,
+		Handler:     http.NewCrossOriginProtection().Handler(s.mux),
+		BaseContext: func(net.Listener) context.Context { return s.ctx },
+	}
+	return srv.ListenAndServe()
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {

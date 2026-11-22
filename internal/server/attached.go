@@ -108,6 +108,7 @@ func (s *Server) Busy() map[string][]string {
 }
 
 func (s *Server) Shutdown() {
+	s.cancel()
 	s.syncAttached()
 	s.host.Shutdown()
 }
