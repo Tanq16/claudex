@@ -5,14 +5,12 @@ import (
 	"os"
 	"os/signal"
 	"slices"
-	"strings"
 	"syscall"
 
 	"github.com/charmbracelet/x/term"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/tanq16/claudex/internal/server"
-	"github.com/tanq16/claudex/utils"
 )
 
 var serveFlags struct {
@@ -36,7 +34,7 @@ var serveCmd = &cobra.Command{
 		signals := make(chan os.Signal, 1)
 		signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
 		interactive := term.IsTerminal(os.Stdin.Fd())
-		var answers chan string
+		warned := false
 		for {
 			select {
 			case err := <-errc:
@@ -44,7 +42,7 @@ var serveCmd = &cobra.Command{
 				log.Fatal().Err(err).Msg("server error")
 			case sig := <-signals:
 				busy := srv.Busy()
-				if sig == syscall.SIGTERM || !interactive || len(busy) == 0 || answers != nil {
+				if sig == syscall.SIGTERM || !interactive || len(busy) == 0 || warned {
 					srv.Shutdown()
 					log.Info().Msg("stopped")
 					return
@@ -52,19 +50,8 @@ var serveCmd = &cobra.Command{
 				for _, name := range slices.Sorted(maps.Keys(busy)) {
 					log.Warn().Str("session", name).Strs("busy", busy[name]).Msg("attached session is busy")
 				}
-				answers = make(chan string, 1)
-				go func() {
-					answer, _ := utils.PromptInput("Stop these sessions and exit? [y/N]")
-					answers <- answer
-				}()
-			case answer := <-answers:
-				answers = nil
-				if a := strings.ToLower(answer); a == "y" || a == "yes" {
-					srv.Shutdown()
-					log.Info().Msg("stopped")
-					return
-				}
-				log.Info().Msg("still serving")
+				log.Warn().Msg("press Ctrl+C again to stop these sessions and exit")
+				warned = true
 			}
 		}
 	},
