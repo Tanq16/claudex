@@ -11,6 +11,7 @@ const app = {
 
     async start() {
         ui.initDelegation();
+        ui.tooltip.init();
         ui.initScrollObserver();
         app.renderNav();
         live.start();
@@ -79,8 +80,8 @@ const app = {
         const waiting = live.awayPending();
         navLinks.innerHTML = links.map((l) => {
             const on = app.current === l.name;
-            const dot = l.name === 'dashboard' && waiting ? `<span title="${waiting} waiting for approval">${ui.dot('yellow', { pulse: true })}</span>` : '';
-            return `<a href="${l.hash}" class="flex h-9 items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : ''}>
+            const dot = l.name === 'dashboard' && waiting ? `<span data-tip="${waiting} waiting for approval">${ui.dot('yellow', { pulse: true })}</span>` : '';
+            return `<a href="${l.hash}" class="flex h-9 items-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors ${ui.cls.focus} ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : ''}>
                 <i data-lucide="${l.icon}" class="size-4 ${on ? 'text-mauve' : ''}"></i><span class="${on ? '' : 'max-sm:hidden'}">${l.label}</span>${dot}</a>`;
         }).join('');
         const status = document.getElementById('nav-status');
@@ -160,7 +161,7 @@ const md = {
                     try {
                         html = hljs.highlight(text, { language }).value;
                     } catch {}
-                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { title: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
                 },
                 checkbox({ checked }) {
                     return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
@@ -183,6 +184,13 @@ const md = {
     render(container, source, opts) {
         md.init();
         container.innerHTML = DOMPurify.sanitize(marked.parse(source, opts));
+        container.querySelectorAll('table').forEach((table) => {
+            const wrap = Object.assign(document.createElement('div'), { className: 'mb-6 overflow-x-auto' });
+            wrap.dataset.scroll = '';
+            wrap.dataset.table = '';
+            table.replaceWith(wrap);
+            wrap.appendChild(table);
+        });
         md.mermaid(container);
         ui.icons(container);
     },

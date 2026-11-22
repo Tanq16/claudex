@@ -86,9 +86,10 @@ views.dashboard = {
                 name: 'dash-tab',
                 value: this.local.tab,
                 full: true,
+                ground: true,
                 options: [
-                    { value: 'active', label: `Active ${active}`, icon: 'activity' },
-                    { value: 'tracked', label: `Inactive ${inactive}`, icon: 'folders' },
+                    { value: 'active', label: 'Active', icon: 'activity', count: active },
+                    { value: 'tracked', label: 'Inactive', icon: 'folders', count: inactive },
                 ],
             })}</span>` : ''}`;
     },
@@ -119,11 +120,10 @@ views.dashboard = {
             <section data-region="tracked" class="flex min-h-0 flex-col rounded-3xl bg-mantle">
                 <header class="flex shrink-0 flex-col gap-3 p-3 md:p-4 md:pb-3">
                     <h2 class="px-1 font-display text-lg font-medium text-text max-md:hidden">Inactive</h2>
-                    <label class="relative block">
-                        <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
-                        <input data-dash-filter type="text" autocomplete="off" spellcheck="false" placeholder="Filter" class="${ui.cls.input} pr-12 pl-11" value="${ui.esc(this.local.filter)}">
-                        <span data-dash-clear class="absolute top-1/2 right-1 -translate-y-1/2 ${this.local.filter ? '' : 'hidden'}">${ui.iconButton('x', { title: 'Clear filter', action: 'dash-clear-filter', size: 'sm' })}</span>
-                    </label>
+                    <div class="relative">
+                        ${ui.search({ name: 'dash-filter', placeholder: 'Filter', value: this.local.filter, attrs: 'data-dash-filter' })}
+                        <span data-dash-clear class="absolute top-1/2 right-1 -translate-y-1/2 ${this.local.filter ? '' : 'hidden'}">${ui.iconButton('x', { tip: 'Clear filter', action: 'dash-clear-filter', size: 'sm', variant: 'inset' })}</span>
+                    </div>
                 </header>
                 <div data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto px-2 pb-2 md:px-3 md:pb-3">
                     <ul data-list="tracked" class="flex flex-col gap-1"></ul>
@@ -185,7 +185,7 @@ views.dashboard = {
                     <span class="flex size-10 shrink-0 items-center justify-center rounded-2xl bg-mauve/15 text-mauve"><i data-lucide="${attached ? 'messages-square' : 'folder-git-2'}" class="size-5"></i></span>
                     <div class="min-w-0 flex-1">
                         <h3 class="font-display leading-snug font-medium wrap-anywhere text-text"><a href="#/project/${encodeURIComponent(p.name)}" class="outline-none focus-visible:underline">${name}</a></h3>
-                        <p class="truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
+                        <p class="truncate font-mono text-xs text-overlay1" data-tip="${ui.esc(p.dir)}">${ui.esc(p.dir)}</p>
                     </div>
                     ${attached && run ? `<span class="flex shrink-0 flex-col items-end gap-1">${live.stateChip(run.state)}${run.pending ? ui.chip(`${run.pending} pending`, { tone: 'yellow', icon: 'shield-question' }) : ''}</span>` : ''}
                 </header>
@@ -231,7 +231,7 @@ views.dashboard = {
             })}</li>`;
             return;
         }
-        const group = (label, n) => `<li class="${ui.cls.group} flex items-center gap-2 first:pt-1">${label}${ui.chip(String(n))}</li>`;
+        const group = (label, n) => `<li class="${ui.cls.group} flex items-center gap-2 first:pt-1">${label}${ui.count(n)}</li>`;
         list.innerHTML = [
             rows.length && dirs.length ? group('Tracked', rows.length) : '',
             ...rows.map((p) => this.row(p)),
@@ -243,19 +243,19 @@ views.dashboard = {
     row(p) {
         const name = ui.esc(p.name);
         const exited = p.mode === 'attached' && live.summary[p.name]?.state === 'exited';
-        return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
+        return `<li class="flex items-center gap-3 ${ui.cls.row} py-2.5 pr-2 pl-3">
             <span class="min-w-0 flex-1">
                 <span class="flex items-baseline gap-2">
                     <span class="min-w-0 text-sm font-medium wrap-anywhere text-text">${name}</span>
                     ${exited ? `<span class="shrink-0 self-center">${live.stateChip('exited')}</span>` : ''}
-                    <span class="shrink-0 text-xs text-overlay1" title="Last active">${ui.esc(ui.timeAgo(p.lastActive))}</span>
+                    <span class="shrink-0 text-xs text-overlay1" data-tip="Last active">${ui.esc(ui.timeAgo(p.lastActive))}</span>
                 </span>
-                <span class="block truncate font-mono text-xs text-overlay1" title="${ui.esc(p.dir)}">${ui.esc(p.dir)}</span>
+                <span class="block truncate font-mono text-xs text-overlay1" data-tip="${ui.esc(p.dir)}">${ui.esc(p.dir)}</span>
                 ${this.multiAccount() ? `<span class="mt-0.5 flex items-center gap-1.5 text-xs text-overlay1"><i data-lucide="user-round" class="size-3 shrink-0"></i><span class="truncate">${ui.esc(this.accountLabel(p.account))}</span></span>` : ''}
             </span>
             <span class="hidden max-w-[45%] flex-wrap justify-end gap-1.5 3xl:flex">${p.presets.map((x) => ui.chip(x)).join('')}</span>
-            ${ui.iconButton('plus', { title: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new', attrs: `data-name="${name}"` })}
-            ${ui.iconButton('ellipsis-vertical', { title: 'More', size: 'sm', action: 'dash-tracked-menu', attrs: `data-name="${name}"` })}
+            ${ui.iconButton('plus', { tip: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new', attrs: `data-name="${name}"` })}
+            ${ui.iconButton('ellipsis-vertical', { tip: 'More', size: 'sm', action: 'dash-tracked-menu', attrs: `data-name="${name}"` })}
         </li>`;
     },
 
@@ -263,15 +263,15 @@ views.dashboard = {
         const name = ui.esc(d.name);
         const path = `${store.state.root}/${d.name}`;
         const busy = this.local.busy.get(d.name);
-        return `<li class="flex items-center gap-3 rounded-2xl py-2.5 pr-2 pl-3 transition-colors hover:bg-base">
+        return `<li class="flex items-center gap-3 ${ui.cls.row} py-2.5 pr-2 pl-3">
             <i data-lucide="folder" class="size-4 shrink-0 text-overlay0"></i>
             <span class="min-w-0 flex-1">
                 <span class="block text-sm wrap-anywhere text-subtext0">${name}</span>
-                <span class="block truncate font-mono text-xs text-overlay0" title="${ui.esc(path)}">${ui.esc(path)}</span>
+                <span class="block truncate font-mono text-xs text-overlay0" data-tip="${ui.esc(path)}">${ui.esc(path)}</span>
                 ${d.foreign.length ? `<span class="mt-0.5 flex items-center gap-1.5 text-xs text-peach"><i data-lucide="file-warning" class="size-3 shrink-0"></i><span class="truncate">${d.foreign.length} ${d.foreign.length === 1 ? 'file' : 'files'} claudex did not create</span></span>` : ''}
             </span>
-            ${ui.iconButton(busy === 'track' ? 'loader-circle' : 'folder-plus', { title: 'Start tracking', size: 'sm', variant: 'secondary', action: 'dash-track', spin: busy === 'track', disabled: !!busy, attrs: `data-name="${name}"` })}
-            ${ui.iconButton('plus', { title: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new-untracked', disabled: !!busy, attrs: `data-name="${name}"` })}
+            ${ui.iconButton(busy === 'track' ? 'loader-circle' : 'folder-plus', { tip: 'Start tracking', size: 'sm', variant: 'secondary', action: 'dash-track', spin: busy === 'track', disabled: !!busy, attrs: `data-name="${name}"` })}
+            ${ui.iconButton('plus', { tip: 'New session', size: 'sm', variant: 'secondary', action: 'dash-new-untracked', disabled: !!busy, attrs: `data-name="${name}"` })}
         </li>`;
     },
 

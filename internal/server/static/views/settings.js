@@ -1,9 +1,9 @@
 views.settings = (() => {
     const sections = [
-        { id: 'accounts', label: 'Accounts', icon: 'users-round', hint: 'Discovered from ~/.claude and ~/.claudeN' },
-        { id: 'defaults', label: 'Defaults', icon: 'sliders-horizontal', hint: 'Active keys are written to every account on apply' },
-        { id: 'presets', label: 'Presets', icon: 'package', hint: 'Tracked presets update automatically on every apply' },
-        { id: 'mcp', label: 'MCP library', icon: 'server', hint: "Credentials are stored inline in claudex's config dir" },
+        { id: 'accounts', label: 'Accounts', icon: 'users-round' },
+        { id: 'defaults', label: 'Defaults', icon: 'sliders-horizontal' },
+        { id: 'presets', label: 'Presets', icon: 'package' },
+        { id: 'mcp', label: 'MCP library', icon: 'server' },
     ];
 
     const s = {
@@ -56,9 +56,9 @@ views.settings = (() => {
             <nav aria-label="Settings sections" class="inline-flex max-w-full gap-1 overflow-x-auto rounded-full bg-mantle p-1 max-md:w-full 3xl:hidden">
                 ${sections.map((x) => {
                     const on = x.id === s.section;
-                    return `<a href="#/settings/${x.id}" data-action="settings-section" data-section="${x.id}" ${on ? 'aria-current="page"' : ''} class="flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors max-md:flex-1 ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}">
+                    return `<a href="#/settings/${x.id}" data-action="settings-section" data-section="${x.id}" ${on ? 'aria-current="page"' : ''} class="flex h-8 items-center justify-center gap-2 rounded-full px-4 text-sm whitespace-nowrap transition-colors max-md:flex-1 ${ui.cls.focus} ${on ? 'bg-surface0 text-text' : 'text-overlay1 hover:text-text'}">
                         ${icon(x.icon, `size-4 ${on ? 'text-mauve' : ''}`)}<span class="${on ? '' : 'max-sm:hidden'}">${x.label}</span>
-                        ${x.id === 'accounts' && attention ? '<span title="An account needs attention" class="size-1.5 rounded-full bg-peach"></span>' : ''}
+                        ${x.id === 'accounts' && attention ? '<span data-tip="An account needs attention" class="size-1.5 rounded-full bg-peach"></span>' : ''}
                         ${c[x.id] === undefined ? '' : `<span class="text-xs tabular-nums text-overlay1 max-sm:hidden">${c[x.id]}</span>`}
                     </a>`;
                 }).join('')}
@@ -66,25 +66,25 @@ views.settings = (() => {
         </header>`;
     };
 
-    const driftRow = (d) => `<li class="rounded-xl bg-mantle px-3 py-2 font-mono text-xs">
+    const driftRow = (d) => `<li class="rounded-xl bg-surface0/50 px-3 py-2 font-mono text-xs">
         <p class="break-all text-subtext1">${esc(d.key)}</p>
         <p class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <span title="Current" class="break-all ${d.actual === 'missing' ? 'italic text-overlay1' : 'text-peach line-through decoration-peach/50'}">${esc(d.actual)}</span>
+            <span data-tip="Current" class="break-all ${d.actual === 'missing' ? 'italic text-overlay1' : 'text-peach line-through decoration-peach/50'}">${esc(d.actual)}</span>
             <i data-lucide="arrow-right" class="size-3 shrink-0 text-overlay0"></i>
-            <span title="Default" class="break-all text-green">${esc(d.expected)}</span>
+            <span data-tip="Default" class="break-all text-green">${esc(d.expected)}</span>
         </p>
     </li>`;
 
     const unmanagedRow = (a, k) => {
         const attrs = `data-dir="${esc(a.dir)}" data-key="${esc(k.key)}"`;
         const pending = busy(`key:${a.dir}:${k.key}`);
-        return `<li class="flex items-center gap-2 rounded-xl bg-mantle py-1.5 pr-1.5 pl-3">
+        return `<li class="flex items-center gap-2 rounded-xl bg-surface0/50 py-1.5 pr-1.5 pl-3">
             <p class="min-w-0 flex-1 font-mono text-xs">
-                <span title="${esc(k.key)}" class="block truncate text-subtext1">${esc(k.key)}</span>
-                <span title="${esc(k.value)}" class="block truncate text-blue">${esc(k.value)}</span>
+                <span data-tip="${esc(k.key)}" class="block truncate text-subtext1">${esc(k.key)}</span>
+                <span data-tip="${esc(k.value)}" class="block truncate text-blue">${esc(k.value)}</span>
             </p>
             ${ui.button('Adopt', { icon: pending ? 'loader-circle' : 'import', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-adopt', attrs })}
-            ${ui.iconButton('trash-2', { title: 'Remove from this account', size: 'sm', variant: 'danger', action: 'settings-remove-key', disabled: pending, attrs })}
+            ${ui.iconButton('trash-2', { tip: 'Remove from this account', size: 'sm', variant: 'danger', action: 'settings-remove-key', disabled: pending, attrs })}
         </li>`;
     };
 
@@ -117,7 +117,7 @@ views.settings = (() => {
             <i data-lucide="folder-root" class="size-4 shrink-0 text-overlay1"></i>
             <span class="${ui.cls.label}">Projects root</span>
             <span class="min-w-0 flex-1 truncate text-right font-mono text-sm text-text">${esc(s.data.root)}</span>
-            <span title="Read-only" class="text-overlay0">${icon('lock', 'size-3.5')}</span>
+            <span data-tip="Read-only" class="text-overlay0">${icon('lock', 'size-3.5')}</span>
         </p>
         <a href="#/settings/defaults" data-action="settings-section" data-section="defaults" class="flex items-center gap-3 rounded-2xl bg-base px-4 py-3 transition-colors hover:bg-surface0 3xl:hidden">
             <i data-lucide="sliders-horizontal" class="size-4 shrink-0 text-overlay1"></i>
@@ -156,13 +156,13 @@ views.settings = (() => {
         const pending = busy(`default:${r.key}`);
         const open = s.open.has(r.key);
         return `<li class="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl px-3 py-1.5 transition-colors hover:bg-surface0/50">
-            <span title="${esc(r.key)}" class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
+            <span data-tip="${esc(r.key)}" class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
             ${r.inSchema ? '' : ui.chip('custom', { icon: 'pencil-line' })}
             <span class="flex shrink-0 items-center gap-1 ${['string', 'number', 'integer'].includes(r.kind) ? 'max-sm:basis-full' : ''}">
                 ${pending ? ui.spinner('size-4 text-overlay1') : ''}
                 ${valueControl(r)}
-                ${r.description ? ui.iconButton('info', { title: open ? 'Hide description' : 'Show description', size: 'sm', action: 'settings-default-info', pressed: open, attrs }) : '<span class="size-8 shrink-0"></span>'}
-                <span class="${ui.cls.reveal}">${ui.iconButton('rotate-ccw', { title: 'Reset', size: 'sm', action: 'settings-default-reset', disabled: pending, attrs })}</span>
+                ${r.description ? ui.iconButton('info', { tip: open ? 'Hide description' : 'Show description', size: 'sm', action: 'settings-default-info', pressed: open, attrs }) : '<span class="size-8 shrink-0"></span>'}
+                <span class="${ui.cls.reveal}">${ui.iconButton('rotate-ccw', { tip: 'Reset', size: 'sm', action: 'settings-default-reset', disabled: pending, attrs })}</span>
             </span>
             ${open ? `<p class="basis-full pb-1 text-xs leading-relaxed text-subtext0">${esc(r.description)}</p>` : ''}
         </li>`;
@@ -213,11 +213,7 @@ views.settings = (() => {
         return `${schemaLine(d.schema)}
             <div class="flex flex-wrap items-center gap-2">
                 ${ui.segmented({ name: 'defaults-mode', value: s.dmode, options: [{ value: 'keys', label: 'Keys', icon: 'list' }, { value: 'json', label: 'JSON', icon: 'braces' }] })}
-                ${s.dmode === 'keys' ? `<label class="relative min-w-40 flex-1">
-                    <span class="sr-only">Filter keys</span>
-                    <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input data-field="defaults.query" value="${esc(s.dquery)}" placeholder="Filter active keys" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
-                </label>` : ''}
+                ${s.dmode === 'keys' ? `<span class="min-w-40 flex-1">${ui.search({ name: 'defaults-query', value: s.dquery, placeholder: 'Filter active keys', attrs: 'data-field="defaults.query" aria-label="Filter keys"' })}</span>` : ''}
             </div>
             ${s.dmode === 'json' ? jsonView() : keysView(d)}`;
     };
@@ -242,7 +238,7 @@ views.settings = (() => {
                     <h4 class="truncate font-mono text-sm font-medium text-text">${esc(p.name)}</h4>
                     <p class="truncate font-mono text-xs text-overlay1">${esc(p.repo)}</p>
                 </hgroup>
-                ${ui.iconButton(removing ? 'loader-circle' : 'trash-2', { title: 'Remove', variant: 'danger', size: 'sm', action: 'settings-preset-remove', spin: removing, disabled: removing || updating, attrs })}
+                ${ui.iconButton(removing ? 'loader-circle' : 'trash-2', { tip: 'Remove', variant: 'danger', size: 'sm', action: 'settings-preset-remove', spin: removing, disabled: removing || updating, attrs })}
             </header>
             <p class="text-sm text-subtext0">${esc(p.description)}</p>
             <footer class="flex flex-wrap items-center gap-2">
@@ -281,7 +277,7 @@ views.settings = (() => {
             ${trackForm()}
             ${remote.length
                 ? `<ul class="grid items-start gap-3 xl:grid-cols-2 3xl:grid-cols-1">${remote.map(remoteCard).join('')}</ul>`
-                : ui.empty({ icon: 'package-open', title: 'No tracked presets', hint: 'Presets tracked from a GitHub repository show up here and in the new-session modal.' })}
+                : ui.empty({ icon: 'package-open', title: 'No tracked presets', hint: 'Presets tracked from a GitHub repository show up here and in the new-session modal.', fill: false })}
         </section>`;
     };
 
@@ -297,19 +293,19 @@ views.settings = (() => {
                 <h4 class="min-w-0 flex-1 truncate font-mono text-sm font-medium text-text">${esc(m.name)}</h4>
                 ${ui.chip(m.transport, { icon: http ? 'globe' : 'square-terminal', mono: true })}
             </header>
-            <p class="rounded-xl bg-mantle px-3 py-2 font-mono text-xs leading-relaxed break-all text-subtext1">${esc(http ? m.url : commandLine(m))}</p>
+            <p class="rounded-xl bg-surface0/50 px-3 py-2 font-mono text-xs leading-relaxed break-all text-subtext1">${esc(http ? m.url : commandLine(m))}</p>
             ${secrets.length ? `<section class="flex flex-col gap-1.5">
                 <header class="flex items-center gap-2 pl-1">
                     <h5 class="flex flex-1 items-center gap-1.5 ${ui.cls.label}">${icon('key-round', 'size-3.5')}${http ? 'Headers' : 'Env'}</h5>
-                    ${ui.iconButton(shown ? 'eye-off' : 'eye', { title: shown ? 'Hide secrets' : 'Reveal secrets', size: 'sm', action: 'settings-mcp-reveal', attrs })}
+                    ${ui.iconButton(shown ? 'eye-off' : 'eye', { tip: shown ? 'Hide secrets' : 'Reveal secrets', size: 'sm', action: 'settings-mcp-reveal', attrs })}
                 </header>
-                <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-xl bg-mantle px-3 py-2 font-mono text-xs">
+                <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-1.5 rounded-xl bg-surface0/50 px-3 py-2 font-mono text-xs">
                     ${secrets.map(([k, v]) => `<dt class="text-overlay1">${esc(k)}</dt><dd class="break-all ${shown ? 'text-text' : 'tracking-widest text-overlay0'}">${shown ? esc(v) : '••••••••••••'}</dd>`).join('')}
                 </dl>
             </section>` : `<p class="flex items-center gap-1.5 px-1 text-xs text-overlay1">${icon('key-round', 'size-3.5')}No ${http ? 'headers' : 'env'} set</p>`}
             <footer class="mt-auto flex items-center justify-end gap-1">
                 ${ui.button('Edit', { icon: 'pencil', size: 'sm', variant: 'ghost', action: 'settings-mcp-edit', disabled: deleting, attrs })}
-                ${ui.iconButton(deleting ? 'loader-circle' : 'trash-2', { title: 'Delete', variant: 'danger', size: 'sm', action: 'settings-mcp-delete', spin: deleting, disabled: deleting, attrs })}
+                ${ui.iconButton(deleting ? 'loader-circle' : 'trash-2', { tip: 'Delete', variant: 'danger', size: 'sm', action: 'settings-mcp-delete', spin: deleting, disabled: deleting, attrs })}
             </footer>
         </li>`;
     };
@@ -334,12 +330,9 @@ views.settings = (() => {
     const panel = (x) => `<section aria-labelledby="settings-${x.id}" class="${x.id === s.section ? 'flex' : 'hidden'} min-h-0 flex-1 flex-col rounded-3xl bg-mantle 3xl:flex">
         <header class="flex shrink-0 items-center gap-3 px-5 pt-5 pb-4 md:px-6 md:pt-6">
             <span class="flex size-10 shrink-0 items-center justify-center rounded-full bg-surface0 text-text">${icon(x.icon)}</span>
-            <hgroup class="min-w-0 flex-1">
-                <h2 id="settings-${x.id}" class="font-display text-lg font-medium text-text">${x.label}</h2>
-                <p class="text-sm text-overlay1">${x.hint}</p>
-            </hgroup>
+            <h2 id="settings-${x.id}" class="min-w-0 flex-1 font-display text-lg font-medium text-text">${x.label}</h2>
             ${x.id === 'mcp' && s.data?.mcpLibrary.length ? ui.button('Add server', { icon: 'plus', size: 'sm', action: 'settings-mcp-add', collapse: true }) : ''}
-            ${x.id === 'defaults' ? `${ui.iconButton(busy('schema') ? 'loader-circle' : 'cloud-download', { title: 'Refresh upstream schema', size: 'sm', variant: 'secondary', action: 'settings-schema-refresh', spin: busy('schema'), disabled: busy('schema') })}
+            ${x.id === 'defaults' ? `${ui.iconButton(busy('schema') ? 'loader-circle' : 'cloud-download', { tip: 'Refresh upstream schema', size: 'sm', variant: 'secondary', action: 'settings-schema-refresh', spin: busy('schema'), disabled: busy('schema') })}
                 ${ui.button('Add key', { icon: 'plus', size: 'sm', action: 'settings-default-add', collapse: true })}` : ''}
         </header>
         <div data-scroll data-scroll-key="${x.id}" class="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-5 pb-5 md:px-6 md:pb-6">${body(x.id)}</div>
@@ -435,14 +428,7 @@ views.settings = (() => {
         render();
     };
 
-    const field = (label, name, value, placeholder) => {
-        const error = s.editor.errors[name];
-        return `<label class="flex flex-col gap-1.5">
-            <span class="px-1 ${ui.cls.label}">${label}</span>
-            <input data-field="${name}" value="${esc(value)}" placeholder="${esc(placeholder)}" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">
-            <span data-error="${name}" class="${error ? '' : 'hidden'} px-1 text-xs text-red">${esc(error || '')}</span>
-        </label>`;
-    };
+    const field = (label, name, value, placeholder) => ui.field(label, ui.input({ name: `mcp-${name}`, value, placeholder, mono: true, attrs: `data-field="${name}"` }));
 
     const rowList = (list, title, noun, rows) => {
         const pair = list !== 'args';
@@ -457,7 +443,7 @@ views.settings = (() => {
                     ? `<input data-field="${list}.${i}.0" value="${esc(row[0])}" placeholder="${keyHint}" aria-label="${noun} name" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[2] font-mono">
                        <input data-field="${list}.${i}.1" value="${esc(row[1])}" placeholder="value" aria-label="${noun} value" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[3] font-mono">`
                     : `<input data-field="${list}.${i}" value="${esc(row)}" placeholder="argument ${i + 1}" aria-label="Argument ${i + 1}" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-1 font-mono">`}
-                ${ui.iconButton('x', { title: `Remove ${noun}`, size: 'sm', action: 'settings-mcp-row-remove', attrs: `data-list="${list}" data-index="${i}"` })}
+                ${ui.iconButton('x', { tip: `Remove ${noun}`, size: 'sm', action: 'settings-mcp-row-remove', attrs: `data-list="${list}" data-index="${i}"` })}
             </li>`).join('')}</ul>` : `<p class="px-1 text-xs text-overlay1">None</p>`}
         </section>`;
     };
@@ -480,11 +466,10 @@ views.settings = (() => {
     };
 
     const showErrors = () => {
-        s.editor.form.querySelectorAll('[data-error]').forEach((n) => {
-            const msg = s.editor.errors[n.dataset.error];
-            n.textContent = msg || '';
-            n.classList.toggle('hidden', !msg);
-        });
+        for (const key of ['name', 'url', 'command']) {
+            const input = s.editor.form.querySelector(`[data-field="${key}"]`);
+            if (input) ui.invalid(input, s.editor.errors[key] || '');
+        }
     };
 
     const validate = (ed) => {
@@ -549,10 +534,7 @@ views.settings = (() => {
             icon: 'server',
             body: `<form id="settings-mcp-form" data-form="mcp" novalidate class="flex flex-col gap-5 pt-1">
                 ${field('Name', 'name', ed.name, 'github')}
-                <span class="flex flex-col items-start gap-1.5">
-                    <span class="px-1 ${ui.cls.label}">Transport</span>
-                    ${ui.segmented({ name: 'mcp-transport', value: ed.transport, options: [{ value: 'http', label: 'HTTP', icon: 'globe' }, { value: 'stdio', label: 'stdio', icon: 'square-terminal' }] })}
-                </span>
+                ${ui.field('Transport', `<span>${ui.segmented({ name: 'mcp-transport', value: ed.transport, options: [{ value: 'http', label: 'HTTP', icon: 'globe' }, { value: 'stdio', label: 'stdio', icon: 'square-terminal' }] })}</span>`, { group: true })}
                 <div data-mcp-fields class="flex flex-col gap-5"></div>
             </form>`,
             footer: ' ',
@@ -598,9 +580,9 @@ views.settings = (() => {
         case 'string':
         case 'number':
         case 'integer':
-            return `<input data-default-input value="${esc(value)}" ${kind === 'string' ? '' : 'inputmode="decimal"'} aria-label="Value" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">`;
+            return ui.input({ name: 'default-input', value: value ?? '', mono: true, attrs: `data-default-input ${kind === 'string' ? '' : 'inputmode="decimal"'}` });
         default:
-            return `<textarea data-default-input rows="10" aria-label="Value" spellcheck="false" class="${ui.cls.input} min-h-40 resize-y font-mono leading-relaxed">${esc(value === undefined ? '' : JSON.stringify(value, null, 2))}</textarea>`;
+            return ui.textarea({ name: 'default-input', rows: 10, mono: true, value: value === undefined ? '' : JSON.stringify(value, null, 2), attrs: 'data-default-input' });
         }
     };
 
@@ -634,18 +616,9 @@ views.settings = (() => {
             body: `<form id="settings-default-form" novalidate class="flex flex-col gap-5 pt-1">
                 ${row
                     ? (row.description ? `<p class="text-sm leading-relaxed text-subtext0">${esc(row.description)}</p>` : '')
-                    : `<label class="flex flex-col gap-1.5">
-                        <span class="px-1 ${ui.cls.label}">Key</span>
-                        <input data-default-key value="${esc(presetKey)}" placeholder="env.MY_VARIABLE" autocomplete="off" spellcheck="false" class="${ui.cls.input} font-mono">
-                    </label>
-                    <div class="flex flex-col items-start gap-1.5">
-                        <span class="px-1 ${ui.cls.label}">Type</span>
-                        ${ui.segmented({ name: 'default-kind', value: ed.kind, options: [{ value: 'string', label: 'Text' }, { value: 'json', label: 'JSON' }] })}
-                    </div>`}
-                <div class="flex flex-col gap-1.5">
-                    <span class="px-1 ${ui.cls.label}">Value</span>
-                    <div data-default-field class="flex flex-col">${valueField(ed.kind, initial, row?.enum)}</div>
-                </div>
+                    : `${ui.field('Key', ui.input({ name: 'default-key', value: presetKey, placeholder: 'env.MY_VARIABLE', mono: true, attrs: 'data-default-key' }))}
+                    ${ui.field('Type', `<span>${ui.segmented({ name: 'default-kind', value: ed.kind, options: [{ value: 'string', label: 'Text' }, { value: 'json', label: 'JSON' }] })}</span>`, { group: true })}`}
+                ${ui.field('Value', `<div data-default-field class="flex flex-col">${valueField(ed.kind, initial, row?.enum)}</div>`, { group: ed.kind === 'boolean' })}
                 <p data-default-error role="alert" class="hidden px-1 text-sm text-red"></p>
             </form>`,
             footer: ' ',
@@ -666,24 +639,27 @@ views.settings = (() => {
         footer.addEventListener('click', (e) => {
             if (e.target.closest('[data-default-cancel]')) m.close();
         });
+        const valueControl = () => form.querySelector('[data-default-field] :is([data-default-input], [data-ui])');
         m.el.addEventListener('ui-change', (e) => {
+            if (e.detail.name === 'default-value') ui.invalid(e.target);
             if (e.detail.name !== 'default-kind') return;
             ed.kind = e.detail.value;
-            const field = form.querySelector('[data-default-field]');
-            field.innerHTML = valueField(ed.kind, undefined);
+            ui.invalid(valueControl());
+            form.querySelector('[data-default-field]').innerHTML = valueField(ed.kind, undefined);
             showError('');
         });
-        form.addEventListener('input', () => showError(''));
+        form.addEventListener('input', (e) => {
+            showError('');
+            if (e.target.getAttribute('aria-invalid') === 'true') ui.invalid(e.target);
+        });
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             if (ed.saving) return;
-            const key = row ? row.key : form.querySelector('[data-default-key]').value.trim();
+            const keyInput = form.querySelector('[data-default-key]');
+            const key = row ? row.key : keyInput.value.trim();
+            if (!key) return ui.invalid(keyInput, 'Enter a key');
             const res = readValue(form, ed.kind);
-            const msg = key ? res.error : 'Enter a key';
-            if (msg) {
-                showError(msg);
-                return;
-            }
+            if (res.error) return ui.invalid(valueControl(), res.error);
             ed.saving = true;
             renderFooter();
             const out = await app.act('Save default', () => api.setDefault(key, res.value), { success: `${key} is active` });
@@ -710,11 +686,7 @@ views.settings = (() => {
             title: 'Add a key',
             icon: 'plus',
             body: `<div class="flex flex-col gap-3 pt-1">
-                <label class="relative block">
-                    <span class="sr-only">Search keys</span>
-                    <i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input data-picker-q value="${esc(initial)}" placeholder="Search ${plural(inactive.length, 'key')}, or type a new one" autocomplete="off" spellcheck="false" class="${ui.cls.input} pl-10 font-mono">
-                </label>
+                ${ui.search({ name: 'picker-q', value: initial, placeholder: `Search ${plural(inactive.length, 'key')}, or type a new one`, attrs: 'data-picker-q aria-label="Search keys" autofocus' })}
                 <ul data-picker-list role="listbox" class="flex flex-col gap-0.5"></ul>
             </div>`,
         });

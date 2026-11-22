@@ -152,7 +152,7 @@ views.newSession = (() => {
             if (p) {
                 const account = state().accounts.find((a) => a.dir === p.account);
                 const chips = [
-                    ui.status(p.active),
+                    p.active ? ui.status('Active', 'green', { pulse: true }) : ui.status('Inactive'),
                     ui.chip('Tracked', { tone: 'mauve', icon: 'folder-git-2' }),
                     multiAccount() && account ? ui.chip(account.label, { icon: 'user-round' }) : '',
                     ui.chip(`Last active ${ui.timeAgo(p.lastActive)}`, { icon: 'clock' }),
@@ -190,10 +190,10 @@ views.newSession = (() => {
             return items.map((r) => {
                 const [owner, name] = r.full.split('/');
                 const on = r.full === s.repo;
-                return `<li><button type="button" role="option" aria-selected="${on}" data-ns="repo" data-repo="${ui.esc(r.full)}" class="group flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left transition-colors hover:bg-surface0 aria-selected:bg-mauve/12 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40">
+                return `<li><button type="button" role="option" aria-selected="${on}" data-ns="repo" data-repo="${ui.esc(r.full)}" class="group flex w-full items-center gap-3 ${ui.cls.row} px-3 py-2.5 text-left aria-selected:bg-surface0 aria-selected:hover:bg-surface0 ${ui.cls.focus}">
                     <i data-lucide="${r.private ? 'lock' : 'book-marked'}" class="size-4 shrink-0 ${r.private ? 'text-yellow' : 'text-overlay1'} group-aria-selected:text-mauve"></i>
                     <span class="min-w-0 flex-1">
-                        <span class="block truncate text-sm"><span class="text-overlay1">${ui.esc(owner)}/</span><span class="text-text">${ui.esc(name)}</span></span>
+                        <span class="block ${ui.cls.rowText} text-sm"><span class="text-overlay1">${ui.esc(owner)}/</span><span class="text-text">${ui.esc(name)}</span></span>
                         <span class="block truncate text-xs text-overlay1">${ui.esc(r.description)}</span>
                     </span>
                     <span class="hidden shrink-0 text-xs text-overlay0 sm:inline">${ui.timeAgo(r.updatedAt)}</span>
@@ -203,8 +203,7 @@ views.newSession = (() => {
         };
 
         const nameField = (field, value, placeholder, verb) => `
-            <label for="ns-${field}" class="${ui.cls.label} -mb-2 px-1">Directory name</label>
-            <input id="ns-${field}" data-name="ns-${field}" class="${ui.cls.input} font-mono" value="${ui.esc(value)}" placeholder="${placeholder}" autocomplete="off" autocapitalize="off" spellcheck="false">
+            ${ui.field('Directory name', ui.input({ name: `ns-${field}`, value, placeholder, mono: true, attrs: 'autocapitalize="off"' }))}
             <div data-region="${field}-check">${nameCheck(value.trim(), verb).html}</div>`;
 
         const sourceBodyHtml = () => {
@@ -219,11 +218,8 @@ views.newSession = (() => {
                     <span class="flex-1">Your GitHub repositories</span>
                     ${s.repos ? ui.chip(`${s.repos.length} repos`) : ''}
                 </p>
-                <label class="relative block">
-                    <i data-lucide="search" class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input data-name="ns-repo-query" class="${ui.cls.input} pl-10" value="${ui.esc(s.repoQuery)}" placeholder="Filter by owner or name" autocomplete="off" spellcheck="false" ${s.repos ? '' : 'disabled'}>
-                </label>
-                <div data-scroll class="-mx-1 h-72 overflow-y-auto lg:h-80 3xl:h-[26rem]"><ul role="listbox" data-region="repos" class="flex flex-col gap-0.5 px-1">${reposHtml()}</ul></div>
+                ${ui.search({ name: 'ns-repo-query', value: s.repoQuery, placeholder: 'Filter by owner or name', attrs: `aria-label="Filter repositories" ${s.repos ? '' : 'disabled'}` })}
+                <div data-scroll="lane" class="-mx-1 h-72 overflow-y-auto lg:h-80 3xl:h-[26rem]"><ul role="listbox" data-region="repos" class="flex flex-col gap-0.5 px-1">${reposHtml()}</ul></div>
                 ${s.repo ? nameField('clone-name', s.cloneName, 'directory-name', 'Clones into') : note('muted', 'info', 'Pick a repository. The directory name defaults to its name.')}`;
         };
 
@@ -250,24 +246,19 @@ views.newSession = (() => {
         const modeFieldsHtml = () => {
             if (attached()) {
                 const hint = "The project's last setting, or claude's default";
-                const pick = (label, control) => `<span class="flex min-w-0 flex-col gap-1.5"><span class="${ui.cls.label} px-1">${label}</span>${control}</span>`;
                 return `<div class="grid gap-3 sm:grid-cols-3">
-                    ${pick('Model', ui.select({ name: 'ns-model', value: s.model, icon: 'sparkles', options: saved(['default', 'opus', 'fable', 'sonnet', 'haiku'].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), hint) }))}
-                    ${pick('Effort', ui.select({ name: 'ns-effort', value: s.effort, icon: 'gauge', options: saved(Object.entries(views.chat.efforts).map(([value, label]) => ({ value, label })), hint) }))}
-                    ${pick('Permissions', ui.select({ name: 'ns-permission', value: s.permissionMode, icon: 'shield', options: saved(views.chat.modes.map((m) => ({ value: m.value, label: m.label, icon: m.icon })), hint) }))}
+                    ${ui.field('Model', ui.select({ name: 'ns-model', value: s.model, icon: 'sparkles', options: saved(['default', 'opus', 'fable', 'sonnet', 'haiku'].map((v) => ({ value: v, label: v[0].toUpperCase() + v.slice(1) })), hint) }))}
+                    ${ui.field('Effort', ui.select({ name: 'ns-effort', value: s.effort, icon: 'gauge', options: saved(Object.entries(views.chat.efforts).map(([value, label]) => ({ value, label })), hint) }))}
+                    ${ui.field('Permissions', ui.select({ name: 'ns-permission', value: s.permissionMode, icon: 'shield', options: saved(views.chat.modes.map((m) => ({ value: m.value, label: m.label, icon: m.icon })), hint) }))}
                 </div>`;
             }
             return `<span class="-mx-3 block">${ui.switch({ name: 'ns-rc-on', label: 'Remote Control', hint: 'Reachable from claude.ai and the Claude app', checked: s.rc })}</span>
-                ${s.rc ? `<label class="relative block">
-                    <i data-lucide="radio-tower" class="pointer-events-none absolute left-4 top-1/2 size-4 -translate-y-1/2 text-overlay1"></i>
-                    <input id="ns-rc" data-name="ns-rc" class="${ui.cls.input} pl-10" value="${ui.esc(s.rcName)}" placeholder="${ui.esc(target() || 'Defaults to the directory name')}" autocomplete="off" spellcheck="false" aria-label="Remote Control name">
-                </label>` : ''}`;
+                ${s.rc ? ui.input({ name: 'ns-rc', icon: 'radio-tower', value: s.rcName, placeholder: target() || 'Defaults to the directory name', attrs: 'aria-label="Remote Control name"' }) : ''}`;
         };
 
         const sessionHtml = () => {
             const accountField = multiAccount()
-                ? `<p class="${ui.cls.label} -mb-2 px-1">Account</p>
-                   ${ui.select({ name: 'ns-account', value: s.account, icon: 'user-round', options: state().accounts.map((a) => ({ value: a.dir, label: a.label, hint: a.isDefault ? `${a.dir} · default` : a.dir, icon: 'user-round' })) })}`
+                ? ui.field('Account', ui.select({ name: 'ns-account', value: s.account, icon: 'user-round', options: state().accounts.map((a) => ({ value: a.dir, label: a.label, hint: a.isDefault ? `${a.dir} · default` : a.dir, icon: 'user-round' })) }))
                 : '';
             return `
                 ${ui.choices({
@@ -294,7 +285,7 @@ views.newSession = (() => {
         const presetsHtml = () => `
             <div data-region="preset-list">${presetListHtml()}</div>
             <form data-ns="preset-form" class="flex gap-2">
-                <input data-name="ns-preset-draft" class="${ui.cls.input} min-w-0 font-mono" value="${ui.esc(s.presetDraft)}" placeholder="owner-repo/preset" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Add a preset by name">
+                ${ui.input({ name: 'ns-preset-draft', value: s.presetDraft, placeholder: 'owner-repo/preset', mono: true, attrs: 'autocapitalize="off" aria-label="Add a preset by name"' })}
                 <span data-region="preset-button" class="contents">${presetButton()}</span>
             </form>
             <div data-region="preset-error">${s.presetError ? note('red', 'circle-alert', ui.esc(s.presetError)) : ''}</div>`;
@@ -333,7 +324,7 @@ views.newSession = (() => {
         const footerHtml = () => `
             <p class="flex min-w-0 basis-full items-center gap-1 rounded-full bg-base py-1 pl-4 pr-1 md:mr-auto md:basis-0 md:flex-1">
                 <span class="relative min-w-0 flex-1"><code data-region="command" data-scroll class="block overflow-x-auto whitespace-nowrap pt-1.5 pb-2.5 font-mono text-xs">${commandHtml()}</code></span>
-                ${ui.iconButton('copy', { title: 'Copy command', size: 'sm', attrs: 'data-ns="copy"' })}
+                ${ui.iconButton('copy', { tip: 'Copy command', size: 'sm', attrs: 'data-ns="copy"' })}
             </p>
             <span data-region="footer-actions" class="contents">${actionsHtml()}</span>`;
 
@@ -345,7 +336,8 @@ views.newSession = (() => {
                     spin: s.launching,
                     variant: 'primary',
                     disabled: Boolean(reason) || s.launching,
-                    attrs: `data-ns="launch" ${reason ? `title="${ui.esc(reason)}"` : ''}`,
+                    tip: reason,
+                    attrs: 'data-ns="launch"',
                 })}`;
         };
 
@@ -524,6 +516,7 @@ views.newSession = (() => {
         };
 
         el.addEventListener('ui-change', (e) => {
+            if (e.target.matches('input, textarea')) return;
             const { name, value } = e.detail;
             if (name === 'ns-source') {
                 s.source = value;
@@ -620,7 +613,7 @@ views.newSession = (() => {
             } else if (action === 'retry-repos') {
                 loadRepos();
             } else if (action === 'copy') {
-                ui.copy(command().map(([, v]) => v).join(' '));
+                ui.copy(command().map(([, v]) => v).join(' '), t);
             } else if (action === 'cancel') {
                 m.close();
             } else if (action === 'open-project') {

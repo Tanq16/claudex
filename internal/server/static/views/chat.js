@@ -363,14 +363,14 @@ views.chat = (() => {
         append(`<li class="flex items-center gap-3 text-xs text-${tone} ${rise()}"><span class="h-px flex-1 bg-surface0"></span><i data-lucide="${icon}" class="size-3.5 shrink-0"></i><span class="max-w-[80%] text-center wrap-anywhere">${ui.esc(text)}</span><span class="h-px flex-1 bg-surface0"></span></li>`);
     };
 
-    const thumbs = (urls, cls = '') => (urls.length ? `<div class="flex flex-wrap gap-2 ${cls}">${urls.map((u) => `<button type="button" data-action="chat-image" data-src="${ui.esc(u)}" class="group relative overflow-hidden rounded-2xl bg-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40"><img src="${ui.esc(u)}" alt="" loading="lazy" class="h-36 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"><span class="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-crust/70 text-text opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"><i data-lucide="maximize-2" class="size-3.5"></i></span></button>`).join('')}</div>` : '');
+    const thumbs = (urls, cls = '') => (urls.length ? `<div class="flex flex-wrap gap-2 ${cls}">${urls.map((u) => `<button type="button" data-action="chat-image" data-src="${ui.esc(u)}" class="group relative overflow-hidden rounded-2xl bg-base ${ui.cls.focus}"><img src="${ui.esc(u)}" alt="" loading="lazy" class="h-36 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"><span class="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-crust/70 text-text opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"><i data-lucide="maximize-2" class="size-3.5"></i></span></button>`).join('')}</div>` : '');
 
     const imageUrls = (content) => (Array.isArray(content) ? content.filter((b) => b.type === 'image' && b.source?.type === 'url' && b.source.url).map((b) => b.source.url) : []);
 
     const userBubble = (text, images = []) => {
         closeGroup();
-        const li = append(`<li data-user class="group/msg flex items-end justify-end gap-1 ${rise()}">
-            <span class="opacity-0 transition-opacity group-hover/msg:opacity-100 focus-within:opacity-100 max-md:opacity-100">${ui.iconButton('copy', { title: 'Copy', size: 'sm', action: 'chat-copy-prompt' })}</span>
+        const li = append(`<li data-user class="group flex items-end justify-end gap-1 ${rise()}">
+            <span class="${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', action: 'chat-copy-prompt' })}</span>
             <div class="flex max-w-[85%] min-w-0 flex-col items-end gap-2">${text ? '<div class="min-w-0 max-w-full rounded-3xl rounded-br-lg bg-surface0 px-4 py-2.5"><div class="markdown-body user-md"></div></div>' : ''}${thumbs(images, 'justify-end')}</div>
         </li>`);
         li.dataset.text = text;
@@ -504,10 +504,10 @@ views.chat = (() => {
         const [icon] = TOOLS[block.name] || ['wrench'];
         const value = toolArg(block);
         return `<li data-tool-row data-tool="${ui.esc(block.id)}">
-            <button type="button" data-action="chat-detail" class="group flex ${nested ? 'h-7' : 'h-8'} w-full items-center gap-2.5 rounded-xl px-2 text-left text-sm transition-colors hover:bg-surface0/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40">
+            <button type="button" data-action="chat-detail" class="group flex ${nested ? 'h-7' : 'h-8'} w-full items-center gap-2.5 rounded-xl px-2 text-left text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
                 <i data-lucide="${icon}" class="size-3.5 shrink-0 text-overlay1"></i>
                 <span class="shrink-0 font-medium text-subtext1">${ui.esc(block.name)}</span>
-                <span title="${ui.esc(block.input?.description || value)}" class="min-w-0 flex-1 truncate font-mono text-xs text-overlay1">${ui.esc(value)}</span>
+                <span data-tip="${ui.esc(block.input?.description || value)}" class="min-w-0 flex-1 truncate font-mono text-xs text-overlay1">${ui.esc(value)}</span>
                 <span data-meta class="flex shrink-0 items-center gap-2 text-xs text-overlay1 tabular-nums">${block.name === 'Bash' ? `<span data-start="${start}"></span>` : ''}</span>
                 <span data-state class="flex w-10 shrink-0 items-center justify-end gap-1 text-xs text-overlay0 tabular-nums">${ui.spinner('size-3.5 text-overlay1')}</span>
             </button>
@@ -601,7 +601,7 @@ views.chat = (() => {
         const tone = AGENT_TONES[list.children.length % AGENT_TONES.length];
         const input = block.input || {};
         list.insertAdjacentHTML('beforeend', `<li data-agent="${ui.esc(block.id)}">
-            <button type="button" data-action="chat-detail" class="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-surface0/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40">
+            <button type="button" data-action="chat-detail" class="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
                 ${ui.tile('bot', tone, 'sm')}
                 <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="truncate text-sm text-text">${ui.esc(input.description || 'Agent')}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(input.subagent_type || '')}</span></span><span data-activity class="block truncate font-mono text-xs text-overlay1">Starting</span></span>
                 <span data-agent-meta class="flex shrink-0 items-center gap-2 text-xs text-overlay1 tabular-nums"><span data-start="${ts(m) || Date.now()}"></span></span>
@@ -688,7 +688,7 @@ views.chat = (() => {
         wf.taskId = m.task_id;
         if (m.description) wf.el.querySelector('[data-wf-title]').textContent = m.description;
         if (m.workflow_name) wf.el.querySelector('[data-wf-sub]').textContent = m.workflow_name;
-        if (!wf.done) paint(wf.el.querySelector('[data-wf-stop]'), ui.iconButton('square', { title: 'Stop workflow', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(m.task_id)}"` }));
+        if (!wf.done) paint(wf.el.querySelector('[data-wf-stop]'), ui.iconButton('square', { tip: 'Stop workflow', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(m.task_id)}"` }));
     };
 
     const workflowProgress = (wf, progress) => {
@@ -700,9 +700,9 @@ views.chat = (() => {
             const failed = ['failed', 'error', 'killed', 'stopped'].includes(a.state);
             const icon = done ? '<i data-lucide="check" class="size-3.5 text-overlay0"></i>' : failed ? '<i data-lucide="circle-x" class="size-3.5 text-red"></i>' : ui.spinner('size-3.5 text-lavender');
             const time = done || failed ? (a.durationMs ? fmt.dur(a.durationMs) : '') : a.startedAt ? `<span data-start="${a.startedAt}"></span>` : '';
-            return `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><span class="flex size-4 shrink-0 items-center justify-center">${icon}</span><span title="${ui.esc(a.promptPreview || '')}" class="min-w-0 flex-1 truncate text-sm text-subtext1">${ui.esc(a.label || `Agent ${a.index}`)}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(shortModel(a.model))}</span>${done && a.tokens ? `<span class="shrink-0 text-xs text-overlay0 tabular-nums max-sm:hidden">${fmt.tokens(a.tokens)}</span>` : ''}<span class="w-14 shrink-0 text-right text-xs text-overlay1 tabular-nums">${time}</span></li>`;
+            return `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><span class="flex size-4 shrink-0 items-center justify-center">${icon}</span><span data-tip="${ui.esc(a.promptPreview || '')}" class="min-w-0 flex-1 truncate text-sm text-subtext1">${ui.esc(a.label || `Agent ${a.index}`)}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(shortModel(a.model))}</span>${done && a.tokens ? `<span class="shrink-0 text-xs text-overlay0 tabular-nums max-sm:hidden">${fmt.tokens(a.tokens)}</span>` : ''}<span class="w-14 shrink-0 text-right text-xs text-overlay1 tabular-nums">${time}</span></li>`;
         };
-        const section = (title, list) => (list.length ? `<div>${title ? `<p class="${ui.cls.label} px-2 pt-1 pb-1">${ui.esc(title)}</p>` : ''}<ul class="flex flex-col">${list.map(row).join('')}</ul></div>` : '');
+        const section = (title, list) => (list.length ? `<section>${title ? `<p class="${ui.cls.label} px-2 pt-1 pb-1">${ui.esc(title)}</p>` : ''}<ul class="flex flex-col">${list.map(row).join('')}</ul></section>` : '');
         const placed = new Set();
         const body = phases.map((ph) => {
             const list = agents.filter((a) => a.phaseIndex === ph.index);
@@ -732,9 +732,9 @@ views.chat = (() => {
         const li = append(`<li data-bg="${ui.esc(m.task_id)}" data-live-task class="${rise()}"><section class="rounded-2xl bg-surface0/50 p-3">
             <header class="flex items-center gap-3">
                 ${ui.tile('terminal', 'green', 'sm')}
-                <span class="min-w-0 flex-1"><span class="block truncate text-sm text-text">${ui.esc(m.description || 'Background command')}</span><span title="${ui.esc(command)}" class="block truncate font-mono text-xs text-overlay1">${ui.esc(command)}</span></span>
+                <span class="min-w-0 flex-1"><span class="block truncate text-sm text-text">${ui.esc(m.description || 'Background command')}</span><span data-tip="${ui.esc(command)}" class="block truncate font-mono text-xs text-overlay1">${ui.esc(command)}</span></span>
                 <span data-bg-state class="flex shrink-0 items-center gap-2 text-xs text-overlay1 tabular-nums">${runningChip()}<span data-start="${C.lastTs || Date.now()}"></span></span>
-                <span data-bg-stop>${ui.iconButton('square', { title: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(m.task_id)}"` })}</span>
+                <span data-bg-stop>${ui.iconButton('square', { tip: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(m.task_id)}"` })}</span>
             </header>
             <pre data-tail data-scroll class="mt-3 hidden max-h-40 overflow-auto rounded-2xl bg-base p-3 font-mono text-xs leading-relaxed text-subtext0"></pre>
         </section></li>`);
@@ -877,7 +877,7 @@ views.chat = (() => {
             ${m.duration_ms ? `<span class="flex items-center gap-1"><i data-lucide="clock" class="size-3"></i>${fmt.dur(m.duration_ms)}</span>` : ''}
             ${tools ? `<span class="flex items-center gap-1"><i data-lucide="wrench" class="size-3"></i>${tools}</span>` : ''}
             ${tokens ? `<span class="flex items-center gap-1"><i data-lucide="arrow-down" class="size-3"></i>${fmt.tokens(tokens)}</span>` : ''}
-            <span class="${ui.cls.reveal}">${ui.iconButton('copy', { title: 'Copy reply', size: 'sm', action: 'chat-copy-reply' })}</span>
+            <span class="${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy reply', size: 'sm', action: 'chat-copy-reply' })}</span>
         </li>`);
     };
 
@@ -1035,7 +1035,7 @@ views.chat = (() => {
         const sub = r.description ? `<p class="mt-0.5 text-xs text-overlay1 wrap-anywhere">${ui.esc(ansi(r.description))}</p>` : '';
         const always = suggestion(r);
         const footer = `${ui.button('Deny', { variant: 'ghost', size: 'sm', attrs: 'data-decision="deny"' })}
-            ${always ? ui.button(always.label, { size: 'sm', attrs: `data-decision="always" ${always.hint ? `title="${ui.esc(always.hint)}"` : ''}` }) : ''}
+            ${always ? ui.button(always.label, { size: 'sm', tip: always.hint || '', attrs: 'data-decision="always"' }) : ''}
             ${ui.button('Allow', { icon: 'check', variant: r.default_to_no ? 'secondary' : 'primary', size: 'sm', attrs: 'data-decision="allow" data-focus' })}`;
         const li = append(cardFrame(m.request_id, 'shield-question', title, sub, requestWell(r.tool_name, input) + requestMeta(r), footer));
         li.addEventListener('click', (e) => {
@@ -1054,7 +1054,7 @@ views.chat = (() => {
         const input = r.input || {};
         const always = suggestion(r);
         const body = `<div data-scroll class="max-h-[28rem] overflow-y-auto rounded-2xl bg-base px-5 py-4"><article class="markdown-body chat-tile"></article></div>
-            ${input.planFilePath ? `<p title="${ui.esc(input.planFilePath)}" class="mt-2 truncate px-1 font-mono text-xs text-overlay1">${ui.esc(input.planFilePath)}</p>` : ''}
+            ${input.planFilePath ? `<p data-tip="${ui.esc(input.planFilePath)}" class="mt-2 truncate px-1 font-mono text-xs text-overlay1">${ui.esc(input.planFilePath)}</p>` : ''}
             <div data-plan-feedback hidden class="mt-3"><textarea data-plan-text rows="3" spellcheck="false" class="${ui.cls.input} resize-none leading-relaxed" placeholder="What should change in the plan?"></textarea></div>
             ${requestMeta(r)}`;
         const footer = `${ui.button('Keep planning', { variant: 'ghost', size: 'sm', attrs: 'data-plan="keep"' })}
@@ -1125,7 +1125,7 @@ views.chat = (() => {
         const mark = (on) => (multi
             ? `<span class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-lg text-crust transition-colors ${on ? 'bg-mauve' : 'bg-surface1'}"><i data-lucide="check" class="size-3.5 ${on ? '' : 'opacity-0'}" stroke-width="3"></i></span>`
             : `<span class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full transition-colors ${on ? 'bg-mauve' : 'bg-surface1'}"><span class="size-2 rounded-full bg-crust ${on ? '' : 'scale-0'}"></span></span>`);
-        const tile = (attrs, on, label, desc) => `<button type="button" ${attrs} aria-pressed="${on}" class="flex items-start gap-3 rounded-2xl p-3 text-left transition-colors ${on ? 'bg-mauve/10' : 'bg-surface0/50 hover:bg-surface0'} focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40">${mark(on)}<span class="min-w-0"><span class="block text-sm font-medium text-text">${ui.esc(label)}</span>${desc ? `<span class="mt-0.5 block text-xs text-overlay1">${ui.esc(desc)}</span>` : ''}</span></button>`;
+        const tile = (attrs, on, label, desc) => `<button type="button" ${attrs} aria-pressed="${on}" class="flex items-start gap-3 rounded-2xl p-3 text-left transition-colors ${on ? 'bg-mauve/10' : 'bg-surface0/50 hover:bg-surface0'} ${ui.cls.focus}">${mark(on)}<span class="min-w-0"><span class="block text-sm font-medium text-text">${ui.esc(label)}</span>${desc ? `<span class="mt-0.5 block text-xs text-overlay1">${ui.esc(desc)}</span>` : ''}</span></button>`;
         const chips = qs.length > 1 ? `<div class="mb-3 flex flex-wrap gap-1.5">${qs.map((x, i) => `<button type="button" data-q-step="${i}" class="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${i === st.step ? 'bg-mauve/15 text-mauve' : 'bg-surface0 text-subtext0 hover:bg-surface1'}">${answered(st.answers[i]) ? '<i data-lucide="check" class="size-3"></i>' : ''}${ui.esc(x.header || `Question ${i + 1}`)}</button>`).join('')}</div>` : '';
         const opts = (q.options || []).map((o, i) => tile(`data-q-opt="${ui.esc(o.label)}" ${i === 0 ? 'data-focus' : ''}`, a.picked.includes(o.label), o.label, o.description)).join('');
         li.querySelector('[data-q]').innerHTML = `${chips}${multi ? '<p class="mb-2 px-1 text-xs text-overlay1">Pick any that apply.</p>' : ''}
@@ -1217,8 +1217,8 @@ views.chat = (() => {
                 let control;
                 if (Array.isArray(p.enum)) control = ui.select({ name, value: p.default !== undefined ? String(p.default) : '', placeholder: 'Choose', options: p.enum.map((v, i) => ({ value: String(v), label: p.enumNames?.[i] || String(v) })) });
                 else if (p.type === 'boolean') control = `<span class="flex h-10 items-center">${ui.toggle({ name, checked: !!p.default, label })}</span>`;
-                else control = `<input data-name="${ui.esc(name)}" type="${p.type === 'number' || p.type === 'integer' ? 'number' : p.format === 'email' ? 'email' : 'text'}" value="${ui.esc(p.default ?? '')}" class="${ui.cls.input}" autocomplete="off" spellcheck="false">`;
-                return `<div class="flex flex-col gap-1.5" data-el-field="${ui.esc(key)}"><span class="${ui.cls.label} px-1">${ui.esc(label)}</span>${control}${p.description ? `<span class="px-1 text-xs text-overlay1">${ui.esc(p.description)}</span>` : ''}</div>`;
+                else control = ui.input({ name, type: p.type === 'number' || p.type === 'integer' ? 'number' : p.format === 'email' ? 'email' : 'text', value: p.default ?? '' });
+                return ui.field(label, control, { hint: ui.esc(p.description || ''), group: p.type === 'boolean' });
             };
             body += `<div class="grid gap-3 sm:grid-cols-2">${order.map(field).join('')}</div>`;
             footer = `${ui.button('Decline', { variant: 'ghost', size: 'sm', attrs: 'data-el="decline"' })}${ui.button('Submit', { icon: 'check', variant: 'primary', size: 'sm', attrs: 'data-el="accept" data-focus' })}`;
@@ -1232,15 +1232,14 @@ views.chat = (() => {
                 for (const key of order) {
                     const p = props[key] || {};
                     const raw = ui.value(li, `el:${id}:${key}`);
-                    const box = li.querySelector(`[data-el-field="${CSS.escape(key)}"] input, [data-el-field="${CSS.escape(key)}"] [data-ui="select"]`);
+                    const box = li.querySelector(`[data-name="${CSS.escape(`el:${id}:${key}`)}"]`);
                     let v = raw;
                     if (p.type === 'number' || p.type === 'integer') v = raw === '' ? undefined : Number(raw);
                     else if (p.type !== 'boolean' && raw === '') v = undefined;
                     if (v === undefined && required.has(key)) {
                         missing = true;
-                        box?.setAttribute('aria-invalid', 'true');
-                        box?.classList.add('ring-2', 'ring-red/50');
-                    } else box?.classList.remove('ring-2', 'ring-red/50');
+                        if (box) ui.invalid(box, 'Required');
+                    } else if (box) ui.invalid(box);
                     if (v !== undefined) content[key] = v;
                 }
                 if (!missing) decide(id, { action: 'accept', content });
@@ -1401,8 +1400,8 @@ views.chat = (() => {
         C.input.disabled = !ok;
         C.input.placeholder = ok ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
         paint('[data-chat-send]', busy
-            ? ui.iconButton('square', { title: 'Stop', variant: 'danger', action: 'chat-interrupt' })
-            : ui.iconButton(C.sending ? 'loader-circle' : 'arrow-up', { title: 'Send', variant: 'primary', spin: C.sending, action: 'chat-send', disabled: !ok || C.sending }));
+            ? ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })
+            : ui.iconButton(C.sending ? 'loader-circle' : 'arrow-up', { tip: 'Send', variant: 'primary', spin: C.sending, action: 'chat-send', disabled: !ok || C.sending }));
         const list = models();
         const model = list.find((m) => m.value === (snap?.model || 'default'));
         const efforts = model?.efforts?.length ? model.efforts : Object.keys(EFFORTS);
@@ -1419,7 +1418,7 @@ views.chat = (() => {
         const pct = Math.round(c.percentage ?? (c.totalTokens / c.maxTokens) * 100);
         const r = 7;
         const len = 2 * Math.PI * r;
-        return `<span title="Context ${fmt.tokens(c.totalTokens)} of ${fmt.tokens(c.maxTokens)}" class="flex h-8 items-center gap-1.5 px-2 text-xs text-overlay1 tabular-nums"><svg viewBox="0 0 18 18" class="size-4 -rotate-90"><circle cx="9" cy="9" r="${r}" fill="none" stroke="var(--ctp-surface1)" stroke-width="2.5"/><circle cx="9" cy="9" r="${r}" fill="none" stroke="var(--ctp-${pct > 80 ? 'peach' : 'mauve'})" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${(len * Math.max(pct, 2)) / 100} ${len}"/></svg>${pct}%</span>`;
+        return `<span data-tip="Context ${fmt.tokens(c.totalTokens)} of ${fmt.tokens(c.maxTokens)}" class="flex h-8 items-center gap-1.5 px-2 text-xs text-overlay1 tabular-nums"><svg viewBox="0 0 18 18" class="size-4 -rotate-90"><circle cx="9" cy="9" r="${r}" fill="none" stroke="var(--ctp-surface1)" stroke-width="2.5"/><circle cx="9" cy="9" r="${r}" fill="none" stroke="var(--ctp-${pct > 80 ? 'peach' : 'mauve'})" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="${(len * Math.max(pct, 2)) / 100} ${len}"/></svg>${pct}%</span>`;
     };
 
     const renderStatus = () => {
@@ -1443,7 +1442,7 @@ views.chat = (() => {
         const tasks = (snap?.tasks || []).filter((t) => !t.ambient);
         const pills = Object.entries(TASK_KINDS).map(([kind, [icon]]) => {
             const n = tasks.filter((t) => t.task_type === kind).length;
-            return n ? `<button type="button" data-action="chat-tasks" aria-expanded="false" title="${fmt.plural(n, TASK_KINDS[kind][1].toLowerCase())}" class="flex h-7 items-center gap-1.5 rounded-full bg-surface0 px-2.5 text-text transition-colors hover:bg-surface1">${kind === 'local_bash' ? ui.dot('green', { pulse: true }) : ''}<i data-lucide="${icon}" class="size-3.5 text-overlay1"></i>${n}</button>` : '';
+            return n ? `<button type="button" data-action="chat-tasks" aria-expanded="false" data-tip="${fmt.plural(n, TASK_KINDS[kind][1].toLowerCase())}" class="flex h-7 items-center gap-1.5 rounded-full bg-surface0 px-2.5 text-text transition-colors hover:bg-surface1">${kind === 'local_bash' ? ui.dot('green', { pulse: true }) : ''}<i data-lucide="${icon}" class="size-3.5 text-overlay1"></i>${n}</button>` : '';
         }).join('');
         paint('[data-chat-status]', `<span class="flex min-w-0 flex-1 items-center gap-2">${left}</span><span class="flex shrink-0 items-center gap-1.5">${pills}</span>`);
         tick();
@@ -1470,7 +1469,7 @@ views.chat = (() => {
         } else {
             const five = fiveHour();
             if (five && five.utilization >= 0.8 && C.dismissed !== five.resetsAt) {
-                body = ui.banner({ tone: 'peach', icon: 'gauge', body: `5-hour limit at <span class="font-medium text-text">${Math.round(five.utilization * 100)}%</span>${five.resetsAt ? `, resets ${fmt.time(five.resetsAt)}` : ''}`, actions: ui.iconButton('x', { title: 'Dismiss', size: 'sm', action: 'chat-banner-dismiss' }) });
+                body = ui.banner({ tone: 'peach', icon: 'gauge', body: `5-hour limit at <span class="font-medium text-text">${Math.round(five.utilization * 100)}%</span>${five.resetsAt ? `, resets ${fmt.time(five.resetsAt)}` : ''}`, actions: ui.iconButton('x', { tip: 'Dismiss', size: 'sm', action: 'chat-banner-dismiss' }) });
             }
         }
         paint('[data-chat-banner]', body ? `<div class="mb-2">${body}</div>` : '');
@@ -1494,7 +1493,7 @@ views.chat = (() => {
         };
         const limits = w.five_hour || w.seven_day ? section('Limits', `<div class="flex flex-col gap-3">${limit('5-hour', w.five_hour, fmt.time)}${limit('Weekly', w.seven_day, fmt.day)}</div>`) : '';
         const tasks = (s.tasks || []).filter((t) => !t.ambient);
-        const taskRow = (t) => `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><i data-lucide="${TASK_KINDS[t.task_type]?.[0] || 'circle-dot'}" class="size-4 shrink-0 text-overlay1"></i><span class="min-w-0 flex-1"><span class="block truncate text-sm text-subtext1">${ui.esc(t.description || t.task_id)}</span>${t.progress?.description ? `<span class="block truncate font-mono text-[11px] text-overlay1">${ui.esc(t.progress.description)}</span>` : ''}</span>${t.startedAt ? `<span data-start="${t.startedAt}" class="text-xs text-overlay1 tabular-nums"></span>` : ''}${ui.iconButton('square', { title: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(t.task_id)}"` })}</li>`;
+        const taskRow = (t) => `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><i data-lucide="${TASK_KINDS[t.task_type]?.[0] || 'circle-dot'}" class="size-4 shrink-0 text-overlay1"></i><span class="min-w-0 flex-1"><span class="block truncate text-sm text-subtext1">${ui.esc(t.description || t.task_id)}</span>${t.progress?.description ? `<span class="block truncate font-mono text-[11px] text-overlay1">${ui.esc(t.progress.description)}</span>` : ''}</span>${t.startedAt ? `<span data-start="${t.startedAt}" class="text-xs text-overlay1 tabular-nums"></span>` : ''}${ui.iconButton('square', { tip: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(t.task_id)}"` })}</li>`;
         const taskList = tasks.length ? section('Tasks', `<ul class="flex flex-col">${tasks.map(taskRow).join('')}</ul>`, ui.count(tasks.length)) : '';
         const todos = s.todos || [];
         const todoList = todos.length ? section('To-dos', `<ul class="flex flex-col px-1">${todos.map(todoRow).join('')}</ul>`, `<span class="text-xs text-overlay1 tabular-nums">${todos.filter((t) => t.status === 'completed').length}/${todos.length}</span>`) : '';

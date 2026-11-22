@@ -22,7 +22,7 @@ const live = (() => {
 
     const stateChip = (state) => {
         const [label, tone, pulse] = STATES[state] || STATES.idle;
-        return `<span class="inline-flex items-center gap-2 rounded-full px-2.5 py-1 text-xs font-medium ${tone === 'neutral' ? 'bg-surface0 text-subtext0' : `bg-${tone}/15 text-${tone}`}">${ui.dot(tone === 'neutral' ? 'overlay0' : tone, { pulse })}${label}</span>`;
+        return ui.status(label, tone, { pulse });
     };
 
     const onScreen = () => (app.current === 'project' ? app.params[0] || '' : '');

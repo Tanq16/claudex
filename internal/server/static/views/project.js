@@ -129,8 +129,8 @@
             if (!b) return;
             const width = preset === 'page-width';
             b.innerHTML = `<i data-lucide="${width ? 'move-vertical' : 'move-horizontal'}" class="size-4"></i>`;
-            b.title = width ? 'Fit page' : 'Fit to width';
-            b.setAttribute('aria-label', b.title);
+            b.dataset.tip = width ? 'Fit page' : 'Fit to width';
+            b.setAttribute('aria-label', b.dataset.tip);
             ui.icons(b);
         },
 
@@ -218,7 +218,7 @@
         return `
             <section>
                 <dl class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-5 gap-y-3 px-2 pt-1 text-sm">
-                    ${row('Status', state ? live.stateChip(state) : ui.status(p.active))}
+                    ${row('Status', state ? live.stateChip(state) : p.active ? ui.status('Active', 'green', { pulse: true }) : ui.status('Inactive'))}
                     ${snap ? row('Model', views.chat.modelLabel(snap)) : ''}
                     ${snap ? row('Permissions', ui.esc(views.chat.modeLabel(snap.permissionMode || 'default'))) : ''}
                     ${row('Started', p.active && p.startedAt ? ui.timeAgo(p.startedAt) : 'Not running')}
@@ -267,16 +267,16 @@
         paint($('[data-p-session-head]'), `
             <h2 class="min-w-0 flex-1 truncate font-display text-sm font-medium text-text">Session</h2>
             ${primary(p, 'sm')}
-            ${ui.iconButton('panel-right-close', { title: 'Hide session details', action: 'project-toggle-details', size: 'sm' })}`);
-        paint($('[data-p-rail="right"]'), `${ui.iconButton('panel-right-open', { title: 'Show session details', action: 'project-toggle-details' })}${railActions(p)}`);
+            ${ui.iconButton('panel-right-close', { tip: 'Hide session details', action: 'project-toggle-details', size: 'sm' })}`);
+        paint($('[data-p-rail="right"]'), `${ui.iconButton('panel-right-open', { tip: 'Show session details', action: 'project-toggle-details' })}${railActions(p)}`);
         paint($('[data-p-bar]'), `
-            ${ui.iconButton('folder-tree', { title: 'Files', action: 'project-toggle-tree' })}
+            ${ui.iconButton('folder-tree', { tip: 'Files', action: 'project-toggle-tree' })}
             <div class="flex min-w-0 flex-1 items-center gap-2 px-1">
                 <h1 class="truncate font-display text-xl text-text">${ui.esc(p.name)}</h1>
-                <span title="${p.active ? 'Active' : 'Inactive'}" class="size-2 shrink-0 rounded-full ${p.active ? 'bg-green' : 'bg-overlay0'}"></span>
+                <span data-tip="${p.active ? 'Active' : 'Inactive'}" class="size-2 shrink-0 rounded-full ${p.active ? 'bg-green' : 'bg-overlay0'}"></span>
             </div>
             ${primary(p, 'md')}
-            ${ui.iconButton('info', { title: 'Session details', action: 'project-toggle-details' })}`);
+            ${ui.iconButton('info', { tip: 'Session details', action: 'project-toggle-details' })}`);
         paint($('[data-p-details-body]'), detailsHtml(p));
         if (S.sheet?.el.isConnected) paint(S.sheet.el.querySelector('[data-p-sheet]'), detailsHtml(p));
         if (isAttached(p)) views.chat.paintLive();
@@ -285,7 +285,7 @@
     const treeRows = (node, depth) => node.children.map((c) => {
         const pad = `style="padding-left:${depth * 14 + 8}px"`;
         const selected = c.path === S.selected ? 'data-selected' : '';
-        const base = 'flex h-8 w-full items-center gap-2 rounded-xl pr-2 text-left text-sm text-subtext0 transition-colors hover:bg-surface0/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-mauve/40 data-selected:bg-surface0 data-selected:text-text data-drop:bg-mauve/15 data-drop:text-mauve';
+        const base = `flex h-8 w-full items-center gap-2 rounded-xl pr-2 text-left text-sm text-subtext0 transition-colors hover:bg-surface0/50 ${ui.cls.focus} data-selected:bg-surface0 data-selected:text-text data-drop:bg-mauve/15 data-drop:text-mauve`;
         if (c.type === 'dir') {
             const open = S.expanded.has(c.path);
             const dim = c.name.startsWith('.') ? 'opacity-60' : '';
@@ -294,7 +294,7 @@
                     <i data-lucide="chevron-right" data-chevron class="size-3.5 shrink-0 text-overlay0 transition-transform duration-150 ${open ? 'rotate-90' : ''}"></i>
                     <i data-lucide="folder" data-closed class="size-4 shrink-0 text-overlay1 ${open ? 'hidden' : ''}"></i>
                     <i data-lucide="folder-open" data-open class="size-4 shrink-0 text-overlay1 ${open ? '' : 'hidden'}"></i>
-                    <span class="truncate">${ui.esc(c.name)}</span>
+                    <span class="${ui.cls.rowText}">${ui.esc(c.name)}</span>
                 </button>
                 <ul role="group" ${open ? '' : 'hidden'}>${treeRows(c, depth + 1)}</ul>
             </li>`;
@@ -304,7 +304,7 @@
             <button type="button" data-action="project-tree" data-path="${ui.esc(c.path)}" tabindex="${selected ? 0 : -1}" ${selected} class="${base}" ${pad}>
                 <span class="size-3.5 shrink-0"></span>
                 <i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i>
-                <span class="truncate">${ui.esc(c.name)}</span>
+                <span class="${ui.cls.rowText}">${ui.esc(c.name)}</span>
                 ${c.type === 'symlink' ? `<span class="flex min-w-0 shrink items-center gap-1 text-xs text-overlay0"><i data-lucide="arrow-right" class="size-3 shrink-0"></i><span class="truncate font-mono">${ui.esc(c.target)}</span></span>` : ''}
             </button>
         </li>`;
@@ -404,11 +404,11 @@
         return `
             <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" value="${reader.view?.currentPageNumber ?? ''}" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ ${reader.view?.pagesCount ?? 0}</span></span>
             <span class="flex shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1">
-                ${ui.iconButton('zoom-out', { title: 'Zoom out', size: 'sm', variant: 'inset', action: 'reader-zoom-out' })}
-                ${ui.iconButton(width ? 'move-vertical' : 'move-horizontal', { title: width ? 'Fit page' : 'Fit to width', size: 'sm', variant: 'inset', action: 'reader-fit' })}
-                ${ui.iconButton('zoom-in', { title: 'Zoom in', size: 'sm', variant: 'inset', action: 'reader-zoom-in' })}
+                ${ui.iconButton('zoom-out', { tip: 'Zoom out', size: 'sm', variant: 'inset', action: 'reader-zoom-out' })}
+                ${ui.iconButton(width ? 'move-vertical' : 'move-horizontal', { tip: width ? 'Fit page' : 'Fit to width', size: 'sm', variant: 'inset', action: 'reader-fit' })}
+                ${ui.iconButton('zoom-in', { tip: 'Zoom in', size: 'sm', variant: 'inset', action: 'reader-zoom-in' })}
             </span>
-            <span class="max-md:hidden">${ui.iconButton('external-link', { title: "Open in the browser's viewer", size: 'sm', action: 'reader-open' })}</span>`;
+            <span class="max-md:hidden">${ui.iconButton('external-link', { tip: "Open in the browser's viewer", size: 'sm', action: 'reader-open' })}</span>`;
     };
 
     const renderViewerHeader = () => {
@@ -423,9 +423,9 @@
             <p class="flex items-center gap-2 text-xs text-overlay1">${S.loading ? '<i data-lucide="loader-circle" class="size-3.5 animate-spin"></i>' : ''}<span class="hidden sm:inline">${ui.esc(fileMeta(f))}</span></p>
             ${ok && f.kind === 'pdf' ? readerControls() : ''}
             ${ok && f.kind === 'markdown' ? ui.segmented({ name: 'project-mode', value: S.mode, options: [{ value: 'rendered', label: 'Rendered', icon: 'eye', compact: true }, { value: 'source', label: 'Source', icon: 'code', compact: true }] }) : ''}
-            ${textual && !rendered ? ui.iconButton('wrap-text', { title: 'Wrap lines', size: 'sm', pressed: wrapLines.on, action: 'project-wrap' }) : ''}
-            ${rendered ? `<span data-p-contents hidden>${ui.iconButton('list', { title: 'Contents', size: 'sm', action: 'project-contents' })}</span><span class="max-md:hidden">${ui.iconButton('fold-horizontal', { title: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>` : ''}
-            ${textual ? ui.iconButton('copy', { title: 'Copy file contents', action: 'project-copy-file', size: 'sm' }) : ''}`;
+            ${textual && !rendered ? ui.iconButton('wrap-text', { tip: 'Wrap lines', size: 'sm', pressed: wrapLines.on, action: 'project-wrap' }) : ''}
+            ${rendered ? `<span data-p-contents hidden>${ui.iconButton('list', { tip: 'Contents', size: 'sm', action: 'project-contents' })}</span><span class="max-md:hidden">${ui.iconButton('fold-horizontal', { tip: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>` : ''}
+            ${textual ? ui.iconButton('copy', { tip: 'Copy file contents', action: 'project-copy-file', size: 'sm' }) : ''}`;
         ui.icons(header);
     };
 
@@ -451,7 +451,7 @@
         const text = content.replace(/\n$/, '');
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
         const lines = splitLines(hljs.highlight(text, { language }).value);
-        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="code-lines m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block overflow-visible! bg-transparent! p-0! text-subtext1">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
+        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="code-lines group/code m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block w-max min-w-full overflow-visible! bg-transparent! p-0! text-subtext1 group-data-wrap/code:w-auto [&>span]:grid [&>span]:grid-cols-[calc(var(--gutter)+2.25rem)_minmax(0,1fr)] [&>span>span]:whitespace-pre [&>span>span]:pr-6 group-data-wrap/code:[&>span>span]:whitespace-pre-wrap group-data-wrap/code:[&>span>span]:wrap-anywhere">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
     };
 
     const readerWell = () => `
@@ -489,14 +489,6 @@
             if (/^([a-z]+:|\/)/i.test(src)) return;
             img.src = api.rawUrl(S.name, resolvePath(dirname(f.path), src));
         });
-        article.querySelectorAll('table').forEach((table) => {
-            const wrap = document.createElement('div');
-            wrap.className = 'mb-6 overflow-x-auto rounded-xl border border-surface1/50';
-            wrap.dataset.scroll = '';
-            wrap.dataset.table = '';
-            table.replaceWith(wrap);
-            wrap.appendChild(table);
-        });
         article.querySelectorAll('a[href^="http"]').forEach((a) => {
             a.target = '_blank';
             a.rel = 'noopener';
@@ -520,7 +512,7 @@
         nav.innerHTML = `
             <h3 class="${ui.cls.label} mb-2 flex shrink-0 items-center gap-2 px-3"><i data-lucide="list-tree" class="size-3.5"></i>On this page</h3>
             <ul data-scroll class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto pr-3 pb-3">${S.headings.map((h, i) => `
-                <li><button type="button" data-action="project-outline" data-index="${i}" title="${ui.esc(h.textContent)}" style="padding-left:${indent(h)}px" class="flex min-h-8 w-full items-center rounded-xl py-1.5 pr-3 text-left text-sm text-overlay1 transition-colors hover:bg-surface0/50 hover:text-text data-active:bg-surface0 data-active:text-text data-active:hover:bg-surface0"><span class="truncate">${ui.esc(h.textContent)}</span></button></li>`).join('')}
+                <li><button type="button" data-action="project-outline" data-index="${i}" data-tip="${ui.esc(h.textContent)}" style="padding-left:${indent(h)}px" class="flex min-h-8 w-full items-center rounded-xl py-1.5 pr-3 text-left text-sm text-overlay1 transition-colors hover:bg-surface0/50 hover:text-text data-active:bg-surface0 data-active:text-text data-active:hover:bg-surface0"><span class="truncate">${ui.esc(h.textContent)}</span></button></li>`).join('')}
             </ul>`;
         const ctx = document.createElement('canvas').getContext('2d');
         ctx.font = '14px Inter';
@@ -675,7 +667,7 @@
         const options = [{ value: 'chat', label: 'Chat', icon: 'message-square' }];
         if (S.selected) options.push({ value: 'file', label: S.selected.split('/').pop(), icon: fileIcon(S.index.get(S.selected) || { name: S.selected })[0] });
         host.innerHTML = `<span class="min-w-0 overflow-x-auto">${ui.segmented({ name: 'project-pane', value: S.pane, options })}</span>
-            <span class="ml-auto ${S.pane === 'chat' ? '' : 'hidden'}">${ui.iconButton('fold-horizontal', { title: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>`;
+            <span class="ml-auto ${S.pane === 'chat' ? '' : 'hidden'}">${ui.iconButton('fold-horizontal', { tip: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>`;
         ui.icons(host);
     };
 
@@ -706,7 +698,7 @@
         const p = project();
         const mobile = S.tier === 'mobile';
         const treeCls = mobile
-            ? 'fixed inset-y-3 left-3 z-40 flex w-[min(21rem,calc(100vw-3rem))] flex-col rounded-3xl bg-mantle shadow-2xl shadow-crust transition-transform duration-200'
+            ? 'fixed inset-y-3 left-3 z-40 flex w-[min(21rem,calc(100vw-3rem))] flex-col rounded-3xl bg-mantle shadow-2xl shadow-shade transition-transform duration-200'
             : 'mr-3 flex flex-col rounded-3xl bg-mantle 3xl:mr-4';
         const rail = (side, cls, inner = '') => `<nav data-p-rail="${side}" aria-label="${side === 'left' ? 'Files' : 'Session'}" hidden class="${cls} flex shrink-0 flex-col items-center gap-1 pt-2 md:pt-3 [animation:fade-in_.2s_ease-out]">${inner}</nav>`;
         return `
@@ -715,11 +707,11 @@
                 <div class="flex min-h-0 flex-1">
                     ${mobile
                         ? '<button type="button" data-p-scrim data-action="project-drawer-close" aria-label="Close files" hidden class="fixed inset-0 z-30 bg-crust/70 backdrop-blur-sm [animation:fade-in_.15s_ease-out]"></button>'
-                        : rail('left', 'mr-3 3xl:mr-4', ui.iconButton('panel-left-open', { title: 'Show files', action: 'project-toggle-tree' }))}
+                        : rail('left', 'mr-3 3xl:mr-4', ui.iconButton('panel-left-open', { tip: 'Show files', action: 'project-toggle-tree' }))}
                     <aside data-p-tree aria-label="Files" class="${treeCls}" ${mobile ? 'style="transform:translateX(calc(-100% - 1.5rem))"' : ''}>
                         <header class="flex h-14 shrink-0 items-center gap-0.5 pr-2 md:h-16 ${mobile ? 'pl-5' : 'pl-2'}">
                             ${mobile ? '' : panelBtn('panel-left-close', 'Hide files', 'project-toggle-tree')}
-                            <h2 title="${ui.esc(p.dir)}" class="min-w-0 flex-1 truncate px-1 font-display text-sm font-medium text-text">${ui.esc(p.name)}</h2>
+                            <h2 data-tip="${ui.esc(p.dir)}" class="min-w-0 flex-1 truncate px-1 font-display text-sm font-medium text-text">${ui.esc(p.name)}</h2>
                             ${panelBtn('file-plus', 'New file', 'project-new-file')}
                             ${panelBtn('upload', 'Upload files', 'project-upload')}
                             ${panelBtn('chevrons-down-up', 'Collapse all', 'project-collapse')}
@@ -737,7 +729,7 @@
                 </div>
                 <input type="file" multiple hidden data-p-file-input>
                 <div data-p-drop aria-hidden="true" class="pointer-events-none absolute inset-0 z-50 hidden items-end justify-center rounded-3xl bg-mauve/15 pb-10 [animation:fade-in_.12s_ease-out]">
-                    <p class="flex items-center gap-3 rounded-full bg-mauve py-3 pl-5 pr-6 text-sm font-medium text-crust shadow-2xl shadow-crust"><i data-lucide="cloud-upload" class="size-5"></i><span>Drop to upload into <span data-p-drop-target class="font-mono"></span></span></p>
+                    <p class="flex items-center gap-3 rounded-full bg-mauve py-3 pl-5 pr-6 text-sm font-medium text-crust shadow-2xl shadow-shade"><i data-lucide="cloud-upload" class="size-5"></i><span>Drop to upload into <span data-p-drop-target class="font-mono"></span></span></p>
                 </div>
             </section>`;
     };
@@ -947,8 +939,6 @@
     };
 
 
-    const field = (label, control, hint = '') => `<label class="block"><span class="${ui.cls.label} mb-1.5 block px-1">${label}</span>${control}${hint ? `<span class="mt-1 block px-1 text-xs text-overlay1">${hint}</span>` : ''}</label>`;
-
     const errorLine = '<p data-form-error class="hidden rounded-2xl bg-red/10 px-4 py-2.5 text-sm text-red"></p>';
     const showError = (root, msg) => {
         const el = root.querySelector('[data-form-error]');
@@ -956,37 +946,40 @@
         el.classList.remove('hidden');
     };
 
+    const clearInvalid = (m) => m.el.addEventListener('input', (e) => { if (e.target.getAttribute('aria-invalid') === 'true') ui.invalid(e.target); });
+
     const openNewFile = () => {
         const dirs = [...S.index.values()].filter((n) => n.type === 'dir').map((n) => ({ value: n.path, label: n.path ? `${n.path}/` : '/ (project root)', icon: n.path ? 'folder' : 'folder-git-2' }));
         const m = ui.modal.open({
             title: 'New file',
             icon: 'file-plus',
             subtitle: ui.esc(S.name),
-            body: `<div class="flex flex-col gap-4 pt-1">
-                ${field('Folder', ui.select({ name: 'nf-folder', value: S.folder, options: dirs, searchable: dirs.length > 8, icon: 'folder' }))}
-                ${field('File name', `<input data-name="nf-name" class="${ui.cls.input} font-mono" placeholder="notes.md" autocomplete="off" spellcheck="false">`)}
-                ${field('Content', `<textarea data-name="nf-content" rows="12" spellcheck="false" class="${ui.cls.input} min-h-48 resize-y font-mono leading-relaxed" placeholder="Paste the file contents"></textarea>`)}
-                ${errorLine}
-            </div>`,
-            footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-modal-cancel' })}${ui.button('Create file', { icon: 'check', variant: 'primary', attrs: 'data-submit' })}`,
+            body: `<form id="new-file-form" novalidate class="flex flex-col gap-4 pt-1">
+                ${ui.field('Folder', ui.select({ name: 'nf-folder', value: S.folder, options: dirs, searchable: dirs.length > 8, icon: 'folder' }))}
+                ${ui.field('File name', ui.input({ name: 'nf-name', placeholder: 'notes.md', mono: true, attrs: 'autofocus' }))}
+                ${ui.field('Content', ui.textarea({ name: 'nf-content', rows: 12, mono: true, placeholder: 'Paste the file contents' }))}
+            </form>`,
+            footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-close' })}${ui.button('Create file', { icon: 'check', variant: 'primary', type: 'submit', attrs: 'form="new-file-form"' })}`,
         });
-        m.el.querySelector('[data-name="nf-name"]').focus();
-        m.el.querySelector('[data-modal-cancel]').addEventListener('click', () => m.close());
-        m.el.querySelector('[data-submit]').addEventListener('click', async () => {
+        const nameInput = m.el.querySelector('[data-name="nf-name"]');
+        m.el.addEventListener('click', (e) => { if (e.target.closest('[data-close]')) m.close(); });
+        clearInvalid(m);
+        m.el.querySelector('form').addEventListener('submit', async (e) => {
+            e.preventDefault();
             const folder = ui.value(m.el, 'nf-folder');
-            const name = ui.value(m.el, 'nf-name').trim();
+            const name = nameInput.value.trim();
             const content = ui.value(m.el, 'nf-content');
-            if (!name) return showError(m.el, 'Enter a file name.');
-            if (name.includes('/')) return showError(m.el, 'Pick the folder above; the name cannot contain a slash.');
+            if (!name) return ui.invalid(nameInput, 'Enter a file name');
+            if (name.includes('/')) return ui.invalid(nameInput, 'Pick the folder above; the name cannot contain a slash');
             const path = folder ? `${folder}/${name}` : name;
-            if (S.index.has(path)) return showError(m.el, `${path} already exists.`);
+            if (S.index.has(path)) return ui.invalid(nameInput, `${path} already exists`);
             m.close();
             const r = await app.act('Create file', () => api.createFile(S.name, path, content), { success: `Created ${path}` });
             if (r.ok) openFile(path);
         });
     };
 
-    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" spellcheck="false"><input data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" spellcheck="false">${ui.iconButton('x', { title: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
+    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" spellcheck="false"><input data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
 
     const kvList = (name, label, kp) => `
         <fieldset>
@@ -1016,25 +1009,24 @@
         const m = ui.modal.open({
             title: 'MCP servers',
             icon: 'plug',
-            subtitle: `Checked servers are written to ${ui.esc(p.name)}/.mcp.json`,
+            subtitle: ui.esc(p.name),
             body: `<div class="flex flex-col gap-4 pt-1">
                 ${ui.segmented({ name: 'mcp-source', value: 'list', full: true, options: [{ value: 'list', label: 'Servers', icon: 'list-checks' }, { value: 'custom', label: 'Custom entry', icon: 'square-pen' }] })}
                 <section data-pane="list" data-mcp-list>${listHtml()}</section>
-                <section data-pane="custom" hidden class="flex flex-col gap-4">
-                    ${field('Name', `<input data-name="mcp-name" class="${ui.cls.input} font-mono" placeholder="sentry" autocomplete="off" spellcheck="false">`)}
-                    <span class="flex flex-col items-start gap-1.5"><span class="${ui.cls.label} px-1">Transport</span>${ui.segmented({ name: 'mcp-transport', value: 'http', options: [{ value: 'http', label: 'HTTP', icon: 'globe' }, { value: 'stdio', label: 'stdio', icon: 'square-terminal' }] })}</span>
+                <form data-pane="custom" novalidate hidden class="flex flex-col gap-4">
+                    ${ui.field('Name', ui.input({ name: 'mcp-name', placeholder: 'sentry', mono: true }))}
+                    ${ui.field('Transport', `<span>${ui.segmented({ name: 'mcp-transport', value: 'http', options: [{ value: 'http', label: 'HTTP', icon: 'globe' }, { value: 'stdio', label: 'stdio', icon: 'square-terminal' }] })}</span>`, { group: true })}
                     <section data-transport="http" class="flex flex-col gap-4">
-                        ${field('URL', `<input data-name="mcp-url" class="${ui.cls.input} font-mono" placeholder="https://mcp.example.com/mcp" spellcheck="false">`)}
+                        ${ui.field('URL', ui.input({ name: 'mcp-url', placeholder: 'https://mcp.example.com/mcp', mono: true }))}
                         ${kvList('headers', 'Headers', 'Header')}
                     </section>
                     <section data-transport="stdio" hidden class="flex flex-col gap-4">
-                        ${field('Command', `<input data-name="mcp-command" class="${ui.cls.input} font-mono" placeholder="npx" spellcheck="false">`)}
-                        ${field('Arguments', `<input data-name="mcp-args" class="${ui.cls.input} font-mono" placeholder="-y @scope/server --flag value" spellcheck="false">`, 'Separated by spaces.')}
+                        ${ui.field('Command', ui.input({ name: 'mcp-command', placeholder: 'npx', mono: true }))}
+                        ${ui.field('Arguments', ui.input({ name: 'mcp-args', placeholder: '-y @scope/server --flag value', mono: true }), { hint: 'Separated by spaces' })}
                         ${kvList('env', 'Environment', 'Variable')}
                     </section>
-                    <span>${ui.button('Add to servers', { icon: 'plus', attrs: 'data-custom-add' })}</span>
-                </section>
-                ${errorLine}
+                    <span>${ui.button('Add to servers', { icon: 'plus', type: 'submit' })}</span>
+                </form>
             </div>`,
             footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-modal-cancel' })}${ui.button('Apply', { icon: 'check', variant: 'primary', attrs: 'data-submit' })}`,
         });
@@ -1048,6 +1040,31 @@
             if (e.detail.name === 'mcp-source') showPane(e.detail.value);
             if (e.detail.name === 'mcp-transport') m.el.querySelectorAll('[data-transport]').forEach((s) => { s.hidden = s.dataset.transport !== e.detail.value; });
         });
+        clearInvalid(m);
+        m.el.querySelector('form[data-pane="custom"]').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const input = (n) => m.el.querySelector(`[data-name="${n}"]`);
+            const name = input('mcp-name').value.trim();
+            const transport = ui.value(m.el, 'mcp-transport');
+            if (!/^[\w.-]+$/.test(name)) return ui.invalid(input('mcp-name'), 'Use letters, digits, dots, dashes, or underscores');
+            if (libNames.has(name) || p.mcp.includes(name) || added.some((x) => x.name === name)) return ui.invalid(input('mcp-name'), `${name} is already in the list`);
+            const entry = { name, transport };
+            if (transport === 'http') {
+                entry.url = input('mcp-url').value.trim();
+                if (!/^https?:\/\//.test(entry.url)) return ui.invalid(input('mcp-url'), 'Enter an http or https URL');
+                entry.headers = readKv(m.el, 'headers');
+            } else {
+                entry.command = input('mcp-command').value.trim();
+                if (!entry.command) return ui.invalid(input('mcp-command'), 'Enter the command that starts the server');
+                entry.args = input('mcp-args').value.trim().split(/\s+/).filter(Boolean);
+                entry.env = readKv(m.el, 'env');
+            }
+            added.push(entry);
+            const list = m.el.querySelector('[data-mcp-list]');
+            list.innerHTML = listHtml();
+            ui.icons(list);
+            showPane('list');
+        });
         m.el.addEventListener('click', async (e) => {
             const add = e.target.closest('[data-kv-add]');
             if (add) {
@@ -1060,30 +1077,6 @@
             const remove = e.target.closest('[data-kv-remove]');
             if (remove) return remove.closest('li').remove();
             if (e.target.closest('[data-modal-cancel]')) return m.close();
-            if (e.target.closest('[data-custom-add]')) {
-                const name = ui.value(m.el, 'mcp-name').trim();
-                const transport = ui.value(m.el, 'mcp-transport');
-                if (!/^[\w.-]+$/.test(name)) return showError(m.el, 'Enter a name using letters, digits, dots, dashes, or underscores.');
-                if (libNames.has(name) || p.mcp.includes(name) || added.some((x) => x.name === name)) return showError(m.el, `${name} is already in the list.`);
-                const entry = { name, transport };
-                if (transport === 'http') {
-                    entry.url = ui.value(m.el, 'mcp-url').trim();
-                    if (!/^https?:\/\//.test(entry.url)) return showError(m.el, 'Enter an http or https URL.');
-                    entry.headers = readKv(m.el, 'headers');
-                } else {
-                    entry.command = ui.value(m.el, 'mcp-command').trim();
-                    if (!entry.command) return showError(m.el, 'Enter the command that starts the server.');
-                    entry.args = ui.value(m.el, 'mcp-args').trim().split(/\s+/).filter(Boolean);
-                    entry.env = readKv(m.el, 'env');
-                }
-                added.push(entry);
-                m.el.querySelector('[data-form-error]').classList.add('hidden');
-                const list = m.el.querySelector('[data-mcp-list]');
-                list.innerHTML = listHtml();
-                ui.icons(list);
-                showPane('list');
-                return;
-            }
             if (!e.target.closest('[data-submit]')) return;
             const checked = (n) => ui.value(m.el, `mcp:${n}`);
             const names = [...lib.map((x) => x.name), ...p.mcp.filter((n) => !libNames.has(n))].filter(checked);
@@ -1103,7 +1096,6 @@
         const m = ui.modal.open({
             title: 'Presets',
             icon: 'layers',
-            subtitle: 'Add, remove, or re-apply presets. Remote presets pull their latest version.',
             body: `<div class="flex flex-col pt-1">${group('Built-in', builtin)}${group('Tracked remote', remote)}<div class="mt-3">${errorLine}</div></div>`,
             footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-modal-cancel' })}${ui.button('Apply presets', { icon: 'check', variant: 'primary', attrs: 'data-submit' })}`,
         });
