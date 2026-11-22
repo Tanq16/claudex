@@ -3,7 +3,7 @@
   <h1>ClaudeX</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
-  <a href="#capabilities">Capabilities</a> &bull; <a href="#install">Install</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#notes">Notes</a>
+  <a href="#philosophy">Philosophy</a> &bull; <a href="#capabilities">Capabilities</a> &bull; <a href="#install">Install</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#notes">Notes</a>
 </div>
 
 ---
@@ -12,9 +12,17 @@ ClaudeX is a companion CLI and local web UI for Claude Code. It configures every
 
 It exists for juggling several Claude subscriptions, and everything except account selection works the same with one. It does not replace `claude`, which it execs or runs in tmux.
 
-## Security
+## Philosophy
 
-`serve` has no authentication. Anyone who reaches its port can start Claude sessions that run with `--dangerously-skip-permissions` and prompt attached chats. They can also run shell commands in any project, read and upload project files, and clone repositories with your `gh` login. It binds to `127.0.0.1` by default and rejects cross-origin requests from other sites in your browser. Exposing it beyond the machine is a reverse proxy's job, with authentication in front.
+ClaudeX is opinionated, and it works best with its defaults.
+
+- **Two primitives.** Claude follows instruction files (`AGENTS.md`, with `CLAUDE.md` linked to it) and skills, nothing else. The main chat and every subagent inherit both.
+- **Presets bundle them.** A preset is a set of skills plus an `AGENTS.md` partial. Projects link to one central copy, so a preset is edited once and turned on or off per project.
+- **No extras.** No marketplace plugins, hooks, custom agents, memory, or global skills. The one plugin ClaudeX loads only wires language servers.
+- **Compaction is a skill.** Auto-compaction is off. The `session-summary` skill writes a handoff file, you clear the chat, and the next session reads it back.
+- **Everything stays in the project.** Skills, instructions, and MCP servers live in the project directory and are hidden from git. The MCP library only writes the project's `.mcp.json`.
+- **Project-specific needs go in a preset.** Extra rules or agents for one project become that project's own preset, kept in any repository and pulled by subpath.
+- **Your own setup.** Mixing in plugins or global config means skipping `serve`, using the CLI per project, and fixing small conflicts yourself.
 
 ## Capabilities
 
@@ -232,6 +240,7 @@ Moves every session of the current directory, with its history entries, out of t
 
 ## Notes
 
+- **`serve` has no authentication.** Anyone who reaches its port can drive every session, run shell commands, and read project files. It binds to `127.0.0.1` by default, so put a reverse proxy with authentication in front before exposing it.
 - **tmux is required for `serve`.** `gh` is needed only to list and clone repositories in the new-session dialog.
 - **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
 - **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`, which is rewritten from the binary along with the built-in presets.
