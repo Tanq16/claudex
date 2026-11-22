@@ -41,7 +41,7 @@ type manifest struct {
 	Skills      []string `yaml:"skills"`
 }
 
-func EnsurePresets(srcFS fs.FS, root, dir string) error {
+func Extract(srcFS fs.FS, root, dir string) error {
 	entries, err := fs.ReadDir(srcFS, root)
 	if err != nil {
 		return err
@@ -217,33 +217,10 @@ func skillNames(dir string) []string {
 	return names
 }
 
-func installSkills(srcFS fs.FS, root, dest string) ([]string, error) {
-	entries, err := fs.ReadDir(srcFS, root)
-	if err != nil {
-		return nil, err
-	}
-	if err := os.MkdirAll(dest, projectModes.dir); err != nil {
-		return nil, err
-	}
-	var names []string
-	for _, e := range entries {
-		if !e.IsDir() {
-			continue
-		}
-		if err := installTree(srcFS, root+"/"+e.Name(), filepath.Join(dest, e.Name()), projectModes); err != nil {
-			return nil, err
-		}
-		names = append(names, e.Name())
-	}
-	slices.Sort(names)
-	return names, nil
-}
-
 func installTree(srcFS fs.FS, root, dest string, m fileModes) error {
 	if err := os.MkdirAll(filepath.Dir(dest), m.dir); err != nil {
 		return err
 	}
-	// Staged and swapped in with a rename so an interrupted install never leaves half a skill in place.
 	staging := dest + ".staging"
 	if err := os.RemoveAll(staging); err != nil {
 		return err

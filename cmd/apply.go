@@ -59,14 +59,15 @@ func runApply(cmd *cobra.Command, args []string) {
 		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
 	}
 
-	names, err := workspace.ApplyBase(root, embedded.AgentsBase, embedded.DefaultSkillsFS, "default-skills")
+	skillsDir := baseSkillsDir()
+	names, err := workspace.ApplyBase(root, embedded.AgentsBase, skillsDir)
 	if err != nil {
 		u.PrintFatal("failed to apply the layout", err)
 	}
 
 	u.PrintSuccess("Applied to " + u.AbbreviatePath(root))
 	u.PrintGeneric("  agents:  AGENTS.md, CLAUDE.md -> AGENTS.md")
-	u.PrintGeneric("  skills:  .agents/skills (" + strings.Join(names, ", ") + "), .claude/skills -> ../.agents/skills")
+	u.PrintGeneric("  skills:  .agents/skills (" + strings.Join(names, ", ") + " -> " + u.AbbreviatePath(skillsDir) + "), .claude/skills -> ../.agents/skills")
 	if oldFiles != "" {
 		u.PrintGeneric("  old:     " + oldFiles)
 	}
@@ -120,8 +121,17 @@ func restoreResume(root string) {
 
 func presetsDir() string {
 	dir := u.PresetsDir()
-	if err := workspace.EnsurePresets(embedded.PresetsFS, "presets", dir); err != nil {
+	if err := workspace.Extract(embedded.PresetsFS, "presets", dir); err != nil {
 		u.PrintFatal("failed to lay down the built-in presets", err)
+	}
+	baseSkillsDir()
+	return dir
+}
+
+func baseSkillsDir() string {
+	dir := u.BaseSkillsDir()
+	if err := workspace.Extract(embedded.DefaultSkillsFS, "default-skills", dir); err != nil {
+		u.PrintFatal("failed to lay down the base skills", err)
 	}
 	return dir
 }

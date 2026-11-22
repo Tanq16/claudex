@@ -1,12 +1,14 @@
 package workspace
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 )
 
 type PullConfig struct {
@@ -30,7 +32,7 @@ func EnsureRemotePresets(dir string) error {
 	return os.MkdirAll(dir, configModes.dir)
 }
 
-func PullPresets(cfg PullConfig) (PullResult, error) {
+func PullPresets(ctx context.Context, cfg PullConfig) (PullResult, error) {
 	cloneURL, owner, repo, err := parseRepo(cfg.Repo)
 	if err != nil {
 		return PullResult{}, err
@@ -47,7 +49,7 @@ func PullPresets(cfg PullConfig) (PullResult, error) {
 	defer os.RemoveAll(tmp)
 
 	clone := filepath.Join(tmp, slugify(repo))
-	if err := gitClone(cloneURL, clone); err != nil {
+	if err := gitClone(ctx, cloneURL, clone); err != nil {
 		return PullResult{}, err
 	}
 	if err := os.RemoveAll(filepath.Join(clone, ".git")); err != nil {
@@ -170,8 +172,9 @@ func resolveInRepo(clone, path string) (string, error) {
 	return dir, nil
 }
 
-func gitClone(url, dest string) error {
-	cmd := exec.Command("git", "clone", "--depth", "1", "--quiet", url, dest)
+func gitClone(ctx context.Context, url, dest string) error {
+	cmd := exec.CommandContext(ctx, "git", "clone", "--depth", "1", "--quiet", url, dest)
+	cmd.WaitDelay = 2 * time.Second
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

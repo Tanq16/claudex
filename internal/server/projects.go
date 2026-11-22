@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/rs/zerolog/log"
+	"github.com/tanq16/claudex/internal/attached"
 	"github.com/tanq16/claudex/internal/convo"
 	"github.com/tanq16/claudex/internal/embedded"
 	"github.com/tanq16/claudex/internal/mcp"
@@ -34,6 +36,7 @@ var (
 type projectView struct {
 	Dir        string   `json:"dir"`
 	Name       string   `json:"name"`
+	Mode       string   `json:"mode"`
 	RCName     string   `json:"rcName"`
 	Account    string   `json:"account"`
 	Active     bool     `json:"active"`
@@ -96,6 +99,7 @@ func (s *Server) projects(st *state.State) []projectView {
 		}
 	}
 	started := session.StartTimes(pids)
+	live := s.host.Settings()
 
 	views := []projectView{}
 	for dir, p := range st.Projects {
@@ -103,18 +107,23 @@ func (s *Server) projects(st *state.State) []projectView {
 			continue
 		}
 		name := filepath.Base(dir)
+		attachedRun, attachedLive := live[name]
 		v := projectView{
 			Dir:        s.abbrev(dir),
 			Name:       name,
+			Mode:       p.SessionMode(),
 			RCName:     p.RCName,
 			Account:    s.abbrev(p.Account),
-			Active:     session.Active(windows, name),
+			Active:     session.Active(windows, name) || attachedLive,
 			Presets:    workspace.Presets(dir),
 			MCP:        mcp.ProjectNames(dir),
 			Connectors: p.Connectors,
 			Stash:      fileExists(s.stashPath(dir)) && !fileExists(filepath.Join(dir, workspace.ResumeFile)),
 		}
-		if v.Active {
+		switch {
+		case attachedLive:
+			v.StartedAt = millis(attachedRun.StartedAt)
+		case v.Active:
 			v.StartedAt = millis(started[windows[name].PID])
 		}
 		last := convo.LastActivity(p.Account, dir)
@@ -183,16 +192,37 @@ func (s *Server) handleDirectories(r *http.Request) (any, error) {
 }
 
 type startRequest struct {
-	Name          string   `json:"name"`
-	Source        string   `json:"source"`
-	RCName        string   `json:"rcName"`
-	Account       string   `json:"account"`
-	Mode          string   `json:"mode"`
-	Presets       []string `json:"presets"`
-	MCP           []string `json:"mcp"`
-	Connectors    bool     `json:"connectors"`
-	Repo          string   `json:"repo"`
-	ForeignChoice string   `json:"foreignChoice"`
+	Name           string   `json:"name"`
+	Source         string   `json:"source"`
+	Mode           string   `json:"mode"`
+	Continue       bool     `json:"continue"`
+	RemoteControl  *bool    `json:"remoteControl"`
+	RCName         string   `json:"rcName"`
+	Model          string   `json:"model"`
+	Effort         string   `json:"effort"`
+	PermissionMode string   `json:"permissionMode"`
+	Account        string   `json:"account"`
+	Presets        []string `json:"presets"`
+	MCP            []string `json:"mcp"`
+	Connectors     bool     `json:"connectors"`
+	Repo           string   `json:"repo"`
+	ForeignChoice  string   `json:"foreignChoice"`
+}
+
+func launchMode(mode string, continueLast bool) (string, bool, error) {
+	switch mode {
+	case "", state.ModeDetached, "new":
+		return state.ModeDetached, continueLast, nil
+	case "continue":
+		return state.ModeDetached, true, nil
+	case state.ModeAttached:
+		return state.ModeAttached, continueLast, nil
+	}
+	return "", false, fail(http.StatusBadRequest, "mode must be detached or attached")
+}
+
+func (s *Server) active(windows map[string]session.Window, name string) bool {
+	return session.Active(windows, name) || s.host.Live(name)
 }
 
 func (s *Server) handleStart(r *http.Request) (any, error) {
@@ -200,8 +230,9 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 	if err := decode(r, &req); err != nil {
 		return nil, err
 	}
-	if req.Mode != "new" && req.Mode != "continue" {
-		return nil, fail(http.StatusBadRequest, "mode must be new or continue")
+	mode, continueLast, err := launchMode(req.Mode, req.Continue)
+	if err != nil {
+		return nil, err
 	}
 	dir, err := s.dirOf(req.Name)
 	if err != nil {
@@ -218,8 +249,8 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, tracked := st.Projects[dir]
-	if session.Active(s.windows(), req.Name) {
+	previous, tracked := st.Projects[dir]
+	if s.active(s.windows(), req.Name) {
 		return nil, fail(http.StatusConflict, "%s already has a running session", req.Name)
 	}
 
@@ -248,7 +279,7 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 	}
 
 	if len(req.Presets) > 0 {
-		if err := s.applyPresets(st, dir, req.Presets); err != nil {
+		if err := s.applyPresets(r.Context(), st, dir, req.Presets); err != nil {
 			return nil, err
 		}
 	}
@@ -257,20 +288,49 @@ func (s *Server) handleStart(r *http.Request) (any, error) {
 	}
 
 	p := state.Project{
-		RCName:     cmp.Or(strings.TrimSpace(req.RCName), req.Name),
 		Account:    account,
 		Connectors: req.Connectors,
 		LastActive: time.Now().UnixMilli(),
+		Mode:       mode,
+	}
+	if mode == state.ModeDetached && (req.RemoteControl == nil || *req.RemoteControl) {
+		p.RCName = cmp.Or(strings.TrimSpace(req.RCName), req.Name)
+	}
+	if mode == state.ModeAttached {
+		last := state.Attached{}
+		if previous.Attached != nil {
+			last = *previous.Attached
+		}
+		p.Attached = &state.Attached{
+			Model:          cmp.Or(strings.TrimSpace(req.Model), last.Model),
+			Effort:         cmp.Or(strings.TrimSpace(req.Effort), last.Effort),
+			PermissionMode: cmp.Or(strings.TrimSpace(req.PermissionMode), last.PermissionMode),
+		}
 	}
 	st.Projects[dir] = p
 	if err := s.saveState(st); err != nil {
 		return nil, err
 	}
-	if err := s.launcher.Start(s.launch(req.Name, dir, p, req.Mode == "continue")); err != nil {
+	if err := s.startSession(req.Name, dir, p, continueLast); err != nil {
 		return nil, err
 	}
-	log.Info().Str("project", req.Name).Str("mode", req.Mode).Msg("session started")
-	return map[string]string{"name": req.Name, "mode": req.Mode}, nil
+	log.Info().Str("project", req.Name).Str("mode", mode).Bool("continue", continueLast).Msg("session started")
+	return map[string]any{"name": req.Name, "mode": mode, "continue": continueLast}, nil
+}
+
+func (s *Server) startSession(name, dir string, p state.Project, continueLast bool) error {
+	if p.SessionMode() == state.ModeAttached {
+		return s.startAttached(name, dir, p, continueLast)
+	}
+	return s.launcher.Start(s.launch(name, dir, p, continueLast))
+}
+
+func (s *Server) stopSession(name string) error {
+	err := s.host.Stop(name)
+	if errors.Is(err, attached.ErrNotRunning) {
+		return session.Stop(name)
+	}
+	return err
 }
 
 func (s *Server) prepareSource(r *http.Request, req startRequest, dir string) error {
@@ -296,6 +356,7 @@ func (s *Server) prepareSource(r *http.Request, req startRequest, dir string) er
 		return fail(http.StatusBadRequest, "repo must look like owner/name")
 	}
 	cmd := exec.CommandContext(r.Context(), "gh", "repo", "clone", req.Repo, dir)
+	cmd.WaitDelay = 2 * time.Second
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fail(http.StatusBadGateway, "cloning %s failed: %s", req.Repo, cmp.Or(strings.TrimSpace(string(out)), err.Error()))
 	}
@@ -329,7 +390,7 @@ func (s *Server) handleStop(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := session.Stop(name); errors.Is(err, session.ErrNotRunning) {
+	if err := s.stopSession(name); errors.Is(err, session.ErrNotRunning) {
 		return nil, fail(http.StatusConflict, "%s is not running", name)
 	} else if err != nil {
 		return nil, err
@@ -354,7 +415,15 @@ func (s *Server) handleRestart(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.launcher.Restart(s.launch(name, dir, p, true)); err != nil {
+	if p.SessionMode() == state.ModeAttached {
+		if err := s.host.Stop(name); err != nil && !errors.Is(err, attached.ErrNotRunning) {
+			return nil, err
+		}
+		err = s.startAttached(name, dir, p, true)
+	} else {
+		err = s.launcher.Restart(s.launch(name, dir, p, true))
+	}
+	if err != nil {
 		return nil, err
 	}
 	p.LastActive = time.Now().UnixMilli()
@@ -391,7 +460,7 @@ func (s *Server) handleSwitch(r *http.Request) (any, error) {
 	if target == p.Account {
 		return nil, fail(http.StatusBadRequest, "%s already runs under %s", name, s.abbrev(target))
 	}
-	if err := session.Stop(name); err != nil && !errors.Is(err, session.ErrNotRunning) {
+	if err := s.stopSession(name); err != nil && !errors.Is(err, session.ErrNotRunning) {
 		return nil, err
 	}
 	if _, err := convo.MoveProject(dir, p.Account, target); err != nil {
@@ -403,7 +472,7 @@ func (s *Server) handleSwitch(r *http.Request) (any, error) {
 	if err := s.saveState(st); err != nil {
 		return nil, err
 	}
-	if err := s.launcher.Start(s.launch(name, dir, p, true)); err != nil {
+	if err := s.startSession(name, dir, p, true); err != nil {
 		return nil, err
 	}
 	return map[string]string{"name": name, "account": s.abbrev(target)}, nil
@@ -421,8 +490,11 @@ func (s *Server) handleUntrack(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if session.Active(s.windows(), name) {
+	if s.active(s.windows(), name) {
 		return nil, fail(http.StatusConflict, "stop the session before untracking %s", name)
+	}
+	if err := s.host.Stop(name); err != nil && !errors.Is(err, attached.ErrNotRunning) {
+		return nil, err
 	}
 	delete(st.Projects, dir)
 	if err := s.saveState(st); err != nil {
@@ -491,7 +563,7 @@ func (s *Server) handleApplyPresets(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err := s.applyPresets(st, dir, req.Presets); err != nil {
+	if err := s.applyPresets(r.Context(), st, dir, req.Presets); err != nil {
 		return nil, err
 	}
 	if err := s.saveState(st); err != nil {
@@ -500,8 +572,10 @@ func (s *Server) handleApplyPresets(r *http.Request) (any, error) {
 	return map[string]any{"name": name, "presets": workspace.Presets(dir)}, nil
 }
 
-func (s *Server) applyPresets(st *state.State, dir string, refs []string) error {
-	s.refreshRemotePresets(st, refs)
+func (s *Server) applyPresets(ctx context.Context, st *state.State, dir string, refs []string) error {
+	if err := s.refreshRemotePresets(ctx, st, refs); err != nil {
+		return err
+	}
 	local, remote := paths.PresetsDir(s.home), paths.RemotePresetsDir(s.home)
 	for _, ref := range refs {
 		if ref == workspace.BasePreset {
@@ -516,27 +590,30 @@ func (s *Server) applyPresets(st *state.State, dir string, refs []string) error 
 	return workspace.Apply(workspace.ApplyConfig{
 		Root:          dir,
 		Base:          embedded.AgentsBase,
-		BaseSkills:    embedded.DefaultSkillsFS,
-		BaseSkillsDir: "default-skills",
+		BaseSkills:    paths.BaseSkillsDir(s.home),
 		LocalPresets:  local,
 		RemotePresets: remote,
 		Presets:       refs,
 	})
 }
 
-func (s *Server) refreshRemotePresets(st *state.State, refs []string) {
+func (s *Server) refreshRemotePresets(ctx context.Context, st *state.State, refs []string) error {
 	pulled := map[state.RemotePreset]bool{}
 	for _, ref := range refs {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		tracked, ok := st.RemotePresets[ref]
 		source := state.RemotePreset{Repo: tracked.Repo, Path: tracked.Path}
 		if !ok || tracked.Repo == "" || pulled[source] {
 			continue
 		}
 		pulled[source] = true
-		if _, err := s.pullRemote(st, tracked.Repo, tracked.Path); err != nil {
+		if _, err := s.pullRemote(ctx, st, tracked.Repo, tracked.Path); err != nil && ctx.Err() == nil {
 			log.Warn().Err(err).Str("preset", ref).Msg("could not update the remote preset; applying the local copy")
 		}
 	}
+	return ctx.Err()
 }
 
 func (s *Server) handleSetMCP(r *http.Request) (any, error) {

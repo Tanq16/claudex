@@ -3,7 +3,6 @@ package workspace
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -33,9 +32,14 @@ func Applied(root string) bool {
 	return err == nil && info.IsDir()
 }
 
-func ApplyBase(root string, base []byte, skillsFS fs.FS, skillsRoot string) ([]string, error) {
-	names, err := installSkills(skillsFS, skillsRoot, SkillsPath(root))
-	if err != nil {
+func ApplyBase(root string, base []byte, skillsDir string) ([]string, error) {
+	names := skillNames(skillsDir)
+	for _, name := range names {
+		if err := removeCopy(filepath.Join(SkillsPath(root), name)); err != nil {
+			return nil, err
+		}
+	}
+	if err := LinkSkills(root, skillsDir, names); err != nil {
 		return nil, err
 	}
 	if err := UpsertSection(root, "", string(base)); err != nil {
@@ -206,6 +210,14 @@ func ensureLink(link, target string) error {
 		}
 	}
 	return os.Symlink(target, link)
+}
+
+func removeCopy(path string) error {
+	info, err := os.Lstat(path)
+	if err != nil || info.Mode()&os.ModeSymlink != 0 {
+		return nil
+	}
+	return os.RemoveAll(path)
 }
 
 func removeIfLink(path string) error {

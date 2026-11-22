@@ -90,7 +90,7 @@ func AppendRawHistory(configDir string, entries []RawHistoryEntry) error {
 
 func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 	if err := os.MkdirAll(dstProjectDir, 0700); err != nil {
-		return fmt.Errorf("creating target directory: %w", err)
+		return err
 	}
 
 	jsonlName := sessionID + ".jsonl"
@@ -103,7 +103,7 @@ func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 
 	if _, err := os.Stat(srcJSONL); err == nil {
 		if err := moveFileOrDir(srcJSONL, dstJSONL); err != nil {
-			return fmt.Errorf("moving session JSONL: %w", err)
+			return err
 		}
 	}
 
@@ -111,7 +111,7 @@ func MoveSession(sessionID, srcProjectDir, dstProjectDir string) error {
 	dstSubDir := filepath.Join(dstProjectDir, sessionID)
 	if info, err := os.Stat(srcSubDir); err == nil && info.IsDir() {
 		if err := moveFileOrDir(srcSubDir, dstSubDir); err != nil {
-			return fmt.Errorf("moving sub-agent directory: %w", err)
+			return err
 		}
 	}
 

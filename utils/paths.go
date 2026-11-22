@@ -45,6 +45,10 @@ func PresetsDir() string {
 	return paths.PresetsDir(HomeDir())
 }
 
+func BaseSkillsDir() string {
+	return paths.BaseSkillsDir(HomeDir())
+}
+
 func RemotePresetsDir() string {
 	return paths.RemotePresetsDir(HomeDir())
 }
@@ -55,4 +59,8 @@ func ResumeStash(projectDir string) string {
 
 func DefaultsFile() string {
 	return paths.DefaultsFile(HomeDir())
+}
+
+func SettingsSchemaFile() string {
+	return paths.SettingsSchemaFile(HomeDir())
 }

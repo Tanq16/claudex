@@ -64,7 +64,7 @@ Flag only the patterns below. A classic `for i := 0; i < n; i++` loop, a manual 
 
 | Check | How to verify |
 |---|---|
-| Comments are load-bearing why | For each comment, ask whether removing it would let a competent reader misread the intent, a trade-off, or a non-obvious constraint. Flag any that would not, including what-narration and comments that restate a signature |
+| Comments map to an exception | Left to Step 3c, which audits every comment against the two exceptions in AGENTS.md once for the whole review |
 | No scaffolding behind `//` | Grep for commented-out code and example blocks |
 | No stale comments | Compare each comment against the code beneath it |
 

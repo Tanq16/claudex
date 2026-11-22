@@ -22,7 +22,7 @@ func runPullPreset(cmd *cobra.Command, args []string) {
 	dir := remotePresetsDir()
 
 	u.PrintRunning("cloning " + repo)
-	res, err := workspace.PullPresets(workspace.PullConfig{Repo: repo, Path: pullPresetFlags.path, Dir: dir})
+	res, err := workspace.PullPresets(cmd.Context(), workspace.PullConfig{Repo: repo, Path: pullPresetFlags.path, Dir: dir})
 	u.ClearLines(1)
 	if err != nil {
 		u.PrintFatal("failed to pull presets from "+repo, err)

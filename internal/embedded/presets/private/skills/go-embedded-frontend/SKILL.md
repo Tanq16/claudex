@@ -88,7 +88,7 @@ Font Awesome's stylesheet points at its webfonts by a relative path that breaks 
 
 Each has its own `@font-face` stylesheet under `css/`, pointing at local woff2 files. Nothing loads from `fonts.googleapis.com` at run time, since a page fetching a font from a third party leaks every visitor's IP and stops rendering offline.
 
-The mono slot takes the plain family. The Nerd Font variant is earned only by a page rendering Nerd Font glyphs, such as a Powerline separator or terminal output carrying them, and an icon Lucide or Font Awesome already has is not a reason. Switching is a Makefile variable that writes the same `css/jetbrains-mono.css` under the same family name.
+The mono slot takes the plain family. The Nerd Font variant is earned only by a page rendering Nerd Font glyphs, such as a Powerline separator or terminal output carrying them, and an icon Lucide or Font Awesome already has is not a reason. The Makefile switches it under the same family name.
 
 ## The Page
 

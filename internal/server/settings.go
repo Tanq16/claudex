@@ -2,6 +2,7 @@ package server
 
 import (
 	"cmp"
+	"context"
 	"encoding/json/v2"
 	"errors"
 	"io/fs"
@@ -30,9 +31,10 @@ type accountView struct {
 
 type accountSettings struct {
 	accountView
-	SettingsFound bool             `json:"settingsFound"`
-	Drift         []accounts.Drift `json:"drift"`
-	Projects      int              `json:"projects"`
+	SettingsFound bool                 `json:"settingsFound"`
+	Drift         []accounts.Drift     `json:"drift"`
+	Unmanaged     []accounts.Unmanaged `json:"unmanaged"`
+	Projects      int                  `json:"projects"`
 }
 
 type builtinPreset struct {
@@ -111,13 +113,15 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
+	c, _ := s.catalog(r.Context())
+	schemaKeys := catalogKeys(c)
 	var views []accountSettings
 	for _, a := range s.accounts() {
 		dir := paths.Expand(s.home, a.Dir)
-		found, drift := accounts.Compliance(dir, defaults)
-		for i := range drift {
-			drift[i].Expected = s.abbrev(drift[i].Expected)
-			drift[i].Actual = s.abbrev(drift[i].Actual)
+		report := accounts.Audit(dir, defaults, schemaKeys)
+		for i := range report.Drift {
+			report.Drift[i].Expected = s.abbrev(report.Drift[i].Expected)
+			report.Drift[i].Actual = s.abbrev(report.Drift[i].Actual)
 		}
 		count := 0
 		for _, p := range st.Projects {
@@ -125,7 +129,7 @@ func (s *Server) handleSettings(r *http.Request) (any, error) {
 				count++
 			}
 		}
-		views = append(views, accountSettings{accountView: a, SettingsFound: found, Drift: drift, Projects: count})
+		views = append(views, accountSettings{accountView: a, SettingsFound: report.Found, Drift: report.Drift, Unmanaged: report.Unmanaged, Projects: count})
 	}
 	return map[string]any{
 		"root":          s.abbrev(s.root),
@@ -217,8 +221,8 @@ func (s *Server) handleRepos(r *http.Request) (any, error) {
 	return repos, nil
 }
 
-func (s *Server) pullRemote(st *state.State, repo, path string) ([]string, error) {
-	res, err := workspace.PullPresets(workspace.PullConfig{Repo: repo, Path: path, Dir: paths.RemotePresetsDir(s.home)})
+func (s *Server) pullRemote(ctx context.Context, st *state.State, repo, path string) ([]string, error) {
+	res, err := workspace.PullPresets(ctx, workspace.PullConfig{Repo: repo, Path: path, Dir: paths.RemotePresetsDir(s.home)})
 	if err != nil {
 		return nil, err
 	}
@@ -246,7 +250,7 @@ func (s *Server) handleAddRemotePreset(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	refs, err := s.pullRemote(st, repo, path)
+	refs, err := s.pullRemote(r.Context(), st, repo, path)
 	if err != nil {
 		return nil, fail(http.StatusBadRequest, "pulling presets from %s failed: %v", repo, err)
 	}
@@ -273,7 +277,7 @@ func (s *Server) handleUpdateRemotePreset(r *http.Request) (any, error) {
 	if !ok || tracked.Repo == "" {
 		return nil, fail(http.StatusNotFound, "%s has no tracked repository; track it again from its repository", req.Name)
 	}
-	if _, err := s.pullRemote(st, tracked.Repo, tracked.Path); err != nil {
+	if _, err := s.pullRemote(r.Context(), st, tracked.Repo, tracked.Path); err != nil {
 		return nil, fail(http.StatusBadGateway, "updating %s failed: %v", req.Name, err)
 	}
 	if err := s.saveState(st); err != nil {

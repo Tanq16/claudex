@@ -77,8 +77,16 @@ func PresetsDir(home string) string {
 	return filepath.Join(ConfigDir(home), "presets")
 }
 
+func BaseSkillsDir(home string) string {
+	return filepath.Join(ConfigDir(home), "base-skills")
+}
+
 func RemotePresetsDir(home string) string {
 	return filepath.Join(ConfigDir(home), "remote-presets")
+}
+
+func ImagesDir(home string) string {
+	return filepath.Join(ConfigDir(home), "images")
 }
 
 func StateFile(home string) string {

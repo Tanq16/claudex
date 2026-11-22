@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"testing/fstest"
 )
 
 func TestUpsert(t *testing.T) {
@@ -113,14 +112,14 @@ func TestPreflightBaseRefusesWhatApplyBaseCannotFinish(t *testing.T) {
 	if len(conflicts) != 1 || conflicts[0].Path != ClaudeFile {
 		t.Fatalf("PreflightBase() = %v, want the CLAUDE.md conflict alone", conflicts)
 	}
-	if _, err := ApplyBase(root, []byte("base"), demoSkills(), "src"); err == nil {
+	if _, err := ApplyBase(root, []byte("base"), demoSkills(t)); err == nil {
 		t.Fatal("ApplyBase() succeeded where preflight found a conflict")
 	}
 }
 
 func TestPreflightBaseAcceptsAnAlreadyAppliedDirectory(t *testing.T) {
 	root := t.TempDir()
-	if _, err := ApplyBase(root, []byte("base"), demoSkills(), "src"); err != nil {
+	if _, err := ApplyBase(root, []byte("base"), demoSkills(t)); err != nil {
 		t.Fatalf("ApplyBase() error = %v", err)
 	}
 	if got := PreflightBase(root); got != nil {
@@ -141,8 +140,11 @@ func TestPreflightPreset(t *testing.T) {
 	}
 }
 
-func demoSkills() fstest.MapFS {
-	return fstest.MapFS{"src/demo/SKILL.md": &fstest.MapFile{Data: []byte("demo\n")}}
+func demoSkills(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	mustWrite(t, filepath.Join(dir, "demo", "SKILL.md"), "demo\n")
+	return dir
 }
 
 func mustDir(t *testing.T, path string) {
