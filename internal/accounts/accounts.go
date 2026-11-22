@@ -80,7 +80,6 @@ func shellQuote(s string) string {
 
 func Env(dir, defaultDir string) []string {
 	base := os.Environ()
-	// An inherited CLAUDE_CONFIG_DIR would override the chosen account, so it is stripped.
 	env := make([]string, 0, len(base)+1)
 	for _, e := range base {
 		if !strings.HasPrefix(e, "CLAUDE_CONFIG_DIR=") {

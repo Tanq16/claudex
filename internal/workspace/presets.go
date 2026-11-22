@@ -221,7 +221,6 @@ func installTree(srcFS fs.FS, root, dest string, m fileModes) error {
 	if err := os.MkdirAll(filepath.Dir(dest), m.dir); err != nil {
 		return err
 	}
-	// Staged and swapped in with a rename so an interrupted install never leaves half a skill in place.
 	staging := dest + ".staging"
 	if err := os.RemoveAll(staging); err != nil {
 		return err

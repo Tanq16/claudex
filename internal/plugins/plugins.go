@@ -23,7 +23,6 @@ func BuildGlobalPlugin(dir string) error {
 }
 
 func writeGlobalManifest(dir string) error {
-	// Rewritten rather than written-if-missing so a manifest from an older plugin name migrates to "claudex".
 	manifest := filepath.Join(dir, ".claude-plugin", "plugin.json")
 	if err := os.MkdirAll(filepath.Dir(manifest), dirMode); err != nil {
 		return err

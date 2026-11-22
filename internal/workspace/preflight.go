@@ -76,7 +76,6 @@ func (c *check) link(rel, target string) {
 
 func (c *check) ownedLink(rel string) {
 	path := filepath.Join(c.root, rel)
-	// A symlink here is claudex's own and gets repointed; anything else was put in by hand.
 	if _, err := os.Readlink(path); err == nil {
 		return
 	}
