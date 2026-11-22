@@ -1,0 +1,128 @@
+# CLI
+
+Every command works per project from the terminal, with or without `serve`.
+
+`--debug` is on every command and swaps the styled output for zerolog: a timestamped console line in a terminal, and JSON when stdout is not one. Color and cursor redraws drop automatically off a terminal too, so piping any command gives plain text with no flag. Every input is a flag or an argument, and nothing prompts. `-A/--account` takes an account config directory path, and on `launch` and `switch` it also matches on just the directory name. Global state lives under `~/.config/claudex/`, holding the plugin in `global/`, presets in `presets/`, and the web UI's state in `state.json`.
+
+## configure
+
+Provisions every discovered account, then lays down the global defaults once.
+
+Per account it writes `statusline.sh` into the account directory and points `settings.json` at it. The statusline shows the account label, the model, the working directory, the git branch, context used, and the 5h and 7d rate-limit percentages. It also merges the default keys from `~/.config/claudex/defaults.json` into the existing `settings.json`, leaving every other key alone. The file starts with these keys:
+
+| Key | Value |
+|-----|-------|
+| `attribution.commit` | `""` |
+| `attribution.pr` | `""` |
+| `effortLevel` | `xhigh` |
+| `tui` | `fullscreen` |
+| `outputStyle` | `Concise` |
+| `autoMemoryEnabled` | `false` |
+| `autoCompactEnabled` | `false` |
+| `idleCompaction` | `false` |
+| `skipDangerousModePermissionPrompt` | `true` |
+| `enableAllProjectMcpServers` | `true` |
+| `enableArtifact` | `false` |
+| `feedbackDrafts` | `off` |
+| `feedbackSurveyRate` | `0` |
+| `disableBundledSkills` | `true` |
+| `syncClaudeAiSkills` | `false` |
+| `syncClaudeAiPlugins` | `false` |
+| `includeGitInstructions` | `false` |
+| `spinnerTipsEnabled` | `false` |
+| `promptSuggestionEnabled` | `false` |
+| `awaySummaryEnabled` | `false` |
+| `env.DISABLE_AUTOUPDATER` | `1` |
+| `env.ENABLE_CLAUDEAI_MCP_SERVERS` | `false` |
+
+A key taken out of the defaults is deleted from each account the next time `configure` or the web UI applies them, but only from accounts ClaudeX wrote it to. The `statusLine` keys are always set by ClaudeX. An account whose `settings.json` is not valid JSON is skipped rather than overwritten. `configure` also lists the keys in each account that the defaults do not cover.
+
+The global defaults are a Claude Code plugin at `~/.config/claudex/global/`, carrying an `.lsp.json` that wires `gopls`, `pyright-langserver`, and `typescript-language-server`, plus the built-in presets extracted into `~/.config/claudex/presets/`.
+
+`-A` configures one account instead of all of them. `-l/--label` overrides the account label in the statusline and requires `-A`; without it the label comes from the directory name, where `.claude` is `first`, `.claude2` is `second`, `.claude3` is `third`, and anything else uses the numeric suffix.
+
+## apply
+
+Writes the layout into the current directory:
+
+```
+AGENTS.md          base instruction block, between <!-- claudex:base --> markers
+CLAUDE.md          -> AGENTS.md
+.agents/skills/    agents-md, session-summary, skill-creator, write-document
+.claude/skills     -> ../.agents/skills
+```
+
+`AGENTS.md` and `.agents/skills/` are the real files, following the [Agent Skills](https://agentskills.io) layout that Cursor and Codex read on their own, and the two symlinks exist because Claude Code looks for the other names.
+
+An existing `AGENTS.md` keeps everything outside the markers: the base block is inserted or replaced in place. The same four paths and `.mcp.json` also go into `.git/info/exclude`, which is local to your clone, so the layout never appears in `git status` and never gets pushed.
+
+A directory holding AI files ClaudeX did not create (`.mcp.json`, `.claude/`, `.agents/`, `CLAUDE.md`, or `AGENTS.md`) is refused until `--foreign` says what to do with them. `--foreign preserve` zips them into `.agents/old-ai-files.zip` and `--foreign clean` deletes them, and both then apply fresh. A directory ClaudeX already set up is re-applied without asking.
+
+`--restore-resume` puts back the `.agents/session-resume/resume.md` that `clean-cwd` stashed for this directory.
+
+## apply-preset
+
+A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`, an optional `skills/` directory, and an optional `mcp.json` in the `.mcp.json` shape (`{"mcpServers": {...}}`). Local presets sit under `~/.config/claudex/presets/`, and presets pulled from a repository sit under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Applying one symlinks its skills into `.agents/skills/`, writes its partial as its own marked section of `AGENTS.md`, and merges its MCP servers into the project's `.mcp.json`. Re-applying replaces that section instead of appending a second copy. It also removes any skill link whose target no longer exists, which is what a skill dropped from a preset leaves behind. It needs `claudex apply` to have run first.
+
+A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
+
+```bash
+claudex apply-preset private                     # local, by name; several apply in order
+claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
+```
+
+`--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset, MCP servers included; passing one narrows the run to that half.
+
+One preset ships in the binary. `private` carries 29 skills covering Go and Node conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
+
+The manifest keys:
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `name` | the directory name | The directory a pulled preset installs into |
+| `description` | empty | One line shown beside the name in the picker |
+| `skills` | every directory under `skills/` holding a `SKILL.md` | Which skills to link |
+
+## create-preset
+
+Scaffolds `~/.config/claudex/presets/<name>/` with a `preset.yaml`, an empty `AGENTS.partial.md`, and an empty `skills/`. Names take lowercase letters, digits, and single hyphens.
+
+## pull-preset
+
+Clones a repository at depth 1 into a temporary directory and installs the presets it holds under `~/.config/claudex/remote-presets/<owner>-<repo>/`. Nothing tracks the clone afterwards, so pulling again is how you update.
+
+```bash
+claudex pull-preset tanq16/presets                          # every preset in the repo
+claudex pull-preset https://github.com/tanq16/presets.git   # a full URL works too
+claudex pull-preset tanq16/monorepo --path tools/go-strict  # one, by repo-relative path
+```
+
+Without `--path`, a preset is the repository root when it holds a `preset.yaml`, and otherwise every directory one level under the root that holds one. The whole slug directory is replaced, so a preset deleted upstream disappears on the next pull. With `--path`, only that one preset is replaced and the rest of the slug is left alone.
+
+Cloning runs `git`, so a private repository works with whatever credentials you already have. A path on this machine is rejected rather than cloned, because a preset already here belongs in the presets directory. Removing a pulled repository means deleting its slug directory.
+
+## clean-cwd
+
+Removes what `apply` and `apply-preset` wrote: `.agents/`, both symlinks, the ClaudeX sections of `AGENTS.md`, and the `.git/info/exclude` block. A `.mcp.json` stays, and so does its exclude entry. The session resume file is stashed under `~/.config/claudex/resume-stash/` first, for `apply --restore-resume` to bring back.
+
+## launch
+
+Execs `claude` in the current directory with `--dangerously-skip-permissions`, a `--plugin-dir` pointing at the global plugin, and `CLAUDE_CONFIG_DIR` set to the account. Any inherited `CLAUDE_CONFIG_DIR` is stripped first so it cannot override that choice. The plugin is rebuilt on every launch, so language servers work without running `configure`. The directory is marked trusted in the account's `.claude.json`, so the trust dialog never appears.
+
+| Flag | Effect |
+|------|--------|
+| `-A/--account` | The account to run under, `~/.claude` by default |
+| `--continue` | Continue the most recent conversation in this directory |
+| `-r/--remote-control <name>` | Enable Remote Control under that session name |
+| `--connectors` | Load the claude.ai connectors as MCP servers |
+
+An older conversation is picked with `claude --resume` inside the session.
+
+## switch
+
+Moves every session of the current directory, with its history entries, out of the other accounts and into `-A/--account`, which is required.
+
+## Notes
+
+- **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`, which is rewritten from the binary along with the built-in presets.
+- **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten at every `serve` start and whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
