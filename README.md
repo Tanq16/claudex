@@ -14,7 +14,7 @@ It exists for juggling several Claude subscriptions, and everything except accou
 
 ## Security
 
-`serve` has no authentication. Anyone who reaches its port can start Claude sessions that run with `--dangerously-skip-permissions`, read and upload project files, and clone repositories with your `gh` login. It binds to `127.0.0.1` by default and rejects cross-origin requests from other sites in your browser. Exposing it beyond the machine is a reverse proxy's job, with authentication in front.
+`serve` has no authentication. Anyone who reaches its port can start Claude sessions that run with `--dangerously-skip-permissions` and prompt attached chats. They can also run shell commands in any project, read and upload project files, and clone repositories with your `gh` login. It binds to `127.0.0.1` by default and rejects cross-origin requests from other sites in your browser. Exposing it beyond the machine is a reverse proxy's job, with authentication in front.
 
 ## Capabilities
 
@@ -47,6 +47,12 @@ It exists for juggling several Claude subscriptions, and everything except accou
 | Desktop | Mobile |
 | :---: | :---: |
 | <img src=".github/assets/project-desktop.png" alt="Project desktop" width="100%" /> | <img src=".github/assets/project-mobile.png" alt="Project mobile" width="100%" /> |
+
+### Chat
+
+| Desktop | Mobile |
+| :---: | :---: |
+| <img src=".github/assets/chat-desktop.png" alt="Chat desktop" width="100%" /> | <img src=".github/assets/chat-mobile.png" alt="Chat mobile" width="100%" /> |
 
 ### Settings
 
@@ -210,7 +216,7 @@ claudex serve --root ~/code -p 9000
 
 A session runs detached or attached, chosen when it starts. A detached session is a window in a tmux session named `claudex`, running `claude` with no shell in between, so `tmux attach -t claudex` reaches the terminal at any time. Detached sessions outlive `serve`, since tmux is its own process. Remote Control is an optional launch toggle for them, and its name defaults to the project name.
 
-An attached session is a `claude -p` stream-json process that `serve` hosts itself and shows as a chat on the project page. Attached sessions stop with `serve` and come back with `claude --continue` at its next start. Ctrl+C on `serve` exits at once when every attached session is idle, and otherwise lists what is still running and asks first. `SIGTERM`, or a `serve` without a terminal, stops them without asking.
+An attached session is a `claude -p` stream-json process that `serve` hosts itself and shows as a chat on the project page. Attached sessions stop with `serve` and come back with `claude --continue` at its next start. Ctrl+C on `serve` exits at once when every attached session is idle. Otherwise it lists what is still running, and a second Ctrl+C stops those sessions and exits. `SIGTERM`, or a `serve` without a terminal, stops them without asking.
 
 A project shows as active while its session runs, and a restart continues the conversation with `claude --continue`.
 
@@ -229,6 +235,6 @@ Moves every session of the current directory, with its history entries, out of t
 - **tmux is required for `serve`.** `gh` is needed only to list and clone repositories in the new-session dialog.
 - **Account discovery.** `~/.claude` and every `~/.claudeN` directory whose suffix is digits, such as `~/.claude2`. Nothing else in your home directory counts as an account.
 - **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`, which is rewritten from the binary along with the built-in presets.
-- **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
+- **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten at every `serve` start and whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
 - **Language server binaries are yours to install.** ClaudeX writes the `.lsp.json`, and a server whose binary is missing is skipped while the rest still start. Install commands and the `typescript@5` pin are in [docs/language-servers.md](docs/language-servers.md).
 - **Another repo's agent files.** `.git/info/exclude` only reaches untracked files, so a `GEMINI.md` or `.cursor/` that the repository itself tracks stays in your working tree. [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers the sparse-checkout that removes them.
