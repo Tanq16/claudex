@@ -28,7 +28,7 @@ func Configure(dir, label string, statusline []byte, d *Defaults) (Paths, error)
 
 	paths.Statusline = filepath.Join(dir, "statusline.sh")
 	if err := os.WriteFile(paths.Statusline, statusline, 0o755); err != nil {
-		return paths, fmt.Errorf("write statusline script: %w", err)
+		return paths, err
 	}
 
 	paths.Settings = filepath.Join(dir, "settings.json")
@@ -38,7 +38,7 @@ func Configure(dir, label string, statusline []byte, d *Defaults) (Paths, error)
 			return paths, fmt.Errorf("existing %s is not valid JSON; refusing to overwrite: %w", paths.Settings, err)
 		}
 	} else if !os.IsNotExist(err) {
-		return paths, fmt.Errorf("read settings.json: %w", err)
+		return paths, err
 	}
 
 	for _, key := range d.stale(dir) {
@@ -58,11 +58,11 @@ func Configure(dir, label string, statusline []byte, d *Defaults) (Paths, error)
 
 	out, err := json.Marshal(settings, jsontext.WithIndent("  "))
 	if err != nil {
-		return paths, fmt.Errorf("encode settings.json: %w", err)
+		return paths, err
 	}
 	out = append(out, '\n')
 	if err := fsutil.WriteFileAtomic(paths.Settings, out, 0o644); err != nil {
-		return paths, fmt.Errorf("write settings.json: %w", err)
+		return paths, err
 	}
 	d.Written[dir] = slices.Sorted(maps.Keys(d.Settings))
 	return paths, nil

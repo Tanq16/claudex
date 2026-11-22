@@ -72,10 +72,10 @@ func MoveProject(projectPath, srcConfigDir, dstConfigDir string) (int, error) {
 		return len(ids), nil
 	}
 	if err := AppendRawHistory(dstConfigDir, moving); err != nil {
-		return len(ids), fmt.Errorf("appending to target history: %w", err)
+		return len(ids), err
 	}
 	if err := WriteRawHistory(srcConfigDir, rest); err != nil {
-		return len(ids), fmt.Errorf("updating source history: %w", err)
+		return len(ids), err
 	}
 	return len(ids), nil
 }
