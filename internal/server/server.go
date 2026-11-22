@@ -7,10 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -179,7 +181,7 @@ func (s *Server) Setup() error {
 }
 
 func (s *Server) Run() error {
-	addr := fmt.Sprintf("%s:%d", s.cfg.Host, s.cfg.Port)
+	addr := net.JoinHostPort(s.cfg.Host, strconv.Itoa(s.cfg.Port))
 	log.Info().Str("addr", addr).Str("root", s.root).Msg("starting")
 	return http.ListenAndServe(addr, http.NewCrossOriginProtection().Handler(s.mux))
 }
