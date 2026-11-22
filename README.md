@@ -14,6 +14,15 @@ It exists for juggling several Claude subscriptions, and everything except accou
 
 ## Philosophy
 
+Built to run Claude Code work from one place:
+
+- Skills and presets managed centrally, then turned on per project.
+- Projects bootstrapped from one page, from an existing directory, a new one, or a `gh` clone.
+- MCP servers and settings managed across every account.
+- Chats with rendered Markdown, beside a file tree read straight from disk.
+- Sessions, context, and tracked directories in view, with presets re-applied and sessions restarted in a click.
+- Conversations moved from one account to another.
+
 ClaudeX is opinionated, and it works best with its defaults.
 
 - **Two primitives.** Claude follows instruction files (`AGENTS.md`, with `CLAUDE.md` linked to it) and skills, nothing else. The main chat and every subagent inherit both.
