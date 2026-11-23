@@ -8,17 +8,19 @@ A native checkbox, radio, select, or number spinner ignores the palette and the 
 
 ```javascript
 input({ name, value = '', placeholder = '', type = 'text', icon, mono = false, attrs = '' }) {
-    const base = `<input type="${type}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="${ui.cls.input} ${icon ? 'pl-10' : ''} ${type === 'password' ? 'pr-12' : ''} ${mono ? 'font-mono' : ''}" ${attrs}>`;
+    const base = `<input type="${type}" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="${ui.cls.input} ${icon ? 'pl-10' : ''} ${type === 'password' ? 'pr-12' : ''} ${mono ? 'font-mono' : ''}" ${attrs}>`;
     if (!icon && type !== 'password') return base;
     return `<span class="relative flex">${icon ? `<i data-lucide="${icon}" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>` : ''}${base}${type === 'password' ? `<span class="absolute inset-y-0 right-1 flex items-center">${ui.iconButton('eye', { tip: 'Show', size: 'sm', variant: 'inset', attrs: 'data-ui="reveal"' })}</span>` : ''}</span>`;
 },
 
 search({ name, placeholder = 'Search', value = '', shortcut, attrs = '' }) {
-    return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none" ${attrs}>${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
+    return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none" ${attrs}>${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
 },
 ```
 
 An input with an `icon` gets a leading icon, and a `password` input gets a reveal button. The reveal is an `inset` icon button that flips the input's type through the delegation's `reveal` branch.
+
+Every text field carries `name` beside `data-name`. Chrome's Issues panel flags a form field with neither a `name` nor an `id`, and the delegation reads only `data-name`.
 
 A search field is `rounded-full`, unlike the `rounded-2xl` inputs, and shows its shortcut as `kbd` keys from `md` up. Its `attrs` land on the `<input>`, as they do for `ui.input`.
 
@@ -50,7 +52,7 @@ const inputs = `<div class="grid gap-3">
 ```javascript
 textarea({ name, value = '', placeholder = '', rows = 4, mono = false }) {
     return `<span class="relative flex min-w-0">
-        <textarea data-name="${ui.esc(name)}" data-scroll rows="${rows}" spellcheck="false" placeholder="${ui.esc(placeholder)}" class="${ui.cls.input} min-h-20 resize-none pr-6 leading-relaxed ${mono ? 'font-mono' : ''}">${ui.esc(value)}</textarea>
+        <textarea name="${ui.esc(name)}" data-name="${ui.esc(name)}" data-scroll rows="${rows}" spellcheck="false" placeholder="${ui.esc(placeholder)}" class="${ui.cls.input} min-h-20 resize-none pr-6 leading-relaxed ${mono ? 'font-mono' : ''}">${ui.esc(value)}</textarea>
         <span data-ui="grip" aria-hidden="true" class="absolute right-0.5 bottom-0.5 flex size-6 cursor-ns-resize touch-none items-center justify-center text-overlay0 transition-colors hover:text-overlay2"><svg viewBox="0 0 12 12" class="size-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10.5 1.5 1.5 10.5M10.5 6.5l-4 4"/></svg></span>
     </span>`;
 },
@@ -70,12 +72,12 @@ const textareas = `<div class="grid gap-3">
 ```javascript
 stepper({ name, value = 0, min = 0, max = 99, step = 1 }) {
     const b = (dir, icon) => `<button type="button" data-ui="step" data-step="${dir}" tabindex="-1" aria-label="${dir > 0 ? 'Increase' : 'Decrease'}" class="grid size-8 place-items-center rounded-full text-subtext0 transition-colors hover:bg-surface1 hover:text-text"><i data-lucide="${icon}" class="size-3.5"></i></button>`;
-    return `<span data-number class="inline-flex h-10 items-center rounded-full bg-surface0 p-1 focus-within:ring-2 focus-within:ring-mauve/40">${b(-1, 'minus')}<input type="number" data-name="${ui.esc(name)}" value="${value}" min="${min}" max="${max}" step="${step}" class="w-10 bg-transparent text-center font-mono text-sm text-text tabular-nums outline-none pointer-coarse:text-[16px]">${b(1, 'plus')}</span>`;
+    return `<span data-number class="inline-flex h-10 items-center rounded-full bg-surface0 p-1 focus-within:ring-2 focus-within:ring-mauve/40">${b(-1, 'minus')}<input type="number" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${value}" min="${min}" max="${max}" step="${step}" class="w-10 bg-transparent text-center font-mono text-sm text-text tabular-nums outline-none pointer-coarse:text-[16px]">${b(1, 'plus')}</span>`;
 },
 
 number({ name, value = 0, min, max, step = 1, unit = '' }) {
     return `<span data-number class="flex h-10 items-center rounded-2xl bg-surface0 pr-1 focus-within:ring-2 focus-within:ring-mauve/40">
-        <input type="number" data-name="${ui.esc(name)}" value="${value}" ${min !== undefined ? `min="${min}"` : ''} ${max !== undefined ? `max="${max}"` : ''} step="${step}" class="w-full min-w-0 bg-transparent pl-4 text-sm text-text tabular-nums outline-none pointer-coarse:text-[16px]">
+        <input type="number" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${value}" ${min !== undefined ? `min="${min}"` : ''} ${max !== undefined ? `max="${max}"` : ''} step="${step}" class="w-full min-w-0 bg-transparent pl-4 text-sm text-text tabular-nums outline-none pointer-coarse:text-[16px]">
         ${unit ? `<span class="pr-2 pl-1 text-xs text-overlay1">${ui.esc(unit)}</span>` : ''}
         <span class="flex h-8 flex-col">${[[1, 'chevron-up'], [-1, 'chevron-down']].map(([d, ic]) => `<button type="button" data-ui="step" data-step="${d}" tabindex="-1" aria-label="${d > 0 ? 'Increase' : 'Decrease'}" class="grid w-7 flex-1 place-items-center rounded-lg text-overlay1 hover:bg-surface1 hover:text-text"><i data-lucide="${ic}" class="size-3.5"></i></button>`).join('')}</span>
     </span>`;

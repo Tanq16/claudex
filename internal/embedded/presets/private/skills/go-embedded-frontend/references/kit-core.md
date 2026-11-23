@@ -68,10 +68,11 @@ button(label, { icon, iconRight, variant = 'secondary', size = 'md', action, att
     const sizes = { sm: 'h-8 px-3 text-xs gap-1.5', md: 'h-10 px-4 text-sm gap-2', lg: 'h-12 px-6 text-sm gap-2' };
     const iconSize = size === 'sm' ? 'size-3.5' : 'size-4';
     const i = (name, extra = '') => `<i data-lucide="${name}" class="${iconSize} shrink-0 ${extra}"></i>`;
-    const labelHtml = collapse ? `<span class="max-sm:hidden">${ui.esc(label)}</span>` : `<span>${ui.esc(label)}</span>`;
+    const labelHtml = collapse ? `<span data-label class="max-sm:hidden">${ui.esc(label)}</span>` : `<span>${ui.esc(label)}</span>`;
     const tipText = tip || (collapse ? label : '');
-    const btn = `<button type="${type}" ${tipText && !disabled ? `data-tip="${ui.esc(tipText)}"` : ''} class="inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} ${collapse ? 'max-sm:w-10 max-sm:px-0' : ''} ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}>${icon ? i(icon, spin ? 'animate-spin' : '') : ''}${labelHtml}${iconRight ? i(iconRight, '-mr-1 opacity-70') : ''}</button>`;
-    return disabled && tipText ? `<span data-tip="${ui.esc(tipText)}" class="inline-flex">${btn}</span>` : btn;
+    const tipAttrs = `data-tip="${ui.esc(tipText)}" ${tip ? '' : 'data-tip-collapse'}`;
+    const btn = `<button type="${type}" ${tipText && !disabled ? tipAttrs : ''} class="inline-flex shrink-0 items-center justify-center rounded-full font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} ${collapse ? 'max-sm:w-10 max-sm:px-0' : ''} ${variants[variant]} ${sizes[size]}" ${action ? `data-action="${action}"` : ''} ${disabled ? 'disabled' : ''} ${attrs}>${icon ? i(icon, spin ? 'animate-spin' : '') : ''}${labelHtml}${iconRight ? i(iconRight, '-mr-1 opacity-70') : ''}</button>`;
+    return disabled && tipText ? `<span ${tipAttrs} class="inline-flex">${btn}</span>` : btn;
 },
 
 iconButton(icon, { tip = '', action, variant = 'ghost', size = 'md', attrs = '', spin = false, disabled = false, pressed } = {}) {
@@ -92,7 +93,7 @@ iconButton(icon, { tip = '', action, variant = 'ghost', size = 'md', attrs = '',
 
 An icon-only button carries its name as both `aria-label` and `data-tip`. A disabled button's tooltip moves to a wrapping `<span>`, since a disabled button fires no pointer events.
 
-`collapse` drops the label below `sm` and keeps it as the tooltip. `pressed` renders `aria-pressed` for a toggle such as a pin. `inset` is the icon button inside a `surface0` control, hovering one rung further at `surface1`.
+`collapse` drops the label below `sm` and keeps it as the tooltip. The label carries `data-label` and the button `data-tip-collapse`, and the tooltip shows only while that label is hidden, since a visible label already says what the tooltip would. `pressed` renders `aria-pressed` for a toggle such as a pin. `inset` is the icon button inside a `surface0` control, hovering one rung further at `surface1`.
 
 The examples in every reference build their rows with two layout helpers.
 
@@ -352,8 +353,12 @@ tooltip: {
     timer: null,
     warmUntil: 0,
     target: null,
+    pointer: { x: 0, y: 0 },
 
     init() {
+        document.addEventListener('pointermove', (e) => {
+            ui.tooltip.pointer = { x: e.clientX, y: e.clientY };
+        }, { passive: true });
         document.addEventListener('pointerover', (e) => {
             if (e.pointerType !== 'mouse') return;
             const t = e.target.closest('[data-tip]');
@@ -385,27 +390,30 @@ tooltip: {
         clearTimeout(ui.tooltip.timer);
         if (ui.tooltip.el) ui.tooltip.el.remove();
         if (ui.popover.current || !t.dataset.tip) return;
+        if (t.hasAttribute('data-tip-collapse') && t.querySelector('[data-label]')?.checkVisibility()) return;
         ui.tooltip.target = t;
         const el = document.createElement('div');
         el.setAttribute('role', 'tooltip');
         el.className = `pointer-events-none fixed z-[90] max-w-64 rounded-xl bg-surface0 px-2.5 py-1.5 text-xs text-text shadow-lg shadow-shade/60 [animation:fade-in_.1s_ease-out] ${ui.scheme(t)}`;
         el.textContent = t.dataset.tip;
         ui.layer().appendChild(el);
-        const r = t.getBoundingClientRect();
-        const side = t.dataset.tipSide || 'top';
-        const gap = 8;
-        let top;
-        let left;
-        if (side === 'right' || side === 'left') {
-            top = r.top + r.height / 2 - el.offsetHeight / 2;
-            left = side === 'right' ? r.right + gap : r.left - el.offsetWidth - gap;
-        } else {
-            left = r.left + r.width / 2 - el.offsetWidth / 2;
-            top = side === 'bottom' || r.top - el.offsetHeight - gap < 8 ? r.bottom + gap : r.top - el.offsetHeight - gap;
-        }
-        el.style.left = `${Math.max(8, Math.min(left, innerWidth - el.offsetWidth - 8))}px`;
-        el.style.top = `${Math.max(8, top)}px`;
         ui.tooltip.el = el;
+        const r = t.hasAttribute('data-tip-pointer') ? new DOMRect(ui.tooltip.pointer.x, ui.tooltip.pointer.y, 0, 0) : t.getBoundingClientRect();
+        requestAnimationFrame(() => {
+            const side = t.dataset.tipSide || 'top';
+            const gap = 8;
+            let top;
+            let left;
+            if (side === 'right' || side === 'left') {
+                top = r.top + r.height / 2 - el.offsetHeight / 2;
+                left = side === 'right' ? r.right + gap : r.left - el.offsetWidth - gap;
+            } else {
+                left = r.left + r.width / 2 - el.offsetWidth / 2;
+                top = side === 'bottom' || r.top - el.offsetHeight - gap < 8 ? r.bottom + gap : r.top - el.offsetHeight - gap;
+            }
+            el.style.left = `${Math.max(8, Math.min(left, innerWidth - el.offsetWidth - 8))}px`;
+            el.style.top = `${Math.max(8, top)}px`;
+        });
     },
 
     hide() {
@@ -422,7 +430,9 @@ tooltip: {
 
 A tooltip comes from `data-tip` on any element. On a mouse it shows after 450ms, and for 400ms after one hides the next shows at once, so sweeping along a toolbar does not wait on every button. Keyboard focus shows it at once on `:focus-visible`, and a `pointerdown` or a scroll hides it.
 
-`data-tip-side` picks the side, and a top tooltip flips below its target when there is no room above.
+`data-tip-side` picks the side, and a top tooltip flips below its target when there is no room above. `data-tip-pointer` anchors the tooltip at the pointer instead of the target's center, for a target too tall or too wide for its center to sit near the pointer.
+
+The tooltip is placed in the next animation frame. The Tailwind browser build compiles a class the first time it appears, after the element is inserted, so a measure taken in the same task reads an unstyled box as wide as the page.
 
 ```javascript
 modal: {

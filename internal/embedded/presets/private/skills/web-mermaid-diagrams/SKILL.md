@@ -8,7 +8,7 @@ user-invocable: false
 
 **One config object, read off the page palette, themes every Mermaid diagram type in whichever theme the page is wearing.**
 
-Mermaid is vendored and pinned at `mermaid@11.17.2`, served from the page's own origin.
+Mermaid is vendored and pinned at `mermaid@12.3.0`, served from the page's own origin.
 
 ```html
 <script src="/static/js/mermaid.min.js"></script>
@@ -22,29 +22,57 @@ Mermaid is vendored and pinned at `mermaid@11.17.2`, served from the page's own 
 
 ```javascript
 mermaid(container) {
-    const nodes = [...container.querySelectorAll('.mermaid')];
-    if (!nodes.length) return;
-    nodes.forEach((n) => {
+    if (!container.isConnected) return;
+    container.querySelectorAll('.mermaid').forEach((n) => {
         n.dataset.src ??= n.textContent;
         n.removeAttribute('data-processed');
         n.textContent = n.dataset.src;
+        md.seen.observe(n);
     });
+},
+
+seen: new IntersectionObserver((entries) => entries.forEach((e) => {
+    if (!e.isIntersecting) return;
+    md.seen.unobserve(e.target);
+    md.pending.push(e.target);
+    md.drain();
+})),
+
+pending: [],
+draining: false,
+
+async drain() {
+    if (md.draining) return;
+    md.draining = true;
+    await document.fonts.ready;
     mermaid.initialize(mermaidConfig());
-    document.fonts.ready
-        .then(() => mermaid.run({ nodes }))
-        .catch((err) => ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
+    while (md.pending.length) {
+        const n = md.pending.shift();
+        if (!n.isConnected || n.hasAttribute('data-processed')) continue;
+        try {
+            await mermaid.run({ nodes: [n] });
+            md.fit(n);
+            md.fitter.observe(n);
+        } catch (err) {
+            ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
+        }
+        await new Promise((r) => setTimeout(r));
+    }
+    md.draining = false;
 },
 ```
 
-Passing an explicit node list re-renders only the diagrams in the container that changed, rather than rescanning the document.
+A diagram renders when it first scrolls into view, one per task. Rendering every diagram of a long document at once froze the page for over a second, mostly in the Tailwind browser build rescanning the document after each diagram changed the DOM, and the yield between diagrams lets input through.
+
+A container no longer in the document is skipped, and so is a queued diagram removed before its turn. A re-render can replace either while the queue waits, and a detached node has no layout for Mermaid to measure its labels against.
 
 The run waits for `document.fonts.ready`. Mermaid sizes each node from its label's measured width, and a label measured in the fallback face before Inter loads comes out clipped on a cold load.
 
-Each diagram keeps its source in `data-src` the first time it renders. Mermaid replaces the element's text with SVG and marks it `data-processed`, which a later run skips, so a theme toggle restores the source and clears the mark before running again.
+Each diagram keeps its source in `data-src` the first time it renders. Mermaid replaces the element's text with SVG and marks it `data-processed`, which a later run skips, so a theme toggle restores the source and clears the mark before observing it again.
 
 A rejected run raises a toast through the page's `ui` kit, since an unhandled rejection reports only to the console.
 
-A `mermaid` code fence becomes a `<div class="mermaid">` during Markdown parsing, and `mermaid.run()` takes over those elements afterwards.
+A `mermaid` code fence becomes a `<div class="mermaid">` during Markdown parsing, and `md.mermaid` takes over those elements afterwards.
 
 `fontFamily: 'Inter'` matches the body text, so diagram labels do not arrive in a different typeface from the paragraph above them.
 
@@ -59,12 +87,16 @@ const c = (name) => css.getPropertyValue(`--ctp-${name}`).trim();
 
 The config is a function rather than a constant, so every call reads the palette the page wears at that moment.
 
+`look: 'classic'` and `layout: 'dagre'` keep the flat nodes and the dagre layout. Mermaid 12 defaults to the neo look, which draws a drop shadow under every node, and to the ELK layout, which reroutes flowchart edges at right angles.
+
 The diagram canvas takes `base`, the same rung as the container it sits in, so the two do not read as a box inside a box. Nodes sit one rung up on `surface0` and a cluster groups them one rung down on `mantle`.
 
 ```javascript
 const mermaidConfig = () => ({
     startOnLoad: false,
     theme: 'base',
+    look: 'classic',
+    layout: 'dagre',
     fontFamily: 'Inter',
     ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
     themeVariables: {
@@ -177,9 +209,35 @@ The pie, git, and colour-scale series each cycle through the full Catppuccin acc
 .mermaid:not([data-processed]) { color: transparent; min-height: 8rem; }
 ```
 
-`overflow-x: auto` keeps a wide diagram inside its own scroll region instead of stretching the page. Every diagram type in the config sets `useMaxWidth: false`, because Mermaid's default scales a wide diagram down to the container's width. On a phone that shrinks its labels past reading.
+The Markdown fence renders the container as `<div class="mermaid" data-scroll data-scroll-cue>`, a scroll region of the page's kit. `data-scroll-cue` keeps the horizontal thumb showing while the diagram overflows, so a diagram cut at the edge reads as scrollable rather than clipped.
 
 An unrendered diagram hides its source text and holds a minimum height, so the page neither flashes raw Mermaid syntax nor jumps while the fonts load.
+
+```javascript
+fitter: new ResizeObserver((entries) => entries.forEach((e) => md.fit(e.target))),
+
+fit(node) {
+    const svg = node.querySelector(':scope > svg');
+    if (!node.isConnected || !svg) {
+        md.fitter.unobserve(node);
+        return;
+    }
+    const box = svg.viewBox.baseVal;
+    if (!node.clientWidth || !box?.width) return;
+    const css = getComputedStyle(node);
+    const room = node.clientWidth - parseFloat(css.paddingLeft) - parseFloat(css.paddingRight);
+    const scale = Math.max(0.6, Math.min(1, room / box.width));
+    svg.style.maxWidth = 'none';
+    svg.style.width = `${box.width * scale}px`;
+    svg.style.height = `${box.height * scale}px`;
+},
+```
+
+A diagram scales down to fit its container until it reaches 60% of its natural size, then holds that size and scrolls. Below 60% the labels stop being readable on a phone, and a diagram that only scrolled would hide part of itself in a column that could show all of it.
+
+Every diagram type in the config sets `useMaxWidth: false`, so the SVG arrives at its natural size and `md.fit` alone decides the scale. Mermaid's default shrinks a wide diagram to the container's width with no floor.
+
+The `ResizeObserver` refits a diagram whenever its container changes width, so collapsing a sidebar grows the diagram back. A diagram that has left the document stops being observed.
 
 ## Gantt Overrides
 

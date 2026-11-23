@@ -1,6 +1,6 @@
 ---
 name: review-code
-description: "A thorough multi-agent audit of an existing codebase against the development skills, with one sub-agent per domain. Use when re-engaging a project you have not touched recently, when the skills may have changed since the code was written, when auditing a specific package or domain, or when a deliberate compliance pass is wanted. Not for checking the diff you just wrote, which the develop skill already covers. Accepts an optional target: a domain keyword such as cli, node, infra, or concurrency, or a package path such as internal/server."
+description: "A thorough multi-agent audit of an existing codebase against the development skills, with one sub-agent per domain. Use when re-engaging a project you have not touched recently, when the skills may have changed since the code was written, when auditing a specific package or domain, or when a deliberate compliance pass is wanted. Not for checking the diff you just wrote, which the develop skill already covers. Accepts an optional target: a domain keyword such as cli, server, infra, or concurrency, or a package path such as internal/server."
 user-invocable: true
 ---
 
@@ -17,7 +17,6 @@ Read the manifest for every domain in scope before that domain is reviewed: by y
 - `./references/review-domain-go-cli.md`: the command tree, flags and arguments, output tiers, prompts, progress
 - `./references/review-domain-go-server.md`: package architecture, HTTP server, OAuth, frontend
 - `./references/review-domain-go-concurrency.md`: goroutine primitives and the job pipeline
-- `./references/review-domain-node.md`: Node layout, idioms, server, auth, config, frontend
 - `./references/review-domain-infra.md`: Makefiles, release workflow, containers, README, extensions
 
 ## Where the Expected Pattern Comes From
@@ -40,7 +39,6 @@ Every finding cites the skill and the section it comes from. A finding that cann
 | `go.mod` with `internal/server/` and no `static/`, no `utils/` | Go Headless API Service |
 | `go.mod` with no `main.go` and no `cobra` | Go Library |
 | `manifest.json` carrying `manifest_version` | Chrome Extension |
-| `package.json` with `"type":"module"`, plus `public/` and `src/`, no `go.mod` | Node Web Only |
 | `go.mod` alone | treat as Go CLI Only |
 
 Report and stop when nothing matches, since a review against the wrong taxonomy produces findings that are all false.
@@ -52,17 +50,16 @@ With no target, go to Step 3a. With one, resolve it here first.
 | Keywords | Domain | Scope |
 |---|---|---|
 | `core`, `foundations`, `layout`, `logging`, `idioms`, `config` | Go Core | whole domain |
-| `tests`, `testing` | Go Core and Node | the testing checks only |
+| `tests`, `testing` | Go Core | the testing checks only |
 | `cli`, `cobra`, `structure`, `root`, `commands`, `flags`, `args`, `stdin`, `output`, `prompts`, `progress`, `tui` | Go CLI | whole domain |
 | `server`, `backend`, `frontend`, `web`, `http`, `sse`, `auth`, `oauth`, `markdown`, `mermaid` | Go Server and Frontend | whole domain |
 | `concurrency`, `goroutines`, `pipeline` | Go Concurrency | whole domain |
-| `node`, `nodejs`, `esm` | Node | whole domain |
 | `makefile`, `assets`, `build` | Infrastructure | Makefile checks only |
 | `ci`, `cd`, `cicd`, `release`, `workflow` | Infrastructure | release workflow checks only |
 | `docker`, `container`, `dockerfile` | Infrastructure | container checks only |
 | `readme` | Infrastructure | README checks only |
 | `chrome`, `extension` | Infrastructure | extension checks only |
-| `deps`, `dependencies` | Go Core and Node | dependency checks only |
+| `deps`, `dependencies` | Go Core | dependency checks only |
 | `infra`, `infrastructure` | Infrastructure | whole domain |
 
 A target containing `/` is a package path:
@@ -75,13 +72,12 @@ A target containing `/` is a package path:
 | `internal/server/**` | Go Server and Frontend |
 | `internal/auth/**` | Go Server and Frontend |
 | `internal/**`, anything else | Go Core and Go Server and Frontend |
-| `src/**`, `public/**`, `test/**`, `package.json` | Node |
 | `.github/**`, `Makefile`, `Dockerfile`, `README.md` | Infrastructure |
 
 A target that matches no keyword row and contains no `/` resolves to nothing, and is reported rather than guessed at:
 
 ```
-No domain matches the target "[target]". The domains are core, cli, server, concurrency, node, and infra.
+No domain matches the target "[target]". The domains are core, cli, server, concurrency, and infra.
 ```
 
 Guessing at the nearest-looking domain reviews something the user did not ask about, and every finding it produces is noise they have to read before discarding. Naming the domains costs one message and lets them say which they meant.
@@ -104,7 +100,6 @@ Otherwise go to Step 3b.
 | Go Headless API Service | Go Core, Go Server and Frontend, Go Concurrency (conditional), Infrastructure |
 | Go Library | Go Core |
 | Chrome Extension | Infrastructure |
-| Node Web Only | Node, Infrastructure |
 
 With one domain applying, handle it inline: read the manifest, load its skills and references, run the checks, and produce the report. Spawning a single sub-agent adds a round trip and no parallelism.
 

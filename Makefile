@@ -13,13 +13,13 @@ GOARCH ?= $(shell go env GOARCH)
 
 # Pinned asset versions. Bump deliberately, never float.
 TAILWIND_VERSION    := 4.3.5
-LUCIDE_VERSION      := 1.73.0
+LUCIDE_VERSION      := 1.77.0
 FONTAWESOME_VERSION := 7.3.1
-MARKED_VERSION      := 18.2.0
+MARKED_VERSION      := 18.2.1
 HIGHLIGHTJS_VERSION := 11.12.0
-DOMPURIFY_VERSION   := 3.4.18
-MERMAID_VERSION     := 11.17.2
-PDFJS_VERSION       := 6.4.299
+DOMPURIFY_VERSION   := 3.5.0
+MERMAID_VERSION     := 12.3.0
+PDFJS_VERSION       := 6.5.438
 
 STATIC_DIR := internal/server/static
 JS_DIR     := $(STATIC_DIR)/js

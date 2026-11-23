@@ -22,7 +22,7 @@ Skip it for a question with no code change. A deliberate re-audit of an existing
 
 State in one line what is being built or changed, then classify it.
 
-**Project type**, read off the tree: CLI Only, Web Only, CLI + Web, Headless API Service, Library, Node Web Only, or Chrome Extension. `go.mod` with `cmd/` and `utils/` and no `internal/server/` is CLI Only; `internal/server/static/` without `utils/` is Web Only; both together is the hybrid; `package.json` with `"type":"module"` plus `public/` and `src/` is Node Web Only; `manifest.json` with `manifest_version` is an extension.
+**Project type**, read off the tree: CLI Only, Web Only, CLI + Web, Headless API Service, Library, or Chrome Extension. `go.mod` with `cmd/` and `utils/` and no `internal/server/` is CLI Only; `internal/server/static/` without `utils/` is Web Only; both together is the hybrid; `manifest.json` with `manifest_version` is an extension.
 
 **Work type**: new project, feature, refactor, bug fix, infrastructure, docs.
 
@@ -99,18 +99,13 @@ The LSP is already wired into every session for Go, Python, TypeScript, and Java
 | The embedded SPA under `internal/server/static/` | `go-embedded-frontend` |
 | Rendering Markdown in a browser page | `web-markdown-rendering` |
 | Mermaid diagrams in a browser page | `web-mermaid-diagrams` |
-| Any Node code | `node-project-layout`, `node-idioms` |
-| `config.json`, deep merge, `state.json`, the session secret | `node-config-state` |
-| The `node:http` and `ws` server, routing, static serving | `node-http-ws-server` |
-| Password and session-cookie auth in Node | `node-auth` |
-| The vanilla-JS SPA under `public/` | `node-frontend` |
 | A Go or Chrome extension Makefile | `go-makefile` |
-| A Node Makefile, vendoring, the native addon build | `node-makefile` |
-| What a Node project ships: binary or tarball | `node-release-artifacts` |
 | A Dockerfile or docker-compose, in any language | `dockerize` |
 | `.github/workflows/release.yaml`, version bumps | `github-release-workflow` |
 | README | `project-readme` |
 | Chrome extension | `chrome-extension` |
+
+Code in another language, Node included, reads the Go skill for the same concern as its reference until it has a skill of its own.
 
 A whole project type pulls in a predictable set. A CLI Only tool takes the two Go skills plus `go-cli-structure`, `go-cli-commands`, and `go-cli-output`, and adds the others as the surface grows. A Web Only service takes the two Go skills plus `go-cli-structure`, `go-http-server`, `go-package-architecture`, `go-embedded-frontend`, and `go-makefile`, since its `serve` command and its asset download are part of every build.
 

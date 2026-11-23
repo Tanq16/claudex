@@ -44,19 +44,10 @@ Where a language can produce a self-contained artifact, produce one and put it o
 |---|---|---|
 | Go | `CGO_ENABLED=0` static binary | `alpine` |
 | Rust | static binary, or a glibc binary | `alpine` or `debian:*-slim` |
-| Node, pure JS | the runtime vendored into a directory beside the app and executed directly | `debian:*-slim` |
-| Node, native addon | none, the addon is glibc-linked | `debian:*-slim` with the runtime vendored |
 | Python | none in the general case | `python:*-slim` |
 | Java | a jlink image, or a fat jar | `eclipse-temurin:*-jre-alpine`, or `*-jre` |
 
 When a self-contained artifact is not possible, use the slim or alpine variant of that language's official runtime image, matching the libc the artifact was built against. A full runtime image carries build tooling the running process never uses.
-
-Vendoring a runtime means copying the interpreter into the image and invoking it by path, rather than depending on one being installed and on `PATH`:
-
-```dockerfile
-COPY --from=builder /app/runtime /app/runtime
-ENTRYPOINT ["/app/runtime/bin/node", "/app/bin/app.js"]
-```
 
 ## alpine or debian-slim
 
@@ -64,16 +55,14 @@ The deciding question is whether anything in the image is linked against glibc.
 
 A Go binary built with `CGO_ENABLED=0` links against nothing at all. It contains its own runtime, makes syscalls directly, and runs identically on musl and glibc, so alpine is the correct base and gives the smallest image.
 
-A compiled native addon is the opposite case. A Node N-API addon, or a Python wheel with a compiled extension, is built against glibc, and alpine's musl cannot load it. The failure appears at run time as a missing symbol rather than at build time, which is why the choice has to be made deliberately rather than discovered.
-
-The official Node binary is itself glibc-linked, so vendoring it into an alpine image fails for the same reason even when the application is pure JavaScript.
+A compiled native extension is the opposite case. A Python wheel with a compiled extension is built against glibc, and alpine's musl cannot load it. The failure appears at run time as a missing symbol rather than at build time, which is why the choice has to be made deliberately rather than discovered.
 
 Alpine remains viable for those cases only with a deliberate musl matrix: a musl build of the runtime plus every native dependency recompiled against musl inside an alpine builder. That is a real option, not a forbidden one, but it is a decision to take on purpose. Copying a glibc artifact into an alpine image is never one.
 
 ## Go Template
 
 ```dockerfile
-FROM --platform=$BUILDPLATFORM golang:1.27.0-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.27.4-alpine AS builder
 
 WORKDIR /app
 
@@ -93,7 +82,7 @@ RUN make assets && \
       -ldflags="-s -w -X 'github.com/[GITHUB_USER]/[APP_NAME]/cmd.AppVersion=${VERSION}'" \
       -o /app/[APP_NAME] .
 
-FROM alpine:3.24.1
+FROM alpine:3.24.4
 
 RUN apk add --no-cache ca-certificates tzdata && \
     addgroup -g 10001 -S app && \
@@ -120,63 +109,6 @@ CMD ["serve", "-d", "/data", "-H", "0.0.0.0"]
 `--chown` on the `COPY` sets ownership as the layer is written, rather than adding a second layer that duplicates every copied file with new metadata.
 
 `USER` is set after the last `RUN` that needs to write, since a `RUN` after it executes unprivileged and cannot create the directories the app needs.
-
-## Node Template
-
-```dockerfile
-FROM debian:trixie-slim AS builder
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      curl ca-certificates build-essential python3 unzip xz-utils make \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Vendor the runtime so the final stage depends on no installed node. Node names
-# amd64 "x64", so TARGETARCH is translated rather than interpolated directly.
-ARG NODE_VERSION=24.20.0
-ARG TARGETARCH
-RUN NODE_ARCH="$(test "$TARGETARCH" = amd64 && echo x64 || echo "$TARGETARCH")" \
-    && curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-${NODE_ARCH}.tar.xz" \
-      -o /tmp/node.tar.xz \
-    && mkdir -p /app/runtime \
-    && tar -xJf /tmp/node.tar.xz -C /app/runtime --strip-components=1 \
-    && rm /tmp/node.tar.xz
-ENV PATH="/app/runtime/bin:${PATH}"
-
-COPY package.json package-lock.json ./
-RUN npm_config_build_from_source=true npm ci --omit=dev
-
-COPY . .
-RUN make vendor
-
-FROM debian:trixie-slim
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-      ca-certificates tzdata \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd -g 10001 app \
-    && useradd -u 10001 -g app -M -s /usr/sbin/nologin app
-
-WORKDIR /app
-COPY --from=builder --chown=10001:10001 /app /app
-
-RUN mkdir -p /data && chown 10001:10001 /data
-VOLUME ["/data"]
-
-USER 10001:10001
-EXPOSE 8080
-ENTRYPOINT ["/app/runtime/bin/node", "/app/bin/[APP_NAME].js"]
-CMD ["--config", "/data/config.json"]
-```
-
-The Node builder carries no `--platform=$BUILDPLATFORM`, because a native addon has to be compiled for the architecture that will run it. Each target platform therefore builds its own emulated builder, which is slower than the Go path and unavoidable.
-
-The runtime is downloaded in the builder and copied forward, so the final image needs no Node installation and the version is fixed by the build argument rather than by a base image tag.
-
-`npm ci --omit=dev` installs only what the process runs. Development dependencies in a production image are packages to patch that nothing imports.
-
-`build-essential` and `python3` are in the builder for `node-gyp` and appear nowhere in the final stage, which is the whole point of the split.
 
 ## Compose
 
@@ -225,4 +157,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 |---|---|
 | `[APP_NAME]` | the application name and binary or entry file |
 | `[GITHUB_USER]` | the image namespace |
-| `1.27.0`, `3.24.1`, `trixie`, `24.20.0` | the current pinned versions, checked rather than assumed |
+| `1.27.4`, `3.24.4` | the current pinned versions, checked rather than assumed |

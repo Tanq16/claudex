@@ -217,18 +217,18 @@ const ui = {
     },
 
     input({ name, value = '', placeholder = '', type = 'text', icon, mono = false, attrs = '' }) {
-        const base = `<input type="${type}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="${ui.cls.input} ${icon ? 'pl-10' : ''} ${mono ? 'font-mono' : ''}" ${attrs}>`;
+        const base = `<input type="${type}" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="${ui.cls.input} ${icon ? 'pl-10' : ''} ${mono ? 'font-mono' : ''}" ${attrs}>`;
         if (!icon) return base;
         return `<span class="relative flex"><i data-lucide="${icon}" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i>${base}</span>`;
     },
 
     search({ name, placeholder = 'Search', value = '', shortcut, attrs = '' }) {
-        return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none" ${attrs}>${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
+        return `<span class="relative flex"><i data-lucide="search" class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-overlay1"></i><input type="search" name="${ui.esc(name)}" data-name="${ui.esc(name)}" value="${ui.esc(value)}" placeholder="${ui.esc(placeholder)}" spellcheck="false" autocomplete="off" class="w-full rounded-full bg-surface0 py-2.5 pr-4 pl-10 text-sm text-text placeholder:text-overlay0 outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px] [&::-webkit-search-cancel-button]:appearance-none" ${attrs}>${shortcut ? `<span class="pointer-events-none absolute top-1/2 right-3 flex -translate-y-1/2 gap-1 max-md:hidden">${ui.kbd(shortcut)}</span>` : ''}</span>`;
     },
 
     textarea({ name, value = '', placeholder = '', rows = 4, mono = false, attrs = '' }) {
         return `<span class="relative flex min-w-0">
-            <textarea data-name="${ui.esc(name)}" data-scroll rows="${rows}" spellcheck="false" placeholder="${ui.esc(placeholder)}" class="${ui.cls.input} min-h-20 resize-none pr-6 leading-relaxed ${mono ? 'font-mono' : ''}" ${attrs}>${ui.esc(value)}</textarea>
+            <textarea name="${ui.esc(name)}" data-name="${ui.esc(name)}" data-scroll rows="${rows}" spellcheck="false" placeholder="${ui.esc(placeholder)}" class="${ui.cls.input} min-h-20 resize-none pr-6 leading-relaxed ${mono ? 'font-mono' : ''}" ${attrs}>${ui.esc(value)}</textarea>
             <span data-ui="grip" aria-hidden="true" class="absolute right-0.5 bottom-0.5 flex size-6 cursor-ns-resize touch-none items-center justify-center text-overlay0 transition-colors hover:text-overlay2"><svg viewBox="0 0 12 12" class="size-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M10.5 1.5 1.5 10.5M10.5 6.5l-4 4"/></svg></span>
         </span>`;
     },

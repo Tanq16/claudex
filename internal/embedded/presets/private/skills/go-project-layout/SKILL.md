@@ -33,7 +33,7 @@ project-root/
 ├── Makefile                # build targets, no docker targets
 ├── README.md
 ├── .github/
-│   ├── assets/logo.png
+│   ├── assets/logo.svg
 │   └── workflows/release.yaml   # binaries only
 ├── cmd/
 │   ├── root.go             # zerolog, --debug, utils
@@ -63,7 +63,7 @@ project-root/
 ├── Dockerfile
 ├── README.md
 ├── .github/
-│   ├── assets/logo.png
+│   ├── assets/logo.svg
 │   └── workflows/release.yaml   # docker and binaries
 ├── cmd/
 │   ├── root.go             # zerolog, --debug, no utils

@@ -6,6 +6,7 @@ import (
 	"encoding/json/v2"
 	"net/http"
 	"os/exec"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -58,6 +59,50 @@ func (s *Server) handleGit(r *http.Request) (any, error) {
 		g.Branch, g.Detached = strings.TrimSpace(string(out)), true
 	}
 	return g, nil
+}
+
+var changeRank = map[string]int{"U": 1, "A": 2, "D": 3, "M": 4}
+
+func changeOf(x, y byte) string {
+	switch {
+	case x == '?':
+		return "U"
+	case x == 'D' || y == 'D':
+		return "D"
+	case x == 'A':
+		return "A"
+	default:
+		return "M"
+	}
+}
+
+func uncommittedChanges(ctx context.Context, dir string) map[string]string {
+	prefix, err := exec.CommandContext(ctx, "git", "-C", dir, "rev-parse", "--show-prefix").Output()
+	if err != nil {
+		return nil
+	}
+	out, err := exec.CommandContext(ctx, "git", "-C", dir, "status", "--porcelain", "-z", "--untracked-files=all", "--no-renames", "--", ".").Output()
+	if err != nil {
+		return nil
+	}
+	changes := map[string]string{}
+	for entry := range strings.SplitSeq(string(out), "\x00") {
+		if len(entry) < 4 {
+			continue
+		}
+		rel, ok := strings.CutPrefix(entry[3:], strings.TrimSpace(string(prefix)))
+		if !ok {
+			continue
+		}
+		change := changeOf(entry[0], entry[1])
+		changes[rel] = change
+		for d := path.Dir(rel); d != "."; d = path.Dir(d) {
+			if changeRank[change] > changeRank[changes[d]] {
+				changes[d] = change
+			}
+		}
+	}
+	return changes
 }
 
 func pullRequestOf(ctx context.Context, dir string) *pullRequest {

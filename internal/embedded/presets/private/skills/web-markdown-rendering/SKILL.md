@@ -8,7 +8,7 @@ user-invocable: false
 
 **Marked parses, DOMPurify sanitizes, Highlight.js tokenizes the code, and one CSS block colors all of it from the page's `--ctp-*` palette in either theme.**
 
-The libraries are vendored and pinned, never loaded from a CDN at run time: `marked@18.2.0`, `dompurify@3.4.18`, and `highlight.js@11.12.0`. Highlight.js contributes its grammars and no stylesheet, since a fixed-hex theme such as `github-dark` stays dark when the page turns light.
+The libraries are vendored and pinned, never loaded from a CDN at run time: `marked@18.2.1`, `dompurify@3.5.0`, and `highlight.js@11.12.0`. Highlight.js contributes its grammars and no stylesheet, since a fixed-hex theme such as `github-dark` stays dark when the page turns light.
 
 ```html
 <script src="/static/js/marked.umd.js"></script>
@@ -30,6 +30,14 @@ The three steps run in this order after every content change, because each depen
 ```javascript
 render(container, source, opts) {
     container.innerHTML = DOMPurify.sanitize(marked.parse(source, opts));
+    container.querySelectorAll('table').forEach((table) => {
+        const wrap = Object.assign(document.createElement('div'), { className: 'mb-6 overflow-x-auto' });
+        wrap.dataset.scroll = '';
+        wrap.dataset.scrollCue = '';
+        wrap.dataset.table = '';
+        table.replaceWith(wrap);
+        wrap.appendChild(table);
+    });
     md.mermaid(container);
     ui.icons(container);
 },
@@ -37,7 +45,9 @@ render(container, source, opts) {
 
 Marked passes raw HTML in the source straight through, so its output is sanitized before it reaches the DOM. Without that, rendering a README or a note runs any `<script>` or `onerror` handler the file carries.
 
-`md.mermaid` is the diagram step from `web-mermaid-diagrams`, and it returns early when the container holds no diagram.
+Each table moves into a scrolling wrapper after the parse, so a wide table scrolls inside the column instead of being clipped by it.
+
+`md.mermaid` is the diagram step from `web-mermaid-diagrams`, which queues each diagram to render once it scrolls into view.
 
 `ui.icons` runs last and unconditionally, since the callouts and the copy buttons emit `<i data-lucide>` placeholders on every parse.
 
@@ -56,13 +66,13 @@ const md = {
         marked.use({
             renderer: {
                 code({ text, lang }) {
-                    if (lang === 'mermaid') return `<div class="mermaid">${ui.esc(text)}</div>`;
+                    if (lang === 'mermaid') return `<div class="mermaid" data-scroll data-scroll-cue>${ui.esc(text)}</div>`;
                     const language = hljs.getLanguage(lang) ? lang : 'plaintext';
                     let html = ui.esc(text);
                     try {
                         html = hljs.highlight(text, { language }).value;
                     } catch {}
-                    return `<div class="group relative"><pre data-scroll><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
+                    return `<div class="group relative"><pre data-scroll data-scroll-cue><code class="hljs language-${language}">${html}</code></pre><span class="absolute top-2 right-2 ${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy', size: 'sm', variant: 'secondary', attrs: 'data-action="md-copy"' })}</span></div>`;
                 },
                 checkbox({ checked }) {
                     return `<span role="checkbox" aria-checked="${checked}" aria-disabled="true" class="mr-2 inline-flex size-5 items-center justify-center rounded-lg align-middle ${checked ? 'bg-mauve text-crust' : 'bg-surface1'}">${checked ? '<i data-lucide="check" class="size-3.5" stroke-width="3"></i>' : ''}</span>`;
@@ -86,7 +96,7 @@ const md = {
 
 A `mermaid` fence becomes a `<div class="mermaid">` holding the escaped source rather than a highlighted block, and it carries no copy button. The escape keeps an arrow such as `-->` or a `<br/>` label from being rewritten by the HTML parser and the sanitizer before Mermaid reads the text back.
 
-A fence's `<pre>` carries `data-scroll`, so a long line scrolls sideways behind the kit's drawn horizontal thumb rather than with no visible bar.
+A fence's `<pre>`, a diagram, and a table wrapper each carry `data-scroll data-scroll-cue`. `data-scroll` gives the block the kit's drawn thumb, and `data-scroll-cue` keeps the horizontal thumb showing while the block overflows, so a block cut at the column's edge reads as scrollable rather than clipped.
 
 Heading IDs are slugged from the rendered text with tags stripped, so a heading containing inline code or a link still produces a usable anchor.
 
@@ -188,6 +198,7 @@ Each Highlight.js token class reads a palette variable, so highlighted code re-t
 
 ```css
 .markdown-body table { width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid color-mix(in oklab, var(--ctp-surface1) 50%, transparent); border-radius: 1rem; overflow: hidden; margin-bottom: 1.5rem; font-size: 14px; }
+.markdown-body [data-table] > table { margin-bottom: 0; }
 .markdown-body thead { background-color: color-mix(in oklab, var(--ctp-mauve) 10%, transparent); }
 .markdown-body tr:nth-child(2n) { background-color: color-mix(in oklab, var(--ctp-surface0) 30%, transparent); }
 .markdown-body th { color: var(--ctp-mauve); font-weight: 600; border-bottom: 1px solid color-mix(in oklab, var(--ctp-surface1) 50%, transparent); border-right: 1px solid color-mix(in oklab, var(--ctp-surface0) 50%, transparent); padding: 10px 16px; text-align: left; }
@@ -197,6 +208,8 @@ Each Highlight.js token class reads a palette variable, so highlighted code re-t
 ```
 
 `border-collapse: separate` with `overflow: hidden` is what lets the rounded corners clip the header background; collapsed borders ignore the radius.
+
+A table wraps its cells first and scrolls only after that. It is `width: 100%`, and a table never renders narrower than its min-content, so it overflows its `data-table` wrapper only once its longest unbreakable content no longer fits the column. The wrapper is what scrolls, since the table's own `overflow: hidden` clips its corners and cannot scroll. The wrapper carries the bottom margin, so the table inside it drops its own.
 
 ### Blockquotes, Rules, and Images
 

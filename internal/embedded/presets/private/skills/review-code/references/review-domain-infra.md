@@ -3,11 +3,9 @@
 **Applies to:** every project type. Each category names the types it covers.
 
 **Skills to load, in full, before running any check below:**
-- `[SKILLS_DIR]/go-makefile/SKILL.md` (Go and Chrome extension projects)
-- `[SKILLS_DIR]/node-makefile/SKILL.md` (Node projects)
+- `[SKILLS_DIR]/go-makefile/SKILL.md`
 - `[SKILLS_DIR]/github-release-workflow/SKILL.md`
 - `[SKILLS_DIR]/dockerize/SKILL.md` (Category 3 only)
-- `[SKILLS_DIR]/node-release-artifacts/SKILL.md` (Node projects, Category 4 only)
 - `[SKILLS_DIR]/project-readme/SKILL.md`
 - `[SKILLS_DIR]/chrome-extension/SKILL.md` (Chrome extension projects only)
 
@@ -18,8 +16,7 @@ The expected pattern for every check lives in those skills. This file states wha
 ## Pre-check
 
 1. **Container:** glob for a `Dockerfile`. Skip Category 3 when absent, unless the project type calls for one, in which case its absence is the finding.
-2. **Node artifact:** skip Category 4 for anything that is not a Node project.
-3. **Extension:** skip Category 6 for anything without a `manifest.json` carrying `manifest_version`.
+2. **Extension:** skip Category 5 for anything without a `manifest.json` carrying `manifest_version`.
 
 ---
 
@@ -81,21 +78,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | Entrypoint and command split | Read the `ENTRYPOINT` and `CMD` lines |
 | Runtime packages | Read the final stage's installed packages against what the process needs |
 
-## Category 4: Node Release Artifact
-
-**Applies to:** Node Web Only.
-
-| Check | How to verify |
-|---|---|
-| One artifact shape | Read the Makefile and workflow for whether both a binary and a tarball are produced |
-| Shape matches the addon situation | Grep `package.json` and the tree for a native addon, then compare against the shape chosen |
-| Bundle layout | Read the bundle script against the layout the skill describes |
-| Launcher | Read the launcher for how it resolves its own path, whether it execs, and how it forwards arguments |
-| Self-containment proven | Read the smoke test for whether it clears the environment or merely edits the path |
-| Addon compiled from source | Read the install steps for the build-from-source flag |
-| Native runners | Read the matrix runner assignments against the architectures being built |
-
-## Category 5: README
+## Category 4: README
 
 **Applies to:** every project type.
 
@@ -111,7 +94,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | Container user documented | When the project ships an image, read the README for the UID and GID and the volume ownership note |
 | Extension disclaimer | For an extension, compare the permissions requested against whether the disclaimer is present |
 
-## Category 6: Chrome Extension
+## Category 5: Chrome Extension
 
 **Applies to:** Chrome extensions.
 

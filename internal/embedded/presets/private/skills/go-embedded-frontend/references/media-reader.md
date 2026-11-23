@@ -4,7 +4,7 @@
 
 ## Assets
 
-PDF.js is `pdfjs-dist@6.4.299`, vendored under `js/pdfjs/` by the Makefile's `pdfjs` target. The files are `build/pdf.min.mjs`, `build/pdf.worker.min.mjs`, `web/pdf_viewer.mjs`, `web/pdf_viewer.css`, `web/images/loading-icon.gif`, and `wasm/openjpeg.wasm`, `wasm/jbig2.wasm`, and `wasm/qcms_bg.wasm`.
+PDF.js is `pdfjs-dist@6.5.438`, vendored under `js/pdfjs/` by the Makefile's `pdfjs` target. The files are `build/pdf.min.mjs`, `build/pdf.worker.min.mjs`, `web/pdf_viewer.mjs`, `web/pdf_viewer.css`, `web/images/loading-icon.gif`, and `wasm/openjpeg.wasm`, `wasm/jbig2.wasm`, and `wasm/qcms_bg.wasm`.
 
 ```javascript
 const PDFJS = '/static/js/pdfjs';

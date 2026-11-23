@@ -274,6 +274,7 @@ views.chat = (() => {
                     if (item.data?.type === 'result') {
                         boxOf(C.name).waiting = false;
                         flush(C.name);
+                        C.hooks.onTurnEnd?.();
                     }
                 }
             } catch (err) {
