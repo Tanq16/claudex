@@ -74,6 +74,8 @@ The expected pattern for every check lives in those skills. This file states wha
 | Multi-arch build | Read the builder `FROM` for `--platform=$BUILDPLATFORM` and the build command for `TARGETARCH`, and check the publishing step names more than one platform |
 | Version injection | Read for a `VERSION` build argument reaching the artifact's version variable |
 | HOME in the volume | Read the final stage for `ENV HOME` pointing under the volume |
+| Writes inside the volume | Trace where the process writes files and check each path lands under the volume, `HOME`, or `/tmp` |
+| Current user lookup | When the binary calls `os/user.Current()`, read the final stage for `ENV USER` |
 | Launch user in compose | Read the compose file for `user: "${PUID:-0}:${PGID:-0}"` |
 | Entrypoint and command split | Read the `ENTRYPOINT` and `CMD` lines |
 | Runtime packages | Read the final stage's installed packages against what the process needs |
@@ -91,6 +93,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | Section order | Compare the section order against what the project type calls for |
 | Install paths match reality | Compare the documented install methods against what the release workflow publishes |
 | Config documented | Compare the documented keys against the loader's defaults |
+| Data directory created first | When the project ships an image, read the README for a `mkdir` of the mounted directory before the run command |
 | Linux launch user documented | When the project ships an image, read the README for `--user "$(id -u):$(id -g)"` and the `PUID` and `PGID` note |
 | Extension disclaimer | For an extension, compare the permissions requested against whether the disclaimer is present |
 

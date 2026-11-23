@@ -117,7 +117,7 @@ mkdir -p $HOME/.[PROJECT_NAME]
 ```bash
 docker run -d --name [PROJECT_NAME] \
   -p 8080:8080 \
-  -v $HOME/.[PROJECT_NAME]:/app/data \
+  -v $HOME/.[PROJECT_NAME]:/data \
   [IMAGE]:[TAG]
 ```
 
@@ -135,7 +135,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/app/data # change as needed
+      - ./data:/data # change as needed
 ```
 ````
 
