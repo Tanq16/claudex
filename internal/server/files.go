@@ -66,6 +66,7 @@ type treeNode struct {
 	Target   string      `json:"target,omitzero"`
 	Size     *int64      `json:"size,omitzero"`
 	Ignored  bool        `json:"ignored,omitzero"`
+	Change   string      `json:"change,omitzero"`
 	Children []*treeNode `json:"children,omitzero"`
 }
 
@@ -133,7 +134,7 @@ func (s *Server) handleTree(r *http.Request) (any, error) {
 	}
 	defer root.Close()
 	node := &treeNode{Name: name, Path: "", Type: "dir"}
-	if err := walkTree(root, ".", node, ignoredPaths(r.Context(), root.Name())); err != nil {
+	if err := walkTree(root, ".", node, ignoredPaths(r.Context(), root.Name()), uncommittedChanges(r.Context(), root.Name())); err != nil {
 		return nil, err
 	}
 	return node, nil
@@ -153,7 +154,7 @@ func ignoredPaths(ctx context.Context, dir string) map[string]bool {
 	return ignored
 }
 
-func walkTree(root *os.Root, dir string, node *treeNode, ignored map[string]bool) error {
+func walkTree(root *os.Root, dir string, node *treeNode, ignored map[string]bool, changes map[string]string) error {
 	entries, err := fs.ReadDir(root.FS(), dir)
 	if err != nil {
 		return err
@@ -161,7 +162,7 @@ func walkTree(root *os.Root, dir string, node *treeNode, ignored map[string]bool
 	node.Children = []*treeNode{}
 	for _, e := range entries {
 		rel := path.Join(dir, e.Name())
-		child := &treeNode{Name: e.Name(), Path: rel, Ignored: node.Ignored || ignored[rel]}
+		child := &treeNode{Name: e.Name(), Path: rel, Ignored: node.Ignored || ignored[rel], Change: changes[rel]}
 		switch {
 		case e.Type()&fs.ModeSymlink != 0:
 			child.Type, child.Kind = "symlink", "symlink"
@@ -172,7 +173,7 @@ func walkTree(root *os.Root, dir string, node *treeNode, ignored map[string]bool
 				continue
 			}
 			child.Type = "dir"
-			if err := walkTree(root, rel, child, ignored); err != nil {
+			if err := walkTree(root, rel, child, ignored, changes); err != nil {
 				return err
 			}
 		case e.Type().IsRegular():

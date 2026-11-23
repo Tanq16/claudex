@@ -30,6 +30,8 @@
         return ['file', 'text-overlay1'];
     };
 
+    const CHANGES = { M: ['Modified', 'yellow'], A: ['Added', 'green'], U: ['Untracked', 'green'], D: ['Deleted', 'red'] };
+
     const wrapLines = {
         on: localStorage.getItem('claudex.wrap') === 'on',
         toggle(b) {
@@ -286,6 +288,8 @@
         const pad = `style="padding-left:${depth * 14 + 8}px"`;
         const selected = c.path === S.selected ? 'data-selected' : '';
         const base = `flex h-8 w-full items-center gap-2 rounded-xl pr-2 text-left text-sm text-subtext0 transition-colors hover:bg-surface0/50 ${ui.cls.focus} data-selected:bg-surface0 data-selected:text-text data-drop:bg-mauve/15 data-drop:text-mauve ${c.ignored ? 'opacity-60' : ''}`;
+        const [label, tone] = CHANGES[c.change] || [];
+        const name = `<span class="${ui.cls.rowText} ${tone ? `text-${tone}` : ''}">${ui.esc(c.name)}</span>`;
         if (c.type === 'dir') {
             const open = S.expanded.has(c.path);
             return `<li role="treeitem" aria-expanded="${open}">
@@ -293,18 +297,20 @@
                     <i data-lucide="chevron-right" data-chevron class="size-3.5 shrink-0 text-overlay0 transition-transform duration-150 ${open ? 'rotate-90' : ''}"></i>
                     <i data-lucide="folder" data-closed class="size-4 shrink-0 text-overlay1 ${open ? 'hidden' : ''}"></i>
                     <i data-lucide="folder-open" data-open class="size-4 shrink-0 text-overlay1 ${open ? '' : 'hidden'}"></i>
-                    <span class="${ui.cls.rowText}">${ui.esc(c.name)}</span>
+                    ${name}
+                    ${tone ? `<span data-tip="Uncommitted changes" class="ml-auto grid w-3 shrink-0 place-items-center">${ui.dot(tone)}</span>` : ''}
                 </button>
                 <ul role="group" ${open ? '' : 'hidden'}>${treeRows(c, depth + 1)}</ul>
             </li>`;
         }
-        const [icon, tone] = fileIcon(c);
+        const [icon, iconTone] = fileIcon(c);
         return `<li role="treeitem">
             <button type="button" data-action="project-tree" data-path="${ui.esc(c.path)}" tabindex="${selected ? 0 : -1}" ${selected} class="${base}" ${pad}>
                 <span class="size-3.5 shrink-0"></span>
-                <i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i>
-                <span class="${ui.cls.rowText}">${ui.esc(c.name)}</span>
+                <i data-lucide="${icon}" class="size-4 shrink-0 ${iconTone}"></i>
+                ${name}
                 ${c.type === 'symlink' ? `<span class="flex min-w-0 shrink items-center gap-1 text-xs text-overlay0"><i data-lucide="arrow-right" class="size-3 shrink-0"></i><span class="truncate font-mono">${ui.esc(c.target)}</span></span>` : ''}
+                ${tone ? `<span data-tip="${label}" class="ml-auto w-3 shrink-0 text-center font-mono text-[11px] font-medium text-${tone}">${c.change}</span>` : ''}
             </button>
         </li>`;
     }).join('');
@@ -637,6 +643,16 @@
         }
     };
 
+    const reloadTree = async () => {
+        const cur = S;
+        const before = JSON.stringify(S.tree);
+        await loadTree();
+        if (S !== cur || !$('[data-project]') || JSON.stringify(S.tree) === before) return;
+        const focused = document.activeElement?.closest?.('[data-p-tree-list] [data-path]')?.dataset.path;
+        renderTree();
+        if (focused) $(`[data-p-tree-list] [data-path="${CSS.escape(focused)}"]`)?.focus();
+    };
+
     const PR_STATES = {
         DRAFT: ['git-pull-request-draft', 'Draft', 'neutral'],
         OPEN: ['git-pull-request', 'Ready', 'green'],
@@ -729,7 +745,7 @@
 
     const mountCenter = () => {
         if (S.centerMode === 'attached') {
-            views.chat.mount($('[data-p-pane="chat"]'), S.name, { onSession: renderSession });
+            views.chat.mount($('[data-p-pane="chat"]'), S.name, { onSession: renderSession, onTurnEnd: reloadTree });
             renderTabs();
         }
         const content = $('[data-p-content]');
@@ -1317,7 +1333,11 @@
                 centerMode: 'detached',
                 pane: 'chat',
                 git: null,
-                gitPoll: setInterval(() => document.visibilityState === 'visible' && loadGit(), 60000),
+                poll: setInterval(() => {
+                    if (document.visibilityState !== 'visible') return;
+                    loadGit();
+                    reloadTree();
+                }, 60000),
             };
             document.addEventListener('dragenter', onDragEnter);
             document.addEventListener('dragover', onDragOver);
@@ -1368,7 +1388,7 @@
             document.removeEventListener('drop', onDrop);
             document.removeEventListener('keydown', onKey);
             mqs.forEach((q) => q.removeEventListener('change', onMedia));
-            clearInterval(S.gitPoll);
+            clearInterval(S.poll);
             reader.close();
             views.chat.unmount();
             S.sheet?.close();
