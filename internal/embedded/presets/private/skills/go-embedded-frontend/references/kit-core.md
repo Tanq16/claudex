@@ -205,6 +205,14 @@ initDelegation() {
         if (e.target.matches('input[data-name], textarea[data-name]')) ui.emit(e.target, e.target.value);
     });
 
+    let pasted = '';
+    document.addEventListener('paste', (e) => { pasted = e.clipboardData?.getData('text/plain') || ''; }, true);
+    document.addEventListener('paste', (e) => {
+        if (e.defaultPrevented || !pasted || e.target.readOnly || !e.target.matches?.('textarea, input:not([type]), input[type=text], input[type=search], input[type=url], input[type=email], input[type=tel], input[type=password]')) return;
+        e.preventDefault();
+        document.execCommand('insertText', false, pasted);
+    });
+
     document.addEventListener('pointerdown', (e) => {
         const grip = e.target.closest('[data-ui="grip"]');
         if (!grip) return;
@@ -271,6 +279,8 @@ A control reports a change as a bubbling `ui-change` event carrying `{ name, val
 ```javascript
 el.addEventListener('ui-change', (e) => { if (e.detail.name === 'media-tab') show(e.detail.value); });
 ```
+
+A paste into a text field inserts the `paste` event's own text and cancels the browser's insertion. Chrome reads the clipboard a second time to insert, and drops the paste without an `input` event when another app changes the clipboard in between, which dictation tools do when they restore the previous clipboard. The event's text is read lazily and goes empty once the clipboard changes, so the capture listener reads it before any other handler runs. The bubble listener inserts it unless a handler on the field cancelled the paste, such as one taking pasted files. `insertText` keeps undo and fires `input`, so the field reports as if typed.
 
 Escape closes the innermost layer first: the tooltip, then a popover, then the top dismissible modal. The arrow keys move the selection within a radio group and select as they move, as a native radio group does.
 

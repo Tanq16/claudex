@@ -197,24 +197,43 @@ const md = {
     },
 
     mermaid(container) {
-        const nodes = [...container.querySelectorAll('.mermaid')];
-        if (!nodes.length) return;
-        nodes.forEach((n) => {
+        if (!container.isConnected) return;
+        container.querySelectorAll('.mermaid').forEach((n) => {
             n.dataset.src ??= n.textContent;
             n.removeAttribute('data-processed');
             n.textContent = n.dataset.src;
+            md.seen.observe(n);
         });
+    },
+
+    seen: new IntersectionObserver((entries) => entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        md.seen.unobserve(e.target);
+        md.pending.push(e.target);
+        md.drain();
+    })),
+
+    pending: [],
+    draining: false,
+
+    async drain() {
+        if (md.draining) return;
+        md.draining = true;
+        await document.fonts.ready;
         mermaid.initialize(mermaidConfig());
-        document.fonts.ready
-            .then(() => {
-                const attached = nodes.filter((n) => n.isConnected);
-                return attached.length ? mermaid.run({ nodes: attached }).then(() => attached) : [];
-            })
-            .then((attached) => attached.forEach((n) => {
+        while (md.pending.length) {
+            const n = md.pending.shift();
+            if (!n.isConnected || n.hasAttribute('data-processed')) continue;
+            try {
+                await mermaid.run({ nodes: [n] });
                 md.fit(n);
                 md.fitter.observe(n);
-            }))
-            .catch((err) => ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
+            } catch (err) {
+                ui.toast(`Diagram failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
+            }
+            await new Promise((r) => setTimeout(r));
+        }
+        md.draining = false;
     },
 
     fitter: new ResizeObserver((entries) => entries.forEach((e) => md.fit(e.target))),

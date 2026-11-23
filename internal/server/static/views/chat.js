@@ -44,6 +44,19 @@ views.chat = (() => {
         if (!drafts.has(name)) drafts.set(name, { files: [], focus: null });
         return drafts.get(name);
     };
+    const boxes = new Map();
+    const boxKey = (name) => `claudex.queue.${name}`;
+    const boxOf = (name) => {
+        if (!boxes.has(name)) {
+            let stored = {};
+            try {
+                stored = JSON.parse(localStorage.getItem(boxKey(name))) || {};
+            } catch {}
+            const items = (stored.items || []).filter((x) => x.text).map((x) => ({ id: x.id, text: x.text, files: [] }));
+            boxes.set(name, { items, held: !!stored.held, armed: false, waiting: false, sending: false, next: null, timer: 0 });
+        }
+        return boxes.get(name);
+    };
 
     const $ = (sel) => C.pane.querySelector(sel);
     const ts = (m) => Date.parse(m?.timestamp) || 0;
@@ -104,9 +117,11 @@ views.chat = (() => {
             <ol data-chat-log data-column class="mx-auto flex w-full flex-col gap-4 py-4 transition-[max-width] duration-300 ease-out ${column.cls()}"></ol>
         </div>
         <footer class="shrink-0 px-3 pb-3 sm:px-4">
-            <div data-column class="mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}">
+            <div data-column class="relative mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}">
+                <span data-chat-jump hidden class="absolute bottom-full left-1/2 z-10 mb-2 flex -translate-x-1/2 rounded-full shadow-lg shadow-shade/60 [animation:fade-in_.15s_ease-out]">${ui.iconButton('arrow-down', { tip: 'Jump to latest', variant: 'secondary', action: 'chat-jump' })}</span>
                 <div data-chat-banner></div>
                 <div data-chat-status class="flex h-9 items-center gap-2 px-2 text-xs"></div>
+                <ul data-chat-outbox hidden class="mb-2 flex flex-col gap-1"></ul>
                 <form data-chat-composer novalidate class="cursor-text rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40 data-drag:ring-2 data-drag:ring-mauve/40">
                     <div data-chat-files hidden class="flex flex-wrap items-center gap-2 px-2 pt-2 pb-1"></div>
                     <textarea id="chat-input" name="prompt" data-chat-input data-scroll rows="1" autocomplete="off" spellcheck="false" placeholder="Message, or / for commands" class="block max-h-48 w-full resize-none field-sizing-content bg-transparent px-3 py-1.5 text-sm leading-relaxed text-text placeholder:text-overlay0 outline-none disabled:cursor-not-allowed pointer-coarse:text-[16px]"></textarea>
@@ -141,12 +156,13 @@ views.chat = (() => {
             init: null,
             history: [],
             events: [],
-            sending: false,
             replaying: false,
             dismissed: 0,
             initRetry: null,
             stateKey: null,
             tailing: new Set(),
+            stick: true,
+            top: 0,
             ...transcript(),
         };
         C.log.innerHTML = `<li data-chat-empty class="flex items-center justify-center gap-2 py-16 text-sm text-overlay1">${ui.spinner()}Loading the conversation</li>`;
@@ -203,12 +219,20 @@ views.chat = (() => {
             submit();
         });
         pane.addEventListener('ui-change', onPicker);
+        C.scroller.addEventListener('scroll', onScroll, { passive: true });
+        C.resize = new ResizeObserver(() => {
+            if (C?.stick && !nearBottom()) scrollDown();
+            jump();
+        });
+        C.resize.observe(C.scroller);
+        C.resize.observe(C.log);
         ui.icons(pane);
         C.ticker = setInterval(tick, 250);
         C.poller = setInterval(pollTails, 2000);
         renderComposer();
         renderStatus();
         renderFiles();
+        renderOutbox();
         const d = draftOf(name);
         if (d.focus) {
             C.input.focus();
@@ -223,6 +247,7 @@ views.chat = (() => {
         if (remount && document.activeElement === C.input) draftOf(C.name).focus = [C.input.selectionStart, C.input.selectionEnd];
         clearInterval(C.ticker);
         clearInterval(C.poller);
+        C.resize.disconnect();
         slash.close();
         C = null;
         live.unwatch();
@@ -246,6 +271,10 @@ views.chat = (() => {
                 else if (accept(item.id)) {
                     C.events.push(item);
                     dispatch(item);
+                    if (item.data?.type === 'result') {
+                        boxOf(C.name).waiting = false;
+                        flush(C.name);
+                    }
                 }
             } catch (err) {
                 console.error(err);
@@ -267,11 +296,32 @@ views.chat = (() => {
         else if (item.name === 'message') handle(item.data);
     };
 
+    const breathe = () => globalThis.scheduler?.yield?.() ?? new Promise((r) => setTimeout(r));
+
+    const catchUp = (data, id) => {
+        const events = data.events || [];
+        if (!C.loaded || !data.session || !id || parseId(id)[0] !== C.epoch) return false;
+        if (events.length && parseId(events[0].id)[1] > C.seq + 1) return false;
+        C.init = data.init || C.init;
+        C.snap = data.session;
+        for (const ev of events) {
+            if (!accept(ev.id)) continue;
+            C.events.push(ev);
+            safe(() => dispatch({ name: ev.event, data: ev.data }));
+        }
+        for (const raw of C.snap.pending || []) {
+            if (!C.approvals.has(raw.request_id)) safe(() => approval(raw));
+        }
+        applySnapshot(C.snap);
+        return true;
+    };
+
     const applyReset = async (data, id) => {
         if (!data.session && !C.epoch && C.loaded) {
             applySnapshot(null);
             return;
         }
+        if (catchUp(data, id)) return;
         const cur = C;
         let history = [];
         try {
@@ -286,28 +336,55 @@ views.chat = (() => {
         C.init = data.init || null;
         C.snap = data.session || null;
         C.history = history;
-        C.events = [];
-        C.log.innerHTML = '';
+        C.events = (data.events || []).filter((ev) => accept(ev.id));
+        const shown = C.log;
+        const built = shown.cloneNode(false);
+        C.log = built;
         C.replaying = true;
-        for (const m of history) safe(() => handle(m));
+        let mark = performance.now();
+        const replay = async (list, fn) => {
+            for (const x of list) {
+                safe(() => fn(x));
+                if (document.visibilityState !== 'visible' || performance.now() - mark < 12) continue;
+                await breathe();
+                if (cur !== C) return false;
+                mark = performance.now();
+            }
+            return true;
+        };
+        const frame = () => (document.visibilityState === 'visible' ? new Promise((r) => requestAnimationFrame(() => setTimeout(r))) : null);
+        if (!(await replay(history, handle))) return;
         settle();
-        for (const ev of data.events || []) {
-            if (!accept(ev.id)) continue;
-            C.events.push(ev);
-            safe(() => dispatch({ name: ev.event, data: ev.data }));
-        }
+        if (!(await replay(C.events, (ev) => dispatch({ name: ev.event, data: ev.data })))) return;
         for (const raw of C.snap?.pending || []) {
             if (!C.approvals.has(raw.request_id)) safe(() => approval(raw));
         }
         closeGroup();
         C.replaying = false;
         C.loaded = true;
-        if (!C.log.children.length) C.log.innerHTML = emptyHtml();
-        ui.icons(C.log);
+        if (!built.children.length) built.innerHTML = emptyHtml();
+        ui.icons(built);
+        C.log = built.cloneNode(false);
+        C.log.className = shown.className;
+        shown.replaceWith(C.log);
+        C.resize.unobserve(shown);
+        C.resize.observe(C.log);
         applySnapshot(C.snap);
-        requestAnimationFrame(() => {
-            if (C === cur) C.scroller.scrollTop = C.scroller.scrollHeight;
-        });
+        const rest = [...built.children];
+        const s = C.scroller;
+        while (rest.length) {
+            const batch = [];
+            for (let n = 0; rest.length && n < 400;) {
+                batch.unshift(rest.pop());
+                n += batch[0].getElementsByTagName('*').length + 1;
+            }
+            const fromEnd = s.scrollHeight - s.scrollTop;
+            C.log.prepend(...batch);
+            s.scrollTop = s.scrollHeight - fromEnd;
+            batch.forEach((li) => md.mermaid(li));
+            await frame();
+            if (cur !== C) return;
+        }
     };
 
     const settle = () => {
@@ -348,7 +425,9 @@ views.chat = (() => {
         renderComposer();
         renderStatus();
         renderBanner();
+        renderOutbox();
         paintLive();
+        observe(C.name);
         const key = [C.loaded, snap?.state, snap?.model, snap?.effort, snap?.permissionMode, !!C.init].join(':');
         if (key !== C.stateKey) {
             C.stateKey = key;
@@ -373,6 +452,21 @@ views.chat = (() => {
         const s = C.scroller;
         if (!s.clientHeight) return true;
         return s.scrollHeight - s.scrollTop - s.clientHeight < 120;
+    };
+
+    const jump = () => {
+        if (!C) return;
+        const el = $('[data-chat-jump]');
+        if (el) el.hidden = !C.loaded || C.stick || nearBottom();
+    };
+
+    const onScroll = () => {
+        if (!C) return;
+        const top = C.scroller.scrollTop;
+        if (top < C.top - 2) C.stick = nearBottom();
+        else if (nearBottom()) C.stick = true;
+        C.top = top;
+        jump();
     };
 
     const scrollDown = () => {
@@ -646,7 +740,7 @@ views.chat = (() => {
     const agentStart = (m, block) => {
         const id = m.message?.id || block.id;
         let group = C.groups.get(id);
-        if (!group?.isConnected) {
+        if (!group || !C.log.contains(group)) {
             closeGroup();
             group = append(`<li class="${rise()}"><section class="rounded-3xl bg-surface0/50 p-2">
                 <header class="flex items-center gap-2 px-2 pt-1 pb-2 text-xs text-overlay1"><i data-lucide="bot" class="size-3.5"></i><span data-agent-count></span></header>
@@ -869,7 +963,7 @@ views.chat = (() => {
     const renderTodos = (progress) => {
         const t = C.todos;
         if (!t.items.length) return;
-        if (t.card?.isConnected) {
+        if (t.card && C.log.contains(t.card)) {
             paint(t.card, todoCard(t.items));
             if (progress && C.log.lastElementChild !== t.card) {
                 const now = t.items.find((x) => x.status === 'in_progress');
@@ -1026,8 +1120,6 @@ views.chat = (() => {
         },
     };
 
-    const typing = () => document.activeElement === C.input && C.input.value.trim() !== '';
-
     const cardFrame = (id, icon, title, sub, body, footer) => `<li data-approval="${ui.esc(id)}" class="${rise()}"><section data-card class="rounded-3xl bg-yellow/10 p-4 transition-colors">
         <header class="mb-3 flex items-start gap-3">${ui.tile(icon, 'yellow', 'sm')}<div class="min-w-0 flex-1 pt-1.5"><h3 data-card-title class="text-sm font-medium text-text wrap-anywhere">${title}</h3>${sub}</div></header>
         <div data-card-body>${body}</div>
@@ -1081,7 +1173,7 @@ views.chat = (() => {
         C.approvals.set(m.request_id, { el: card, request: m, resolved: false, busy: false });
         if (!C.replaying) {
             scrollDown();
-            if (!r.default_to_no && !typing()) card.querySelector('[data-focus]')?.focus({ preventScroll: true });
+            if (!r.default_to_no && document.activeElement !== C.input) card.querySelector('[data-focus]')?.focus({ preventScroll: true });
         }
     };
 
@@ -1403,50 +1495,93 @@ views.chat = (() => {
         el.hidden = !files.length;
     };
 
-    const restoreDraft = (name, value, files) => {
-        const d = draftOf(name);
-        if (d.files.length) files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
-        else d.files = files;
-        if (C?.name !== name) {
-            try {
-                if (!localStorage.getItem(draftKey(name))) localStorage.setItem(draftKey(name), value);
-            } catch {}
-            return;
-        }
-        if (!C.input.value) {
-            C.input.value = value;
-            saveDraft();
-        }
-        renderFiles();
+    const stateOf = (name) => (C?.name === name && C.loaded ? C.snap?.state : live.summary[name]?.state);
+
+    const saveBox = (name) => {
+        const b = boxOf(name);
+        try {
+            if (b.items.length) localStorage.setItem(boxKey(name), JSON.stringify({ held: b.held, items: b.items.map(({ id, text }) => ({ id, text })) }));
+            else localStorage.removeItem(boxKey(name));
+        } catch {}
+        if (C?.name !== name) return;
+        renderOutbox();
+        renderComposer();
     };
 
-    const submit = async () => {
-        const value = C.input.value.trim();
+    const observe = (name) => {
+        const b = boxOf(name);
+        const state = stateOf(name);
+        if (state !== 'idle') b.waiting = false;
+        if (state && state !== 'idle' && state !== 'exited') b.armed = true;
+        flush(name);
+    };
+
+    const flush = (name) => {
+        const b = boxOf(name);
+        if (!b.items.length || b.held || !b.armed || b.waiting || stateOf(name) !== 'idle') return;
+        const [item] = b.items.splice(Math.max(0, b.items.findIndex((x) => x.id === b.next)), 1);
+        b.next = null;
+        b.waiting = true;
+        b.sending = true;
+        clearTimeout(b.timer);
+        b.timer = setTimeout(() => {
+            b.waiting = false;
+            flush(name);
+        }, 10000);
+        saveBox(name);
+        api.prompt(name, item.text, item.files.map((f) => f.file)).then(() => {
+            item.files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
+        }, (err) => {
+            b.items.unshift(item);
+            b.held = true;
+            b.waiting = false;
+            clearTimeout(b.timer);
+            ui.toast(`Send failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
+        }).finally(() => {
+            b.sending = false;
+            saveBox(name);
+        });
+    };
+
+    const submit = () => {
+        const text = C.input.value.trim();
         const d = draftOf(C.name);
-        const files = d.files;
-        if ((!value && !files.length) || C.snap?.state !== 'idle' || C.sending) return;
-        const cur = C;
-        C.sending = true;
+        if ((!text && !d.files.length) || !isLive()) return;
+        const b = boxOf(C.name);
+        b.items.push({ id: `${Date.now()}${Math.random()}`, text, files: d.files });
+        b.held = false;
+        b.armed = true;
         C.input.value = '';
         d.files = [];
         saveDraft();
         renderFiles();
         slash.close();
-        renderComposer();
-        try {
-            await api.prompt(C.name, value, files.map((f) => f.file));
-            files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
-        } catch (err) {
-            restoreDraft(cur.name, value, files);
-            ui.toast(`Send failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
-        }
-        if (cur !== C) return;
-        C.sending = false;
-        renderComposer();
+        saveBox(C.name);
+        flush(C.name);
+    };
+
+    const renderOutbox = () => {
+        if (!C) return;
+        const b = boxOf(C.name);
+        const paused = b.held || !b.armed;
+        const ok = isLive();
+        const el = paint('[data-chat-outbox]', b.items.map((x) => `<li class="flex h-9 items-center gap-2 rounded-2xl bg-surface0/50 pr-1 pl-3 text-sm">
+            <span data-tip="${paused ? 'Held, sends with your next message' : 'Sends when Claude is idle'}" class="flex shrink-0"><i data-lucide="${paused ? 'pause' : 'clock'}" class="size-3.5 text-overlay1"></i></span>
+            <span class="min-w-0 flex-1 truncate text-subtext0">${ui.esc(x.text || x.files.map((f) => f.file.name).join(', '))}</span>
+            ${x.files.length ? `<span class="flex shrink-0 items-center gap-1 text-xs text-overlay1 tabular-nums"><i data-lucide="paperclip" class="size-3"></i>${x.files.length}</span>` : ''}
+            ${ok ? ui.iconButton('arrow-up', { tip: 'Send now', size: 'sm', action: 'chat-outbox-send', attrs: `data-id="${ui.esc(x.id)}"` }) : ''}
+            ${ui.iconButton('x', { tip: 'Remove', size: 'sm', action: 'chat-outbox-remove', attrs: `data-id="${ui.esc(x.id)}"` })}
+        </li>`).join(''));
+        el.hidden = !b.items.length;
     };
 
     const interrupt = async () => {
         if (!C) return;
+        const b = boxOf(C.name);
+        if (b.items.length) {
+            b.held = true;
+            saveBox(C.name);
+        }
         try {
             await api.interrupt(C.name);
         } catch (err) {
@@ -1493,9 +1628,9 @@ views.chat = (() => {
         const busy = BUSY.has(snap?.state);
         C.input.disabled = C.loaded && !ok;
         C.input.placeholder = ok || !C.loaded ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
-        paint('[data-chat-send]', busy
-            ? ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })
-            : ui.iconButton(C.sending ? 'loader-circle' : 'arrow-up', { tip: 'Send', variant: 'primary', spin: C.sending, action: 'chat-send', disabled: !ok || C.sending }));
+        const sending = boxOf(C.name).sending;
+        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', spin: sending, action: 'chat-send', disabled: !ok });
+        paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })}${send}</span>` : send);
         const list = models();
         const model = list.find((m) => m.value === (snap?.model || 'default'));
         const efforts = model?.efforts?.length ? model.efforts : Object.keys(EFFORTS);
@@ -1522,14 +1657,13 @@ views.chat = (() => {
         const state = snap?.state;
         let left = '';
         if (state === 'requires_action') {
-            left = `${ui.dot('yellow', { pulse: true })}<span class="text-yellow">Waiting for approval</span><span class="shrink-0 max-sm:hidden">${ui.kbd(['Esc'])}</span>`;
+            left = `${ui.dot('yellow', { pulse: true })}<span class="text-yellow">Waiting for approval</span>`;
         } else if (state === 'running') {
             if (!C.turn.start) C.turn.start = Date.now();
             const label = snap.status === 'compacting' ? 'Compacting' : C.activity || 'Working';
             left = `${ui.spinner('size-3.5 shrink-0 text-mauve')}<span class="min-w-0 truncate bg-linear-to-r from-subtext0 via-text to-subtext0 bg-[length:200%_100%] bg-clip-text text-transparent [animation:shimmer_2.4s_linear_infinite]">${ui.esc(label)}</span>
                 <span data-turn-elapsed class="shrink-0 text-overlay1 tabular-nums"></span>
-                ${C.thinking ? `<span class="flex shrink-0 items-center gap-1 text-overlay1 tabular-nums"><i data-lucide="arrow-down" class="size-3"></i>${fmt.tokens(C.thinking)}</span>` : ''}
-                <span class="shrink-0 max-sm:hidden">${ui.kbd(['Esc'])}</span>`;
+                ${C.thinking ? `<span class="flex shrink-0 items-center gap-1 text-overlay1 tabular-nums"><i data-lucide="arrow-down" class="size-3"></i>${fmt.tokens(C.thinking)}</span>` : ''}`;
         } else if (state === 'starting') {
             left = `${ui.spinner('size-3.5 shrink-0 text-overlay1')}<span class="text-overlay1">Starting claude</span>`;
         }
@@ -1746,6 +1880,7 @@ views.chat = (() => {
         b.setAttribute('aria-expanded', String(open));
     });
     ui.on('chat-image', (b) => ui.modal.open({ title: 'Image', icon: 'image', size: 'xl', body: `<img src="${ui.esc(b.dataset.src)}" alt="" class="mx-auto max-w-full rounded-2xl">` }));
+    ui.on('chat-jump', () => C?.scroller.scrollTo({ top: C.scroller.scrollHeight, behavior: 'smooth' }));
     ui.on('chat-send', () => C && submit());
     ui.on('chat-attach', () => C && $('[data-chat-file-input]').click());
     ui.on('chat-file-remove', (b) => {
@@ -1755,6 +1890,27 @@ views.chat = (() => {
         renderFiles();
     });
     ui.on('chat-interrupt', () => interrupt());
+    ui.on('chat-outbox-send', (b) => {
+        if (!C) return;
+        const box = boxOf(C.name);
+        box.next = b.dataset.id;
+        box.held = false;
+        box.armed = true;
+        saveBox(C.name);
+        if (!BUSY.has(C.snap?.state)) return flush(C.name);
+        api.interrupt(C.name).catch((err) => ui.toast(`Stop failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
+    });
+    ui.on('chat-outbox-remove', (b) => {
+        if (!C) return;
+        const box = boxOf(C.name);
+        const i = box.items.findIndex((x) => x.id === b.dataset.id);
+        if (i < 0) return;
+        const [item] = box.items.splice(i, 1);
+        item.files.forEach((f) => f.url && URL.revokeObjectURL(f.url));
+        if (!box.items.length) box.held = false;
+        saveBox(C.name);
+    });
+    document.addEventListener('live-summary', () => Object.keys(live.summary).forEach(observe));
     ui.on('chat-task-stop', (b) => stopTask(b.dataset.task));
     ui.on('chat-continue', () => C && views.newSession.open({ name: C.name, continue: true }));
     ui.on('chat-banner-dismiss', () => {
@@ -1800,6 +1956,6 @@ views.chat = (() => {
             if (!C) return;
             C.scroller.scrollTop = C.kept ?? C.scroller.scrollHeight;
         },
-        state: (name) => (C?.name === name && C.loaded ? C.snap?.state || null : live.summary[name]?.state || null),
+        state: (name) => stateOf(name) || null,
     };
 })();
