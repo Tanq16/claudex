@@ -18,7 +18,7 @@ extension-root/
 ├── Makefile                # builds the distributable zip
 ├── README.md
 ├── .github/
-│   ├── assets/logo.png
+│   ├── assets/logo.svg
 │   └── workflows/release.yaml
 ├── icons/
 │   ├── icon16.png          # toolbar
@@ -320,4 +320,4 @@ The `onChanged` listener is what keeps an open popup in step with a change made 
 | 48x48 | `chrome://extensions` |
 | 128x128 | the install dialog and store listing |
 
-All four are the same design scaled, in PNG with transparency, drawn from the Catppuccin palette so they read against both light and dark browser chrome. A design that only works at 128 pixels is unrecognizable at 16, which is the size a user actually looks at.
+All four are PNG exports of the extension's `logo.svg`, with transparency, drawn from the Catppuccin palette so they read against both light and dark browser chrome. They stay PNG because Chrome rejects SVG and WebP manifest icons. A design that only works at 128 pixels is unrecognizable at 16, which is the size a user actually looks at.

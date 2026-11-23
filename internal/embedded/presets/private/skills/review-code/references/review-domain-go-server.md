@@ -99,7 +99,7 @@ The expected pattern for every check lives in those files. This file states what
 | Structure is neutral | Grep border and background utilities for accent colors |
 | Utilities over CSS | Read every hand-written rule and check it against the named exceptions rather than for a utility that would do it |
 | Custom CSS placement | Glob for hand-written `.css` files outside the downloaded set |
-| Icon files | Glob the icons directory against the sizes the skill lists |
+| Icon files | Glob the icons directory for raster icons beside `logo.svg`, and grep the HTML and the manifest for icon links that name anything else |
 | PWA completeness | Glob for the manifest and the worker; grep the HTML for the link, the meta tags, and the registration; check they are all present or all absent |
 
 ## Category 5: Markdown and Diagrams
@@ -111,10 +111,11 @@ The expected pattern for every check lives in those files. This file states what
 | Output is sanitized | Read the render call for `DOMPurify.sanitize` wrapping `marked.parse` |
 | Copy buttons | Read the code renderer for the kit's icon button and a single delegated copy action, and every copy handler for the button passed to `ui.copy` rather than a confirmation of its own |
 | Clipboard fallback | Read the copy handler for the non-secure-context path |
-| Mermaid theme mode | Read the `mermaid.initialize` config for its theme key |
-| Mermaid render trigger | Read the config for automatic startup and grep for a manual run call |
+| Mermaid theme mode | Read the `mermaid.initialize` config for its theme, look, and layout keys |
+| Mermaid render trigger | Read the config for automatic startup, and the diagram step for a visibility-driven queue that runs one diagram at a time |
 | Diagrams wait for fonts | Read the run call for `document.fonts.ready` |
 | Diagrams follow the theme | Read for the source kept in `data-src`, a re-run on `themechange`, and `darkMode` read from the page |
+| Wide blocks | Read the render function for the table scroll wrapper, the fence, table, and diagram markup for `data-scroll-cue`, and the diagram step for the fit with a floor and its `ResizeObserver` |
 | Markdown styling | Read the stylesheet for the heading colors, the inline versus block code treatment, and the table rules |
 | Colors follow the palette | Grep the Markdown stylesheet, the `.hljs` rules, and the Mermaid config for hex literals rather than palette reads, and the page for `github-dark.min.css` |
 | Document view | When the page displays a document, read for the reading column, the scroll-following outline, the Contents menu, and the Rendered and Source toggle |

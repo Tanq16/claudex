@@ -45,12 +45,7 @@ internal/server/static/
 │   ├── css/
 │   └── webfonts/
 ├── icons/
-│   ├── favicon.ico             # 32x32, legacy browser tabs
-│   ├── favicon.png             # 32x32
-│   ├── apple-touch-icon.png    # 180x180, iOS home screen
-│   ├── icon-192.png            # PWA, Android
-│   ├── icon-512.png            # PWA, splash screen
-│   └── logo.svg                # the project's logo, in-app branding
+│   └── logo.svg                # favicon, PWA icon, and in-app branding
 └── js/                 # tailwind.js, lucide.min.js, and anything else vendored
 ```
 
@@ -62,15 +57,15 @@ Every asset is pinned to an exact version, so two builds of one commit produce t
 
 | Asset | Version | Lands at |
 |---|---|---|
-| Tailwind browser build | `@tailwindcss/browser@4.3.3` | `js/tailwind.js` |
-| Lucide | `lucide@1.34.0` | `js/lucide.min.js` |
+| Tailwind browser build | `@tailwindcss/browser@4.3.5` | `js/tailwind.js` |
+| Lucide | `lucide@1.77.0` | `js/lucide.min.js` |
 | Font Awesome | `@fortawesome/fontawesome-free@7.3.1` | `fontawesome/css/`, `fontawesome/webfonts/` |
-| Dev Icons | `devicon@2.17.0` | `css/devicon.min.css` |
+| Dev Icons | `devicon@2.18.0` | `css/devicon.min.css` |
 | Inter | Google Fonts | `css/inter.css`, `fonts/*.woff2` |
 | Google Sans | Google Fonts | `css/google-sans.css`, `fonts/*.woff2` |
 | JetBrains Mono | Google Fonts | `css/jetbrains-mono.css`, `fonts/*.woff2` |
 | JetBrains Mono Nerd Font Mono | nerd-fonts `v3.5.1`, opt-in | `css/jetbrains-mono.css`, `fonts/*.woff2` |
-| Chart.js | `chart.js@4.5.1` | `js/chart.umd.js` |
+| Chart.js | `chart.js@4.6.1` | `js/chart.umd.js` |
 
 Tailwind, Lucide, and the three fonts are always downloaded, and the rest only when the project uses them. Marked, Highlight.js, Mermaid, and PDF.js are pinned where their usage is documented.
 
@@ -100,9 +95,7 @@ The mono slot takes the plain family. The Nerd Font variant is earned only by a 
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>APP_NAME</title>
 
-    <link rel="icon" type="image/x-icon" href="/static/icons/favicon.ico">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/icons/favicon.png">
-    <link rel="apple-touch-icon" sizes="180x180" href="/static/icons/apple-touch-icon.png">
+    <link rel="icon" type="image/svg+xml" href="/static/icons/logo.svg">
 
     <link rel="manifest" href="/static/manifest.json">
     <meta name="theme-color" content="#11111b">
@@ -261,7 +254,11 @@ The viewport meta stays `width=device-width, initial-scale=1.0`, since `user-sca
 <i class="devicon-go-original-wordmark"></i>
 ```
 
-App icons are PNG exports of the project's own `logo.svg`, so the mark is drawn once. They keep transparency, read at 16 pixels, and use the Catppuccin palette so they show on light and dark browser chrome. PWA icons keep their content inside the center 80%, because the installer rounds the corners off.
+Every app icon is the project's own `logo.svg`, with no raster exports: the favicon, the PWA icon, and the branding in the header. The mark is drawn once, keeps transparency, reads at 16 pixels, and uses the Catppuccin palette so it shows on light and dark browser chrome.
+
+Safari renders an SVG favicon from version 26, the last major browser to add it.
+
+The page carries no `apple-touch-icon` link. iOS ignores an SVG there for the Home Screen icon, and the link overrides the manifest's icons, which iOS 26 does read as SVG.
 
 ## PWA
 
@@ -279,8 +276,7 @@ Add PWA support when the app is used often on a phone, when offline behavior is 
   "background_color": "#11111b",
   "theme_color": "#11111b",
   "icons": [
-    { "src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
-    { "src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+    { "src": "/static/icons/logo.svg", "sizes": "any", "type": "image/svg+xml" }
   ]
 }
 ```
@@ -299,7 +295,9 @@ self.addEventListener('fetch', () => {});
 
 It caches nothing, so the app behaves like a normal tab. A caching worker serves stale assets after a deploy and gives users a version they cannot refresh away.
 
-The manifest, the two icon sizes, and HTTPS make the app installable, not the worker. The worker earns its line by controlling the app's pages, which later offline or push behavior needs.
+`"sizes": "any"` is what lets the one SVG stand in for every size. Chrome's install check accepts it in place of the 192 and 512 pixel icons, and rejects the same file declared at a fixed size below 144 pixels.
+
+The manifest, its icon, and HTTPS make the app installable, not the worker. The worker earns its line by controlling the app's pages, which later offline or push behavior needs.
 
 A worker's scope is the directory it is served from, so one at `/static/sw.js` never controls the app at `/`, and it registers without error. A `Service-Worker-Allowed` header on the static mount is the wrong repair, because it widens every file under `/static/` to fix one.
 

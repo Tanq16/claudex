@@ -40,7 +40,7 @@ A section outside this list exists only for a genuinely domain-specific surface,
 
 ```markdown
 <div align="center">
-  <img src=".github/assets/logo.png" alt="[PROJECT_NAME] Logo" width="200">
+  <img src=".github/assets/logo.svg" alt="[PROJECT_NAME] Logo" width="200">
   <h1>[PROJECT_NAME]</h1>
 
   <a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/[GITHUB_USER]/[REPO_NAME]/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/[GITHUB_USER]/[REPO_NAME]/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/[GITHUB_USER]/[REPO_NAME]"></a><br><br>
@@ -52,7 +52,7 @@ A section outside this list exists only for a genuinely domain-specific surface,
 
 Placeholders carry the project's real name, repository, and owner, because a hardcoded account in a template is a broken badge in every project that copies it.
 
-The logo lives at `.github/assets/logo.png` or `.svg`, or at the frontend's own static path when the app already embeds one, so the README does not carry a second copy of the same image.
+The logo is an SVG at `.github/assets/logo.svg`, or at the frontend's own static path when the app already embeds one, so the README does not carry a second copy of the same image.
 
 | Badge | Include when |
 |---|---|

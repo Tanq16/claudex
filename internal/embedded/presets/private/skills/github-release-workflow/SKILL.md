@@ -1,6 +1,6 @@
 ---
 name: github-release-workflow
-description: The GitHub Actions release workflow and the semver commit-marker convention. Use when creating or changing .github/workflows/release.yaml, adding a build job or a platform to the matrix, wiring container publishing, or working out how a release version is chosen. Triggers on release.yaml, gh release create, draft releases, actions/checkout, actions/setup-go, actions/setup-node, docker/login-action, docker/build-push-action, multi-arch image publishing, [minor-release], and [major-release].
+description: The GitHub Actions release workflow and the semver commit-marker convention. Use when creating or changing .github/workflows/release.yaml, adding a build job or a platform to the matrix, wiring container publishing, or working out how a release version is chosen. Triggers on release.yaml, gh release create, draft releases, actions/checkout, actions/setup-go, docker/login-action, docker/build-push-action, multi-arch image publishing, [minor-release], and [major-release].
 user-invocable: false
 ---
 
@@ -46,7 +46,6 @@ Actions are pinned to a major tag, verified against the action's own releases ra
 |---|---|
 | `actions/checkout` | `v7` |
 | `actions/setup-go` | `v7` |
-| `actions/setup-node` | `v7` |
 | `docker/login-action` | `v4` |
 | `docker/setup-qemu-action` | `v4` |
 | `docker/setup-buildx-action` | `v4` |
@@ -208,61 +207,9 @@ Both build jobs run `make assets` rather than restoring a cached tree, because t
 
 The docker job builds `linux/amd64` and `linux/arm64` into one manifest. `build-push-action` is used rather than `make docker-push` because the buildx driver and the registry cache belong to the runner rather than to the Makefile, and a plain `docker build` on the runner would publish an amd64 image that an arm64 host cannot run.
 
-QEMU is registered before buildx because it is what lets a non-native stage execute at all. A Go build cross-compiles and only its final stage is emulated, so the setup step costs a second; a Node build with a native addon runs its whole builder emulated and takes materially longer.
-
-## Node Template
-
-The Node workflow is the same five phases with different build steps. The matrix runs on architecture-native runners, since a native addon cannot be cross-compiled.
-
-```yaml
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24.20.0
-      - run: npm_config_build_from_source=true npm ci
-      - run: node --test
-
-  artifacts:
-    needs: create-release
-    runs-on: ${{ matrix.runner }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: linux,  arch: x64,   runner: ubuntu-24.04 }
-          - { os: linux,  arch: arm64, runner: ubuntu-24.04-arm }
-          - { os: darwin, arch: arm64, runner: macos-14 }
-          - { os: darwin, arch: x64,   runner: macos-15-intel }
-    steps:
-      - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 24.20.0
-
-      - name: Install deps, compiling the addon from source
-        run: npm_config_build_from_source=true npm ci
-
-      - name: Vendor assets and assemble the bundle
-        run: make bundle
-
-      - name: Smoke-test the bundled tarball
-        run: bash scripts/smoke-test.sh ${{ matrix.os }} ${{ matrix.arch }}
-
-      - name: Upload release asset
-        run: gh release upload "${{ needs.create-release.outputs.version }}" dist/[APP_NAME]-${{ matrix.os }}-${{ matrix.arch }}.tar.gz --clobber
-        env:
-          GH_TOKEN: ${{ github.token }}
-```
-
-`fail-fast: false` lets the other platforms finish when one fails, so a single broken runner produces one missing artifact to investigate rather than four.
+QEMU is registered before buildx because it is what lets a non-native stage execute at all. A Go build cross-compiles and only its final stage is emulated, so the setup step costs a second.
 
 Windows is not in the matrix. Nothing here is tested on it, and shipping an untested artifact is worse than shipping none.
-
-A pure-JS app swaps the bundle step for `make binary` and uploads that file instead.
 
 ## Chrome Extension
 

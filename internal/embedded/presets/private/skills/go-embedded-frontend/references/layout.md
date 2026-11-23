@@ -93,21 +93,32 @@ A lane region flush against its parent's right edge pulls out by the lane with `
 
 The thumb sits 4px from the region's edge as `w-1.5 rounded-full bg-overlay0/60`. It widens to `w-2 bg-overlay1` under the pointer and fades 900ms after the last scroll, unless the pointer is on it. A faded thumb takes no pointer events, so it never swallows a click on the content under it. The pointer coming within 16px of the region's right or bottom edge shows it again, ready to drag. Its track is inset at least 6px top and bottom, and by half the corner radius on a rounded region or parent, so the thumb never pokes past a curve.
 
+The thumb shows on a scroll only when the user caused it: within a second of a wheel, touch, or key event on the region, a key press with focus on the page body, or while dragging. A scroll the app makes, such as keeping a chat pinned to its newest message, re-places the thumb without showing it, so streaming content never flashes a thumb nobody asked for.
+
 A region that overflows sideways also gets a horizontal thumb, `h-1.5` along its bottom edge, which always floats. A bottom lane would exist only while the content overflows, so the region would change height as it appeared. Only a computed `overflow-x` of `auto` or `scroll` counts, because a region clipping with `hidden` cannot be scrolled sideways by the user.
 
+A region carrying `data-scroll-cue` keeps its horizontal thumb showing for as long as it overflows sideways, and re-places that thumb when its parent resizes. A wide code block, table, or diagram without the cue reads as clipped at the column's edge. The vertical thumb still fades as usual.
+
 When a region scrolls both ways, each thumb's track stops 14px short of the other's edge, so the two never meet in the corner.
+
+The observer attaches only to added nodes still in the document. A node added and removed within one task still appears in the mutation records, and a detached node has no layout for its thumb to measure against.
 
 The thumb is positioned against the region's parent, which `ui.anchor` makes `relative` only when the class list carries no position utility. It reads class names rather than computed style, because the browser build compiles classes after the script runs and computed style still reads `static` for an element about to become `fixed`.
 
 ```javascript
+keyedAt: 0,
+
 initScrollObserver() {
+    document.addEventListener('keydown', (e) => {
+        if (e.target === document.body) ui.keyedAt = performance.now();
+    }, true);
     const attach = (root) => {
         if (root.matches?.('[data-scroll]')) ui.scrollbar(root);
         root.querySelectorAll?.('[data-scroll]').forEach((el) => ui.scrollbar(el));
     };
     attach(document.body);
     new MutationObserver((records) => {
-        for (const r of records) r.addedNodes.forEach((n) => n.nodeType === 1 && attach(n));
+        for (const r of records) r.addedNodes.forEach((n) => n.nodeType === 1 && n.isConnected && attach(n));
     }).observe(document.body, { childList: true, subtree: true });
 },
 
@@ -134,6 +145,7 @@ scrollbar(el) {
     const ty = thumb('top-0 w-1.5 hover:w-2');
     const tx = thumb('left-0 h-1.5 hover:h-2');
     const grip = el.tagName === 'TEXTAREA' ? host.querySelector('[data-ui="grip"]') : null;
+    const cue = el.hasAttribute('data-scroll-cue');
     let hideTimer;
     let dragging = null;
     let lane = -1;
@@ -183,12 +195,16 @@ scrollbar(el) {
             tx.style.bottom = `${host.clientHeight - el.offsetTop - el.offsetHeight + 4}px`;
             tx.style.width = `${w}px`;
             tx.style.transform = `translateX(${el.offsetLeft + trackX[0] + (scrollLeft / (scrollWidth - clientWidth)) * (room - w)}px)`;
+            if (cue) {
+                tx.style.opacity = '1';
+                tx.style.pointerEvents = '';
+            }
         }
         return tall || wide;
     };
     const hide = () => {
         if (dragging || ty.matches(':hover') || tx.matches(':hover')) return;
-        for (const t of [ty, tx]) {
+        for (const t of cue && wide ? [ty] : [ty, tx]) {
             t.style.opacity = '0';
             t.style.pointerEvents = 'none';
         }
@@ -202,13 +218,21 @@ scrollbar(el) {
         clearTimeout(hideTimer);
         hideTimer = setTimeout(hide, 900);
     };
-    el.addEventListener('scroll', show, { passive: true });
+    let touched = 0;
+    const touch = () => { touched = performance.now(); };
+    el.addEventListener('wheel', touch, { passive: true });
+    el.addEventListener('touchmove', touch, { passive: true });
+    el.addEventListener('touchend', touch, { passive: true });
+    el.addEventListener('keydown', touch);
+    el.addEventListener('scroll', () => (dragging || performance.now() - Math.max(touched, ui.keyedAt) < 1000 ? show() : place()), { passive: true });
     el.addEventListener('pointerenter', show);
     el.addEventListener('pointermove', (e) => {
         const r = el.getBoundingClientRect();
         if (r.right - e.clientX < 16 || r.bottom - e.clientY < 16) show();
     });
-    new ResizeObserver(() => place()).observe(el);
+    const resized = new ResizeObserver(() => place());
+    resized.observe(el);
+    if (cue) resized.observe(host);
     new MutationObserver(() => place()).observe(el, { childList: true, subtree: true });
 
     const drag = (t, vertical) => {
@@ -355,7 +379,7 @@ sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collap
     handle.setAttribute('role', 'separator');
     handle.setAttribute('aria-orientation', 'vertical');
     handle.dataset.tip = 'Drag to resize, double-click to reset';
-    handle.dataset.tipSide = side === 'left' ? 'right' : 'left';
+    handle.setAttribute('data-tip-pointer', '');
     handle.className = `group/handle absolute inset-y-0 ${side === 'left' ? '-right-2.5' : '-left-2.5'} z-30 flex w-3 cursor-col-resize touch-none items-center justify-center`;
     handle.innerHTML = '<span class="h-10 w-1 rounded-full bg-surface1 opacity-0 transition-opacity group-hover/handle:opacity-100 group-active/handle:bg-mauve group-active/handle:opacity-100"></span>';
     panel.appendChild(handle);
@@ -367,6 +391,7 @@ sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collap
         panel.style.opacity = state.collapsed ? '0' : '1';
         panel.style.overflow = state.collapsed ? 'hidden' : '';
         panel.style.pointerEvents = state.collapsed ? 'none' : '';
+        panel.inert = state.collapsed;
         panel.dataset.collapsed = String(state.collapsed);
         handle.style.display = state.collapsed ? 'none' : '';
         ctl.onToggle?.(state.collapsed);
@@ -415,5 +440,9 @@ sidebar(panel, { key, min = 200, max = 520, initial = 280, side = 'left', collap
 ```
 
 `ui.sidebar(panel, { key, min, max, initial, side })` gives a panel a drag handle on its inner edge, a double-click that resets the width, and a collapse to zero width. The width and the collapsed state persist in `localStorage` under the app's name and the key, so a layout survives a reload.
+
+The handle's tooltip anchors above the pointer through `data-tip-pointer`. The handle runs the panel's full height, so a tooltip centered on it lands far from where the pointer is.
+
+A collapsed panel is `inert`, so Tab never lands on a control hidden at zero width.
 
 A collapsed panel also drops its margin. A sidebar keeps its distance from the panel beside it with a margin on its inner edge rather than the row's `gap`, which would leave a 16px seam where the panel was.
