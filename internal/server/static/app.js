@@ -266,6 +266,7 @@ const mermaidConfig = () => {
         layout: 'dagre',
         fontFamily: 'Inter',
         ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
+        themeCSS: `${[0, 1, 2, 3].map((i) => `.taskText.activeText${i}, .taskText.activeCritText${i}`).join(', ')} { fill: ${c('base')} !important; }`,
         themeVariables: {
             darkMode: !document.documentElement.classList.contains('light'),
             background: c('base'),

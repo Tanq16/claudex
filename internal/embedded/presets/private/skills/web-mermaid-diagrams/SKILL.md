@@ -91,6 +91,8 @@ The config is a function rather than a constant, so every call reads the palette
 
 The diagram canvas takes `base`, the same rung as the container it sits in, so the two do not read as a box inside a box. Nodes sit one rung up on `surface0` and a cluster groups them one rung down on `mantle`.
 
+`themeCSS` colors a gantt label drawn inside an active bar, which would otherwise be unreadable on the mauve bar in both themes. Mermaid fills that label with `taskTextDarkColor` through an `!important` rule scoped to the diagram's ID, and no page selector outranks it. Mermaid compiles `themeCSS` into the same scoped stylesheet, where the extra `.taskText` class wins. A label drawn outside the bar keeps `text`, since it sits on the canvas.
+
 ```javascript
 const mermaidConfig = () => ({
     startOnLoad: false,
@@ -99,6 +101,7 @@ const mermaidConfig = () => ({
     layout: 'dagre',
     fontFamily: 'Inter',
     ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
+    themeCSS: `${[0, 1, 2, 3].map((i) => `.taskText.activeText${i}, .taskText.activeCritText${i}`).join(', ')} { fill: ${c('base')} !important; }`,
     themeVariables: {
         darkMode: !document.documentElement.classList.contains('light'),
         background: c('base'),
@@ -203,11 +206,13 @@ The pie, git, and colour-scale series each cycle through the full Catppuccin acc
     padding: 1rem;
     border-radius: 1rem;
     margin: 1.5rem 0;
-    text-align: center;
     overflow-x: auto;
 }
+.mermaid > svg { margin-inline: auto; }
 .mermaid:not([data-processed]) { color: transparent; min-height: 8rem; }
 ```
+
+The diagram centers through the SVG's own margins, because Tailwind's preflight makes every `svg` a block that `text-align` does not move. Auto margins fall to zero once the diagram outgrows its container, so an overflowing diagram starts at the left edge and scrolls.
 
 The Markdown fence renders the container as `<div class="mermaid" data-scroll data-scroll-cue>`, a scroll region of the page's kit. `data-scroll-cue` keeps the horizontal thumb showing while the diagram overflows, so a diagram cut at the edge reads as scrollable rather than clipped.
 
@@ -259,8 +264,6 @@ Gantt charts read several colors from stylesheet rules rather than from `themeVa
 .mermaid .today { stroke: var(--ctp-red) !important; stroke-width: 2px !important; }
 
 .mermaid .taskText { fill: var(--ctp-base) !important; font-size: 0.75em !important; }
-.mermaid .activeText0, .mermaid .activeText1,
-.mermaid .activeText2, .mermaid .activeText3 { fill: var(--ctp-base) !important; }
 .mermaid .taskTextOutsideRight,
 .mermaid .taskTextOutsideLeft { fill: var(--ctp-text) !important; }
 
@@ -268,6 +271,4 @@ Gantt charts read several colors from stylesheet rules rather than from `themeVa
 .mermaid .titleText { fill: var(--ctp-mauve) !important; }
 ```
 
-Mermaid fills an active task's label with `taskTextDarkColor`, which is `text` here, so without the `activeText` rule the label is unreadable on the mauve bar in both themes.
-
-`!important` is load-bearing here, because Mermaid writes its own inline and generated styles onto these elements after the page stylesheet has been applied.
+`!important` is load-bearing here, because Mermaid scopes its own rules to the diagram's ID, which outranks any page selector. A Mermaid rule that is itself `!important` still wins, which is why the active label goes through `themeCSS`.
