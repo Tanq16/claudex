@@ -1,12 +1,12 @@
 ---
 name: dockerize
-description: Containerizing any project - multi-stage builds, choosing a base image, packaging the runtime, clearing package-manager caches, and running as a non-root user. Use when writing or changing a Dockerfile, picking a base image, deciding between alpine and debian-slim, building an image for more than one architecture, adding a docker-compose file, or when a container runs as root. Triggers on Dockerfile, docker-compose.yaml, FROM, multi-stage builds, buildx, BUILDPLATFORM, TARGETARCH, apk add, apt-get install, USER, adduser, groupadd, ENTRYPOINT, EXPOSE, musl, and glibc.
+description: Containerizing any project - multi-stage builds, choosing a base image, packaging the runtime, clearing package-manager caches, and a root image whose runtime user is chosen at launch. Use when writing or changing a Dockerfile, picking a base image, deciding between alpine and debian-slim, building an image for more than one architecture, adding a docker-compose file, or when files a container writes to a bind mount come out owned by root. Triggers on Dockerfile, docker-compose.yaml, FROM, multi-stage builds, buildx, BUILDPLATFORM, TARGETARCH, apk add, apt-get install, USER, adduser, groupadd, --user, PUID, PGID, chown, ENTRYPOINT, EXPOSE, musl, and glibc.
 user-invocable: false
 ---
 
 # Dockerize
 
-**Two stages, one image per architecture from one file, a runtime packaged rather than assumed where the language allows it, caches cleared inside the layer that made them, and a fixed non-root user.**
+**Two stages, one image per architecture from one file, a runtime packaged rather than assumed where the language allows it, caches cleared inside the layer that made them, and a root image whose user is chosen at launch.**
 
 This applies to any language. What changes between them is the builder image and how the runtime gets into the final stage.
 
@@ -28,13 +28,38 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 Dependency manifests are copied and installed before the source is copied, so an edit to a source file does not invalidate the dependency layer and every rebuild reinstalls nothing.
 
-The final stage runs as a fixed, hardcoded user and group. Root inside a container is root on the host kernel, and a mounted volume written as root leaves files the host user cannot delete.
-
-The UID and GID are pinned to a literal number rather than left to the distribution's next-available. A number that shifts between base image versions changes the ownership of every mounted volume on the next rebuild.
-
 `EXPOSE` documents the port. It publishes nothing on its own; the actual mapping happens at run time.
 
 `ENTRYPOINT` names the executable, which does not change, and `CMD` supplies the default arguments, which a `docker run` can override.
+
+## Runtime User
+
+The image creates no user and sets no `USER`, so it runs as root unless the launch names someone else. A user baked into the image writes to a bind mount as a UID that matches nobody on the host, which trades root-owned files for files owned by a stranger.
+
+The launch picks the user, with both IDs. `--user "$(id -u):$(id -g)"` runs the process as whoever started it, so files it writes to a bind mount on native Linux Docker belong to that person rather than to root.
+
+```bash
+mkdir -p data
+docker run -d --user "$(id -u):$(id -g)" -v "$PWD/data:/data" -p 8080:8080 [GITHUB_USER]/[APP_NAME]:latest
+```
+
+Running as a different account takes that account's numbers, and neither the host nor the image needs a `/etc/passwd` entry for them. The group is always given alongside the user, because the Dockerfile reference runs a user with no primary group under the `root` group.
+
+The ownership problem belongs to native Docker on Linux, so a macOS host launches without `--user` and runs as root. macOS numbers its first user 501 in group 20, so the IDs always come from `id` rather than from an assumed 1000.
+
+Everything the process writes lands under the volume or `/tmp`. Every path baked into the image is owned by root and read-only to any other UID, so a write anywhere else works as root and fails as the launching user.
+
+`HOME` points into the volume, as `ENV HOME=/data`. A UID with no `/etc/passwd` entry has no home of its own, so a config directory, a cache, or a credential file under `~` fails without it, and as root it lands in the volume instead of being lost with the container.
+
+A Go binary built without cgo reads `HOME` through `os.UserHomeDir` and needs nothing more. `os/user.Current()` without cgo falls back to `USER` and `HOME` and returns an error when `USER` is empty, so a binary that calls it also sets `ENV USER=[APP_NAME]`.
+
+The host directory exists before the first run. Docker creates a missing bind-mount source itself, and the native Linux daemon runs as root, so the directory it creates belongs to root and the launching user cannot write into it.
+
+Data a root container already wrote is handed over once before switching, because the launching user cannot write into root-owned files.
+
+```bash
+sudo chown -R "$(id -u):$(id -g)" ./data
+```
 
 ## Packaging the Runtime
 
@@ -84,17 +109,13 @@ RUN make assets && \
 
 FROM alpine:3.24.4
 
-RUN apk add --no-cache ca-certificates tzdata && \
-    addgroup -g 10001 -S app && \
-    adduser -u 10001 -S -G app app
+RUN apk add --no-cache ca-certificates tzdata
 
 WORKDIR /app
-COPY --from=builder --chown=10001:10001 /app/[APP_NAME] .
+COPY --from=builder /app/[APP_NAME] .
 
-RUN mkdir -p /data && chown 10001:10001 /data
+ENV HOME=/data
 VOLUME ["/data"]
-
-USER 10001:10001
 EXPOSE 8080
 ENTRYPOINT ["./[APP_NAME]"]
 CMD ["serve", "-d", "/data", "-H", "0.0.0.0"]
@@ -106,10 +127,6 @@ CMD ["serve", "-d", "/data", "-H", "0.0.0.0"]
 
 `ca-certificates` is what lets the binary make an outbound HTTPS request; without it every TLS handshake fails verification. `tzdata` is what `time.LoadLocation` reads.
 
-`--chown` on the `COPY` sets ownership as the layer is written, rather than adding a second layer that duplicates every copied file with new metadata.
-
-`USER` is set after the last `RUN` that needs to write, since a `RUN` after it executes unprivileged and cannot create the directories the app needs.
-
 ## Compose
 
 ```yaml
@@ -117,6 +134,7 @@ services:
   [APP_NAME]:
     image: [GITHUB_USER]/[APP_NAME]:latest
     container_name: [APP_NAME]
+    user: "${PUID:-0}:${PGID:-0}"
     ports:
       - "8080:8080"
     volumes:
@@ -126,7 +144,11 @@ services:
     restart: unless-stopped
 ```
 
-The host directory backing `/data` is owned by UID 10001 on the host, because that is the user writing it inside the container. A `chown 10001:10001 ./data` before the first run is what keeps the container from failing to write on start.
+`user:` reads both IDs from the environment and falls back to root, so one file serves every host. A Linux host puts its own IDs in a `.env` beside the compose file, which compose reads on its own, and a macOS host has no `.env` and runs as root.
+
+```bash
+printf 'PUID=%s\nPGID=%s\n' "$(id -u)" "$(id -g)" > .env
+```
 
 ## Multi-arch
 

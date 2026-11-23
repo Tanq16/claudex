@@ -36,7 +36,7 @@ A rule runs to one or two sentences of prose. The first states the property and 
 
 One sentence carries one idea. A sentence that has taken on a second idea splits at the point the second one starts.
 
-A negative states the property rather than forbidding the act. "The final stage runs as a fixed non-root user" rather than "do not run as root", since the property still holds in the case the prohibition forgot to name.
+A negative states the property rather than forbidding the act. "A package manager's cache is cleared in the same `RUN` that created it" rather than "do not leave a cache behind", since the property still holds in the case the prohibition forgot to name.
 
 `MUST`, `CRITICAL`, ALL-CAPS and `!!` stay out of the body. Emphasis belongs in the `description`, where it does routing work; in the body, emphasis without an adjacent reason reads as anxiety, and an anxious prompt produces a hedging agent.
 

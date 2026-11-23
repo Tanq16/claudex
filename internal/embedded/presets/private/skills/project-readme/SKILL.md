@@ -117,9 +117,11 @@ mkdir -p $HOME/.[PROJECT_NAME]
 ```bash
 docker run -d --name [PROJECT_NAME] \
   -p 8080:8080 \
-  -v $HOME/.[PROJECT_NAME]:/app/data \
+  -v $HOME/.[PROJECT_NAME]:/data \
   [IMAGE]:[TAG]
 ```
+
+On Linux, add `--user "$(id -u):$(id -g)"` so files in the mounted folder stay yours.
 
 Available at `http://localhost:8080`. The same setup as a compose file:
 
@@ -128,11 +130,12 @@ services:
   [PROJECT_NAME]:
     image: [IMAGE]:[TAG]
     container_name: [PROJECT_NAME]
+    user: "${PUID:-0}:${PGID:-0}" # on Linux, set PUID and PGID in .env
     restart: unless-stopped
     ports:
       - "8080:8080"
     volumes:
-      - ./data:/app/data # change as needed
+      - ./data:/data # change as needed
 ```
 ````
 
@@ -140,7 +143,7 @@ The run command and the compose file name the same image and tag, and that tag i
 
 A persistence directory is created before the run command whenever a container failure would otherwise lose data, and the mounted path is commented in the compose file so a reader changes it rather than inheriting a path from another machine.
 
-A container running as a non-root user documents its UID and GID, because a reader who mounts a host directory and gets permission errors has no way to find the number inside a Dockerfile they never opened.
+An image that runs as root by default tells a Linux reader how to run it as themselves, with `--user` on the run command and `PUID` and `PGID` for compose. Without it, files the container writes to the mounted folder belong to root on the host, and the fix is nowhere a reader of the README would look.
 
 ## Screenshots
 
