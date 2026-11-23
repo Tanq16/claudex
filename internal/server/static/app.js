@@ -262,6 +262,8 @@ const mermaidConfig = () => {
     return {
         startOnLoad: false,
         theme: 'base',
+        look: 'classic',
+        layout: 'dagre',
         fontFamily: 'Inter',
         ...Object.fromEntries(['flowchart', 'sequence', 'gantt', 'pie', 'gitGraph', 'state', 'timeline', 'mindmap'].map((d) => [d, { useMaxWidth: false }])),
         themeVariables: {
