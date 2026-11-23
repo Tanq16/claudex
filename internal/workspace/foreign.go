@@ -14,6 +14,14 @@ const OldFilesZip = "old-ai-files.zip"
 
 var foreignCandidates = []string{MCPFile, ClaudeDir, AgentsDir, ClaudeFile, AgentsFile}
 
+type ForeignError struct {
+	Found []string
+}
+
+func (e *ForeignError) Error() string {
+	return "holds files claudex did not create: " + strings.Join(e.Found, ", ")
+}
+
 func Owned(root string) bool {
 	open, _ := markers("")
 	if !strings.Contains(readFile(filepath.Join(root, AgentsFile)), open) {

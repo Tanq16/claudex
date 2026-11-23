@@ -166,6 +166,8 @@ A field stacks a label above its control and a hint below it. It is a `<label>`,
 
 Any other control passes `group: true` and renders a `role="group"` `div` instead. In a pill track, a stepper, or a tag field, the first button is one pill, a decrease, or a chip's remove. A `<label>` around one turns a click on its text into a selection or a deletion.
 
+A text, number, or search `input`, a `textarea`, and a `select` each carry a `name`, whether a builder renders it or a view writes it by hand. Chrome's Issues panel flags one with neither a `name` nor an `id`.
+
 ## Delegation
 
 ```javascript

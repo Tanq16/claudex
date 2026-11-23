@@ -80,8 +80,8 @@ views.settings = (() => {
         const pending = busy(`key:${a.dir}:${k.key}`);
         return `<li class="flex items-center gap-2 rounded-xl bg-surface0/50 py-1.5 pr-1.5 pl-3">
             <p class="min-w-0 flex-1 font-mono text-xs">
-                <span data-tip="${esc(k.key)}" class="block truncate text-subtext1">${esc(k.key)}</span>
-                <span data-tip="${esc(k.value)}" class="block truncate text-blue">${esc(k.value)}</span>
+                <span data-tip="${esc(k.key)}" class="block ${ui.cls.rowText} text-subtext1">${esc(k.key)}</span>
+                <span data-tip="${esc(k.value)}" class="block ${ui.cls.rowText} text-blue">${esc(k.value)}</span>
             </p>
             ${ui.button('Adopt', { icon: pending ? 'loader-circle' : 'import', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-adopt', attrs })}
             ${ui.iconButton('trash-2', { tip: 'Remove from this account', size: 'sm', variant: 'danger', action: 'settings-remove-key', disabled: pending, attrs })}
@@ -145,7 +145,7 @@ views.settings = (() => {
         case 'string':
         case 'number':
         case 'integer':
-            return `<input data-dv="${esc(r.key)}" value="${esc(r.value)}" ${r.kind === 'string' ? '' : 'inputmode="decimal"'} aria-label="${esc(r.key)}" autocomplete="off" spellcheck="false" class="${ui.cls.input} h-9 py-1.5 font-mono sm:w-72">`;
+            return `<input name="dv:${esc(r.key)}" data-dv="${esc(r.key)}" value="${esc(r.value)}" ${r.kind === 'string' ? '' : 'inputmode="decimal"'} aria-label="${esc(r.key)}" autocomplete="off" spellcheck="false" class="${ui.cls.input} h-9 py-1.5 font-mono sm:w-72">`;
         default:
             return ui.button(summary(r.value), { icon: 'braces', size: 'sm', action: 'settings-default-edit', attrs });
         }
@@ -156,7 +156,7 @@ views.settings = (() => {
         const pending = busy(`default:${r.key}`);
         const open = s.open.has(r.key);
         return `<li class="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl px-3 py-1.5 transition-colors hover:bg-surface0/50">
-            <span data-tip="${esc(r.key)}" class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
+            <span data-tip="${esc(r.key)}" class="min-w-0 flex-1 ${ui.cls.rowText} font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
             ${r.inSchema ? '' : ui.chip('custom', { icon: 'pencil-line' })}
             <span class="flex shrink-0 items-center gap-1 ${['string', 'number', 'integer'].includes(r.kind) ? 'max-sm:basis-full' : ''}">
                 ${pending ? ui.spinner('size-4 text-overlay1') : ''}
@@ -195,7 +195,7 @@ views.settings = (() => {
     const documentText = () => (s.json.dirty ? s.json.text : JSON.stringify(sorted(s.defaults.document), null, 2));
 
     const jsonView = () => `<section class="flex min-h-0 flex-1 flex-col gap-2">
-        <textarea data-field="defaults.json" aria-label="Defaults as settings.json" spellcheck="false" class="${ui.cls.input} min-h-64 flex-1 resize-none font-mono text-xs leading-relaxed">${esc(documentText())}</textarea>
+        <textarea name="defaults-json" data-field="defaults.json" aria-label="Defaults as settings.json" spellcheck="false" class="${ui.cls.input} min-h-64 flex-1 resize-none font-mono text-xs leading-relaxed">${esc(documentText())}</textarea>
         <p data-json-error role="alert" class="${s.json.error ? '' : 'hidden'} px-1 text-sm whitespace-pre-line text-red">${esc(s.json.error)}</p>
         <footer class="flex flex-wrap items-center justify-end gap-2">
             <span class="mr-auto px-1 text-xs text-overlay1">statusLine stays out of this document</span>
@@ -264,9 +264,9 @@ views.settings = (() => {
                 <label class="relative block">
                     <span class="sr-only">Repository</span>
                     <i class="fab fa-github pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-overlay1"></i>
-                    <input data-field="track.repo" value="${esc(s.track.repo)}" placeholder="owner/repo" autocomplete="off" spellcheck="false" ${disabled} class="${ui.cls.input} pl-10 font-mono disabled:opacity-60">
+                    <input name="track-repo" data-field="track.repo" value="${esc(s.track.repo)}" placeholder="owner/repo" autocomplete="off" spellcheck="false" ${disabled} class="${ui.cls.input} pl-10 font-mono disabled:opacity-60">
                 </label>
-                <input data-field="track.path" value="${esc(s.track.path)}" placeholder="preset path (optional)" aria-label="Preset path" autocomplete="off" spellcheck="false" ${disabled} class="${ui.cls.input} font-mono disabled:opacity-60">
+                <input name="track-path" data-field="track.path" value="${esc(s.track.path)}" placeholder="preset path (optional)" aria-label="Preset path" autocomplete="off" spellcheck="false" ${disabled} class="${ui.cls.input} font-mono disabled:opacity-60">
                 ${ui.button(pending ? 'Tracking' : 'Track', { icon: pending ? 'loader-circle' : 'plus', spin: pending, disabled: pending, type: 'submit', variant: 'primary' })}
             </span>
             ${s.track.error ? `<p role="alert" class="flex items-center gap-2 px-1 text-sm text-red">${icon('circle-alert', 'size-4')}${esc(s.track.error)}</p>` : ''}
@@ -449,9 +449,9 @@ views.settings = (() => {
             </header>
             ${rows.length ? `<ul class="flex flex-col gap-2">${rows.map((row, i) => `<li class="flex items-center gap-2">
                 ${pair
-                    ? `<input data-field="${list}.${i}.0" value="${esc(row[0])}" placeholder="${keyHint}" aria-label="${noun} name" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[2] font-mono">
-                       <input data-field="${list}.${i}.1" value="${esc(row[1])}" placeholder="value" aria-label="${noun} value" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[3] font-mono">`
-                    : `<input data-field="${list}.${i}" value="${esc(row)}" placeholder="argument ${i + 1}" aria-label="Argument ${i + 1}" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-1 font-mono">`}
+                    ? `<input name="mcp-${list}-${i}-0" data-field="${list}.${i}.0" value="${esc(row[0])}" placeholder="${keyHint}" aria-label="${noun} name" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[2] font-mono">
+                       <input name="mcp-${list}-${i}-1" data-field="${list}.${i}.1" value="${esc(row[1])}" placeholder="value" aria-label="${noun} value" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-[3] font-mono">`
+                    : `<input name="mcp-${list}-${i}" data-field="${list}.${i}" value="${esc(row)}" placeholder="argument ${i + 1}" aria-label="Argument ${i + 1}" autocomplete="off" spellcheck="false" class="${ui.cls.input} min-w-0 flex-1 font-mono">`}
                 ${ui.iconButton('x', { tip: `Remove ${noun}`, size: 'sm', action: 'settings-mcp-row-remove', attrs: `data-list="${list}" data-index="${i}"` })}
             </li>`).join('')}</ul>` : `<p class="px-1 text-xs text-overlay1">None</p>`}
         </section>`;

@@ -105,15 +105,16 @@
       .user-md p, .user-md ul, .user-md ol, .user-md pre { margin-bottom: 10px; }
       .user-md code, .user-md pre { background-color: var(--ctp-surface1) !important; }
       .user-md pre { padding: 0.75rem 1rem !important; }
+      .chat-tile pre { background-color: var(--ctp-surface0); }
 
       .mermaid {
         background-color: var(--ctp-base);
         padding: 1rem;
         border-radius: 1rem;
         margin-block: 1.5rem;
-        text-align: center;
         overflow-x: auto;
       }
+      .mermaid > svg { margin-inline: auto; }
       .mermaid:not([data-processed]) { color: transparent; min-height: 8rem; }
       .mermaid .grid .tick line { stroke: var(--ctp-surface0) !important; stroke-width: 0.5px !important; opacity: 0.5 !important; }
       .mermaid .grid .tick text { fill: var(--ctp-subtext0) !important; }
@@ -123,13 +124,9 @@
       .mermaid .section1, .mermaid .section3 { fill: var(--ctp-base) !important; }
       .mermaid .today { stroke: var(--ctp-red) !important; stroke-width: 2px !important; }
       .mermaid .taskText { fill: var(--ctp-base) !important; font-size: 0.75em !important; }
-      .mermaid .activeText0, .mermaid .activeText1, .mermaid .activeText2, .mermaid .activeText3 { fill: var(--ctp-base) !important; }
       .mermaid .taskTextOutsideRight, .mermaid .taskTextOutsideLeft { fill: var(--ctp-text) !important; }
       .mermaid .sectionTitle { fill: var(--ctp-mauve) !important; }
       .mermaid .titleText { fill: var(--ctp-mauve) !important; }
-
-      .code-lines code { counter-reset: line; }
-      .code-lines code > span::before { counter-increment: line; content: counter(line); position: sticky; left: 0; padding: 0 1.25rem 0 1rem; text-align: right; color: var(--ctp-overlay0); background-color: var(--ctp-base); user-select: none; }
 
       .callout {
         padding: 1rem;

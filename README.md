@@ -3,7 +3,7 @@
   <h1>ClaudeX</h1>
 
   <a href="https://github.com/tanq16/claudex/actions/workflows/release.yaml"><img alt="Build Workflow" src="https://github.com/tanq16/claudex/actions/workflows/release.yaml/badge.svg"></a>&nbsp;<a href="https://github.com/tanq16/claudex/releases"><img alt="GitHub Release" src="https://img.shields.io/github/v/release/tanq16/claudex"></a><br><br>
-  <a href="#philosophy">Philosophy</a> &bull; <a href="#install">Install</a> &bull; <a href="#screenshots">Screenshots</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#notes">Notes</a>
+  <a href="#features">Features</a> &bull; <a href="#screenshots">Screenshots</a> &bull; <a href="#install">Install</a> &bull; <a href="#usage">Usage</a> &bull; <a href="#notes">Notes</a>
 </div>
 
 ---
@@ -12,7 +12,11 @@ ClaudeX is an opinionated companion for Claude Code. It runs sessions across you
 
 <img src=".github/assets/philosophy.jpg" alt="ClaudeX philosophy" width="100%" />
 
-## Philosophy
+## Security
+
+`serve` has no authentication. Anyone who reaches its port can run shell commands in your project directories and drive every session. It binds to `127.0.0.1` by default, so put an authenticating reverse proxy in front before exposing it.
+
+## Features
 
 Built to run Claude Code work from one page:
 
@@ -31,39 +35,6 @@ And kept deliberately small:
 - **Summaries over compaction.** The `session-summary` skill replaces auto-compaction.
 - **Project-local.** Skills, instructions, and `.mcp.json` stay in the project, hidden from git.
 - **Your own setup?** Skip `serve` and use the CLI per project.
-
-## Install
-
-Prerequisites:
-
-- `claude`, signed in, on your `PATH`.
-- `tmux` for detached sessions.
-- `gh`, signed in, to list and clone repositories from the web UI.
-- `git` for pulling and tracking presets.
-- Optional language servers, listed in [docs/language-servers.md](docs/language-servers.md).
-
-### Release binary
-
-```bash
-# Linux/macOS
-curl -sL https://github.com/tanq16/claudex/releases/latest/download/claudex-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o claudex
-chmod +x claudex
-sudo mv claudex /usr/local/bin/
-```
-
-Each release carries `claudex-linux-amd64`, `claudex-linux-arm64`, `claudex-darwin-amd64`, and `claudex-darwin-arm64`.
-
-### From source
-
-Needs Go 1.27.
-
-```bash
-git clone https://github.com/tanq16/claudex.git
-cd claudex
-make build
-```
-
-`make build-all` produces all four platform binaries instead.
 
 ## Screenshots
 
@@ -102,6 +73,39 @@ make build
 
 </details>
 
+## Install
+
+Prerequisites:
+
+- `claude`, signed in, on your `PATH`.
+- `tmux` for detached sessions.
+- `gh`, signed in, to list and clone repositories from the web UI.
+- `git` for pulling and tracking presets.
+- Optional language servers, listed in [docs/language-servers.md](docs/language-servers.md).
+
+### Release binary
+
+```bash
+# Linux/macOS
+curl -sL https://github.com/tanq16/claudex/releases/latest/download/claudex-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/') -o claudex
+chmod +x claudex
+sudo mv claudex /usr/local/bin/
+```
+
+Each release carries `claudex-linux-amd64`, `claudex-linux-arm64`, `claudex-darwin-amd64`, and `claudex-darwin-arm64`.
+
+### From source
+
+Needs Go 1.27.
+
+```bash
+git clone https://github.com/tanq16/claudex.git
+cd claudex
+make build
+```
+
+`make build-all` produces all four platform binaries instead.
+
 ## Usage
 
 `serve` is the recommended way to run ClaudeX.
@@ -131,6 +135,5 @@ Every feature also works per project from the terminal. Each command is covered 
 
 ## Notes
 
-- **`serve` has no authentication.** Anyone who reaches its port can drive every session. It binds to `127.0.0.1` by default, so put an authenticating reverse proxy in front before exposing it.
 - **Accounts** are `~/.claude` and every `~/.claudeN`, such as `~/.claude2`.
 - **Another repo's agent files** stay in your working tree when the repository tracks them. [docs/foreign-agent-files.md](docs/foreign-agent-files.md) covers the sparse-checkout that removes them.

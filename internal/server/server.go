@@ -112,8 +112,13 @@ func (s *Server) Setup() error {
 		return err
 	}
 	go func() {
-		for range s.host.Changed() {
-			s.syncAttached()
+		for {
+			select {
+			case <-s.ctx.Done():
+				return
+			case <-s.host.Changed():
+				s.syncAttached()
+			}
 		}
 	}()
 

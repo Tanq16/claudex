@@ -18,7 +18,7 @@ reader() {
         <header class="flex shrink-0 items-center gap-2 p-2 sm:gap-3 sm:p-3">
             <span class="max-sm:hidden">${ui.tile('book-open', 'mauve', 'sm')}</span>
             <h2 class="min-w-0 flex-1 truncate pl-2 font-display text-[16px] font-medium text-text sm:pl-0">${ui.esc(MEDIA.book.title)}</h2>
-            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ 0</span></span>
+            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input name="reader-page" data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ 0</span></span>
             <span class="flex shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1">
                 ${ui.iconButton('zoom-out', { tip: 'Zoom out', size: 'sm', variant: 'inset', attrs: 'data-action="reader-zoom-out"' })}
                 ${ui.iconButton('move-horizontal', { tip: 'Fit to width', size: 'sm', variant: 'inset', attrs: 'data-action="reader-fit"' })}

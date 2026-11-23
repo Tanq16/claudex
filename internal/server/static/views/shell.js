@@ -35,7 +35,7 @@ views.shell = (() => {
         const body = r.error ? out(r.error, 'text-red') : res ? `${out(res.stdout, 'text-subtext1')}${out(res.stderr, 'text-red')}${!res.stdout && !res.stderr ? '<p class="px-1 text-xs text-overlay1">No output</p>' : ''}` : '';
         return `<li class="group flex flex-col gap-2">
             <header class="flex min-w-0 items-center gap-2">
-                <code class="min-w-0 flex-1 truncate font-mono text-sm text-text" data-tip="${ui.esc(r.command)}"><span class="select-none text-mauve">$ </span>${ui.esc(r.command)}</code>
+                <code class="min-w-0 flex-1 ${ui.cls.rowText} font-mono text-sm text-text" data-tip="${ui.esc(r.command)}"><span class="select-none text-mauve">$ </span>${ui.esc(r.command)}</code>
                 <span class="flex shrink-0 items-center gap-1.5">${chips.join('')}</span>
                 ${res ? `<span class="${ui.cls.reveal}">${ui.iconButton('copy', { tip: 'Copy output', size: 'sm', attrs: `data-shell-copy="${i}"` })}</span>` : ''}
             </header>
@@ -56,7 +56,7 @@ views.shell = (() => {
             size: 'lg',
             body: '<ol data-shell-runs class="flex flex-col gap-5 pt-1"></ol>',
             footer: `<form data-shell-form class="flex w-full items-center gap-2">
-                <label class="relative flex min-w-0 flex-1"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-sm text-mauve">$</span><input data-shell-input class="${ui.cls.input} pl-9 font-mono" placeholder="git status" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command"></label>
+                <label class="relative flex min-w-0 flex-1"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-sm text-mauve">$</span><input name="command" data-shell-input class="${ui.cls.input} pl-9 font-mono" placeholder="git status" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command"></label>
                 ${ui.button('Run', { icon: 'play', variant: 'primary', type: 'submit' })}
             </form>`,
             onClose: () => {

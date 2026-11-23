@@ -1,7 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
+	"io/fs"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,72 +30,44 @@ func runApplyPreset(cmd *cobra.Command, args []string) {
 	}
 	skills, agents := presetParts(applyPresetFlags.skills, applyPresetFlags.agents)
 
-	local, remote := presetsDir(), remotePresetsDir()
-
-	pruned, err := workspace.PruneDeadSkillLinks(root)
-	if err != nil {
-		u.PrintFatal("failed to remove dead skill links", err)
+	res, err := workspace.AddPresets(workspace.AddConfig{
+		Root:          root,
+		LocalPresets:  presetsDir(),
+		RemotePresets: remotePresetsDir(),
+		Refs:          args,
+		Skills:        skills,
+		Agents:        agents,
+	})
+	if len(res.Pruned) > 0 {
+		u.PrintInfo("Removed dead skill links: " + strings.Join(res.Pruned, ", "))
 	}
-	if len(pruned) > 0 {
-		u.PrintInfo("Removed dead skill links: " + strings.Join(pruned, ", "))
+	if c, ok := errors.AsType[*workspace.ConflictError](err); ok {
+		refuse("cannot apply to "+u.AbbreviatePath(root), c.Conflicts)
 	}
-
-	presets := make([]*workspace.Preset, 0, len(args))
-	var conflicts []workspace.Conflict
-	if agents {
-		conflicts = append(conflicts, workspace.PreflightAgentsFile(root)...)
-	}
-	for _, ref := range args {
-		p, err := workspace.FindPreset(local, remote, ref)
-		if err != nil {
-			u.PrintFatal("preset not found: "+ref, err)
-		}
-		presets = append(presets, p)
-		if skills {
-			conflicts = append(conflicts, workspace.PreflightPresetSkills(root, p.Skills)...)
-		}
-	}
-	if len(conflicts) > 0 {
-		refuse("cannot apply to "+u.AbbreviatePath(root), conflicts)
-	}
-
-	for _, p := range presets {
-		if skills {
-			if err := workspace.LinkSkills(root, p.SkillsDir(), p.Skills); err != nil {
-				u.PrintFatal("failed to link the skills of preset "+p.Ref, err)
-			}
-		}
-		partial := ""
-		if agents {
-			if partial = p.Partial(); partial != "" {
-				if err := workspace.UpsertSection(root, p.Ref, partial); err != nil {
-					u.PrintFatal("failed to write the AGENTS.md section of preset "+p.Ref, err)
-				}
-			}
-		}
-
-		var servers []string
-		if skills && agents {
-			var err error
-			if servers, err = workspace.MergePresetMCP(root, p); err != nil {
-				u.PrintFatal("failed to merge the MCP servers of preset "+p.Ref, err)
-			}
-		}
-
+	for _, p := range res.Presets {
 		u.PrintSuccess("Applied preset: " + p.Ref)
 		if skills {
-			u.PrintGeneric(fmt.Sprintf("  skills: %d linked into .agents/skills", len(p.Skills)))
+			u.PrintGeneric(fmt.Sprintf("  skills: %d linked into .agents/skills", p.Skills))
 		}
 		if agents {
-			if partial != "" {
+			if p.Section {
 				u.PrintGeneric("  agents: section written to AGENTS.md")
 			} else {
 				u.PrintGeneric("  agents: this preset carries no section")
 			}
 		}
-		if len(servers) > 0 {
-			u.PrintGeneric("  mcp:    " + strings.Join(servers, ", ") + " merged into " + workspace.MCPFile)
+		if len(p.Servers) > 0 {
+			u.PrintGeneric("  mcp:    " + strings.Join(p.Servers, ", ") + " merged into " + workspace.MCPFile)
 		}
+	}
+	if p, ok := errors.AsType[*workspace.PresetError](err); ok {
+		if errors.Is(p.Err, fs.ErrNotExist) {
+			u.PrintFatal("preset not found: "+p.Ref, err)
+		}
+		u.PrintFatal("failed to apply preset "+p.Ref, err)
+	}
+	if err != nil {
+		u.PrintFatal("failed to apply the presets", err)
 	}
 }
 

@@ -407,7 +407,7 @@
     const readerControls = () => {
         const width = reader.view?.currentScaleValue === 'page-width';
         return `
-            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" value="${reader.view?.currentPageNumber ?? ''}" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ ${reader.view?.pagesCount ?? 0}</span></span>
+            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input name="reader-page" data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" value="${reader.view?.currentPageNumber ?? ''}" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ ${reader.view?.pagesCount ?? 0}</span></span>
             <span class="flex shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1">
                 ${ui.iconButton('zoom-out', { tip: 'Zoom out', size: 'sm', variant: 'inset', action: 'reader-zoom-out' })}
                 ${ui.iconButton(width ? 'move-vertical' : 'move-horizontal', { tip: width ? 'Fit page' : 'Fit to width', size: 'sm', variant: 'inset', action: 'reader-fit' })}
@@ -456,7 +456,7 @@
         const text = content.replace(/\n$/, '');
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
         const lines = splitLines(hljs.highlight(text, { language }).value);
-        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="code-lines group/code m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block w-max min-w-full overflow-visible! bg-transparent! p-0! text-subtext1 group-data-wrap/code:w-auto [&>span]:grid [&>span]:grid-cols-[calc(var(--gutter)+2.25rem)_minmax(0,1fr)] [&>span>span]:whitespace-pre [&>span>span]:pr-6 group-data-wrap/code:[&>span>span]:whitespace-pre-wrap group-data-wrap/code:[&>span>span]:wrap-anywhere">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
+        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="group/code m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block w-max min-w-full overflow-visible! bg-transparent! p-0! text-subtext1 group-data-wrap/code:w-auto [counter-reset:line] [&>span]:before:sticky [&>span]:before:left-0 [&>span]:before:bg-base [&>span]:before:pr-5 [&>span]:before:pl-4 [&>span]:before:text-right [&>span]:before:text-overlay0 [&>span]:before:select-none [&>span]:before:[counter-increment:line] [&>span]:before:content-[counter(line)] [&>span]:grid [&>span]:grid-cols-[calc(var(--gutter)+2.25rem)_minmax(0,1fr)] [&>span>span]:whitespace-pre [&>span>span]:pr-6 group-data-wrap/code:[&>span>span]:whitespace-pre-wrap group-data-wrap/code:[&>span>span]:wrap-anywhere">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
     };
 
     const readerWell = () => `
@@ -682,10 +682,10 @@
         const [icon, label, tone] = pr ? PR_STATES[pr.draft && pr.state === 'OPEN' ? 'DRAFT' : pr.state] || PR_STATES.OPEN : [];
         host.innerHTML = `
             <p data-tip="${g.detached ? 'Detached HEAD' : ui.esc(g.branch)}" class="flex h-8 items-center gap-2 px-3"><i data-lucide="${g.detached ? 'git-commit-horizontal' : 'git-branch'}" class="size-4 shrink-0 text-overlay1"></i><span class="truncate font-mono text-xs text-subtext1">${ui.esc(g.branch)}</span></p>
-            ${pr ? `<a href="${ui.esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="${ui.esc(pr.title)}" class="flex h-8 items-center gap-2 rounded-xl px-3 text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
+            ${pr ? `<a href="${ui.esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="${ui.esc(pr.title)}" class="flex min-h-8 items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
                 <i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>
                 <span class="shrink-0 font-mono text-xs text-text">#${pr.number}</span>
-                <span class="min-w-0 flex-1 truncate text-subtext0">${ui.esc(pr.title)}</span>
+                <span class="min-w-0 flex-1 ${ui.cls.rowText} text-subtext0">${ui.esc(pr.title)}</span>
                 ${ui.chip(label, { tone })}
                 ${checksBadge(pr.checks)}
             </a>` : ''}`;
@@ -1045,7 +1045,7 @@
         });
     };
 
-    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" spellcheck="false"><input data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
+    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input name="kv-key" data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" autocomplete="off" spellcheck="false"><input name="kv-value" data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" autocomplete="off" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
 
     const kvList = (name, label, kp) => `
         <fieldset>
@@ -1256,7 +1256,7 @@
     ui.on('project-toggle-details', () => {
         if (S.tier === 'mobile') {
             const p = project();
-            S.sheet = ui.modal.open({ title: p.name, icon: 'info', subtitle: 'Session details', body: '<div data-p-sheet class="flex flex-col gap-6 pb-2"></div>', onClose: () => { if (S) S.sheet = null; } });
+            S.sheet = ui.modal.open({ title: p.name, icon: 'info', body: '<div data-p-sheet class="flex flex-col gap-6 pb-2"></div>', onClose: () => { if (S) S.sheet = null; } });
             renderSession();
             return;
         }

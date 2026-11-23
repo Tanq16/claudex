@@ -1,6 +1,6 @@
 ---
 name: write-unit-tests
-description: "Writes unit tests, and only when the user has asked for them. Invoked as /write-unit-tests <scope>, or when the user asks in their own words for unit tests to be written or an existing suite extended. Reads the source in scope, separates business logic from helper code, selects only the edge cases and unwanted behaviors worth pinning, holds the plan under an estimated-coverage ceiling, then writes the Go or Node tests. Nothing else starts it: a feature landing, a bug fix, a refactor, a PR being prepared, and a _test.go or *.test.js file sitting in the diff are not requests for tests. Also the reference a code review reads when auditing an existing suite."
+description: "Writes unit tests, and only when the user has asked for them. Invoked as /write-unit-tests <scope>, or when the user asks in their own words for unit tests to be written or an existing suite extended. Reads the source in scope, separates business logic from helper code, selects only the edge cases and unwanted behaviors worth pinning, holds the plan under an estimated-coverage ceiling, then writes the Go tests. Nothing else starts it: a feature landing, a bug fix, a refactor, a PR being prepared, and a _test.go file sitting in the diff are not requests for tests. Also the reference a code review reads when auditing an existing suite."
 user-invocable: true
 ---
 
@@ -41,7 +41,7 @@ Only the true-functionality pile continues to Step 3.
 Two kinds of case qualify, and each has to point at something concrete in the code read in Step 1.
 
 - **An unwanted behavior that has to stay impossible.** The malformed input that must be rejected, the boundary that must not be crossed, the state that must never be written. It qualifies when the code contains the specific guard against it.
-- **A positive behavior at an edge.** Empty and nil or undefined input, zero-length and single-element collections, the first and last element, the boundary value on both sides, concurrent access, overflow. It qualifies when the code handles that edge deliberately.
+- **A positive behavior at an edge.** Empty and nil input, zero-length and single-element collections, the first and last element, the boundary value on both sides, concurrent access, overflow. It qualifies when the code handles that edge deliberately.
 
 What qualifies is what is glaringly obvious from the source or genuinely unique to this situation. Enumerating every input a function could theoretically receive is the failure mode this step exists to prevent, because the set of possible bad inputs has no end and a suite that chases it stops being about the code.
 
@@ -108,53 +108,4 @@ func TestParse(t *testing.T) {
         })
     }
 }
-```
-
-## Node mechanics
-
-Tests live under `test/` as `*.test.js`, or colocated as `*.test.js` beside the module. They run with `node --test`, and `node --test --watch` during development.
-
-The built-in runner covers this, so no test-framework dependency is added. `node:assert/strict` is the assertion import, since the loose variants treat `1` and `'1'` as equal and hide exactly the coercion bugs a test should catch.
-
-A live end-to-end script, such as `test/e2e.mjs` booting the server over HTTP and WebSocket, stays separate from the unit suite and stays optional. Running it as part of `node --test` makes every unit run depend on a free port.
-
-```js
-import { test } from 'node:test';
-import assert from 'node:assert/strict';
-import { parse } from '../src/parse.js';
-
-test('parse', async (t) => {
-  const cases = [
-    { name: 'empty input', in: '', want: [], throws: true },
-    { name: 'only separator', in: ',', want: [], throws: true },
-    { name: 'trailing separator', in: 'a,', want: ['a'], throws: false },
-    { name: 'single element', in: 'a', want: ['a'], throws: false },
-  ];
-  for (const c of cases) {
-    await t.test(c.name, () => {
-      if (c.throws) {
-        assert.throws(() => parse(c.in));
-        return;
-      }
-      assert.deepEqual(parse(c.in), c.want);
-    });
-  }
-});
-```
-
-Async setup and teardown hang off `before` and `after` inside the test:
-
-```js
-import { test, before, after } from 'node:test';
-import assert from 'node:assert/strict';
-
-test('handler', async (t) => {
-  let store;
-  before(() => { store = new Map(); });
-  after(() => { store.clear(); });
-
-  await t.test('rejects unknown id', () => {
-    assert.throws(() => lookup(store, 'nope'), /not found/);
-  });
-});
 ```
