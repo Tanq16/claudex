@@ -103,7 +103,7 @@ ui.on('remove-machine', () => {
         icon: 'shield-alert',
         tone: 'red',
         size: 'sm',
-        body: `<p class="mb-3 text-sm">The instance and its disk are terminated. Type <span class="font-mono text-text">dev-box</span> to confirm.</p><input data-typed class="${ui.cls.input} font-mono" placeholder="dev-box" autofocus>`,
+        body: `<p class="mb-3 text-sm">The instance and its disk are terminated. Type <span class="font-mono text-text">dev-box</span> to confirm.</p><input name="confirm" data-typed class="${ui.cls.input} font-mono" placeholder="dev-box" autofocus>`,
         footer: `${ui.button('Cancel', { variant: 'ghost', attrs: 'data-close' })}${ui.button('Remove', { variant: 'danger-solid', icon: 'trash-2', disabled: true, attrs: 'data-remove' })}`,
     });
     const input = m.el.querySelector('[data-typed]');

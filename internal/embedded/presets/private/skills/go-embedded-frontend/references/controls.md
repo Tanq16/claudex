@@ -20,7 +20,7 @@ search({ name, placeholder = 'Search', value = '', shortcut, attrs = '' }) {
 
 An input with an `icon` gets a leading icon, and a `password` input gets a reveal button. The reveal is an `inset` icon button that flips the input's type through the delegation's `reveal` branch.
 
-Every text field carries `name` beside `data-name`. Chrome's Issues panel flags a form field with neither a `name` nor an `id`, and the delegation reads only `data-name`.
+Every builder writes `name` beside `data-name`, because the delegation reads only `data-name`.
 
 A search field is `rounded-full`, unlike the `rounded-2xl` inputs, and shows its shortcut as `kbd` keys from `md` up. Its `attrs` land on the `<input>`, as they do for `ui.input`.
 
@@ -258,7 +258,7 @@ The input's minimum width holds its whole placeholder at 16px, so a line with le
 ```javascript
 const tags = `<div data-tags class="flex flex-wrap items-center gap-1.5 rounded-2xl bg-surface0 p-1.5 focus-within:ring-2 focus-within:ring-mauve/40">
     ${['go-idioms', 'go-cli-output'].map((t) => ui.chip(t, { mono: true, remove: 'tag-remove' }).replace('bg-surface0', 'bg-surface1')).join('')}
-    <input data-tag-input placeholder="Add and press Enter" class="min-w-44 flex-1 bg-transparent px-2 py-1 text-sm text-text placeholder:text-overlay0 outline-none pointer-coarse:text-[16px]">
+    <input name="tag" data-tag-input placeholder="Add and press Enter" class="min-w-44 flex-1 bg-transparent px-2 py-1 text-sm text-text placeholder:text-overlay0 outline-none pointer-coarse:text-[16px]">
 </div>`;
 ```
 

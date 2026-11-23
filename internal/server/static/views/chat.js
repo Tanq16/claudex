@@ -1205,7 +1205,7 @@ views.chat = (() => {
         const always = suggestion(r);
         const body = `<div data-scroll class="max-h-[28rem] overflow-y-auto rounded-2xl bg-base px-5 py-4"><article class="markdown-body chat-tile"></article></div>
             ${input.planFilePath ? `<p data-tip="${ui.esc(input.planFilePath)}" class="mt-2 truncate px-1 font-mono text-xs text-overlay1">${ui.esc(input.planFilePath)}</p>` : ''}
-            <div data-plan-feedback hidden class="mt-3"><textarea data-plan-text rows="3" spellcheck="false" class="${ui.cls.input} resize-none leading-relaxed" placeholder="What should change in the plan?"></textarea></div>
+            <div data-plan-feedback hidden class="mt-3"><textarea name="plan-feedback" data-plan-text rows="3" spellcheck="false" class="${ui.cls.input} resize-none leading-relaxed" placeholder="What should change in the plan?"></textarea></div>
             ${requestMeta(r)}`;
         const footer = `${ui.button('Keep planning', { variant: 'ghost', size: 'sm', attrs: 'data-plan="keep"' })}
             ${always ? ui.button(always.label.replace(/^Allow/, 'Approve'), { size: 'sm', attrs: 'data-plan="always"' }) : ''}
@@ -1280,7 +1280,7 @@ views.chat = (() => {
         const opts = (q.options || []).map((o, i) => tile(`data-q-opt="${ui.esc(o.label)}" ${i === 0 ? 'data-focus' : ''}`, a.picked.includes(o.label), o.label, o.description)).join('');
         li.querySelector('[data-q]').innerHTML = `${chips}${multi ? '<p class="mb-2 px-1 text-xs text-overlay1">Pick any that apply.</p>' : ''}
             <div class="grid gap-2 sm:grid-cols-2">${opts}${tile('data-q-other', a.otherOn, 'Other', 'Type your own answer')}</div>
-            ${a.otherOn ? `<input data-q-other-text class="${ui.cls.input} mt-2" value="${ui.esc(a.other)}" placeholder="Your answer" autocomplete="off" spellcheck="false">` : ''}
+            ${a.otherOn ? `<input name="question-other" data-q-other-text class="${ui.cls.input} mt-2" value="${ui.esc(a.other)}" placeholder="Your answer" autocomplete="off" spellcheck="false">` : ''}
             <div data-q-preview></div>`;
         drawPreview(li, m);
         drawQuestionFooter(li, m);

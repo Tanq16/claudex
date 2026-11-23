@@ -407,7 +407,7 @@
     const readerControls = () => {
         const width = reader.view?.currentScaleValue === 'page-width';
         return `
-            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" value="${reader.view?.currentPageNumber ?? ''}" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ ${reader.view?.pagesCount ?? 0}</span></span>
+            <span class="flex shrink-0 items-center gap-1.5 text-xs tabular-nums text-overlay1"><input name="reader-page" data-reader-page inputmode="numeric" autocomplete="off" aria-label="Page number" value="${reader.view?.currentPageNumber ?? ''}" class="h-8 w-12 rounded-full bg-surface0 text-center text-sm text-text tabular-nums outline-none transition-shadow focus:ring-2 focus:ring-mauve/40 pointer-coarse:text-[16px]"><span data-reader-count>/ ${reader.view?.pagesCount ?? 0}</span></span>
             <span class="flex shrink-0 items-center gap-0.5 rounded-full bg-surface0 p-1">
                 ${ui.iconButton('zoom-out', { tip: 'Zoom out', size: 'sm', variant: 'inset', action: 'reader-zoom-out' })}
                 ${ui.iconButton(width ? 'move-vertical' : 'move-horizontal', { tip: width ? 'Fit page' : 'Fit to width', size: 'sm', variant: 'inset', action: 'reader-fit' })}
@@ -1045,7 +1045,7 @@
         });
     };
 
-    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" spellcheck="false"><input data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
+    const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input name="kv-key" data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" autocomplete="off" spellcheck="false"><input name="kv-value" data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" autocomplete="off" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
 
     const kvList = (name, label, kp) => `
         <fieldset>

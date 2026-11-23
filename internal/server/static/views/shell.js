@@ -56,7 +56,7 @@ views.shell = (() => {
             size: 'lg',
             body: '<ol data-shell-runs class="flex flex-col gap-5 pt-1"></ol>',
             footer: `<form data-shell-form class="flex w-full items-center gap-2">
-                <label class="relative flex min-w-0 flex-1"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-sm text-mauve">$</span><input data-shell-input class="${ui.cls.input} pl-9 font-mono" placeholder="git status" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command"></label>
+                <label class="relative flex min-w-0 flex-1"><span class="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 font-mono text-sm text-mauve">$</span><input name="command" data-shell-input class="${ui.cls.input} pl-9 font-mono" placeholder="git status" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Command"></label>
                 ${ui.button('Run', { icon: 'play', variant: 'primary', type: 'submit' })}
             </form>`,
             onClose: () => {
