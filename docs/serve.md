@@ -23,7 +23,7 @@ The new-session dialog starts from an existing directory under the root, a new e
 
 ## Chat
 
-An attached session's page centers on the chat, which shows replies, tool calls, subagents, background commands, workflows, and to-dos as they happen. Approval cards answer tool permissions, questions, plans, and MCP prompts. The composer switches the model, effort, and permission mode, suggests slash commands, and Esc stops the turn. A message sent mid-turn queues until the turn ends, and each queued message can be removed or sent at once. A pending approval in a project that is not on screen raises a toast and marks the Dashboard link. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
+An attached session's page centers on the chat, which shows replies, tool calls, subagents, background commands, workflows, and to-dos as they happen. To-dos need Claude's task tools, which stay off unless `serve` runs with `CLAUDE_CODE_ENABLE_TODO_TOOLS=1`. Approval cards answer tool permissions, questions, plans, and MCP prompts. The composer switches the model, effort, and permission mode, suggests slash commands, and Esc stops the turn. A message sent mid-turn queues until the turn ends, and each queued message can be removed or sent at once. A pending approval in a project that is not on screen raises a toast and marks the Dashboard link. Settings covers each account's compliance with the defaults, the defaults themselves, tracked remote presets, and the MCP library, whose entries carry their credentials inline in `~/.config/claudex/mcp-library.json`.
 
 ## Defaults editor
 

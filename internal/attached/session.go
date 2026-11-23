@@ -190,7 +190,6 @@ func environ(base []string) []string {
 	return append(env,
 		"CLAUDE_CODE_ENTRYPOINT=claudex",
 		"CLAUDE_CODE_EMIT_SESSION_STATE_EVENTS=1",
-		"CLAUDE_CODE_ENABLE_TODO_TOOLS=1",
 	)
 }
 
