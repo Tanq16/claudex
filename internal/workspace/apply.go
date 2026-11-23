@@ -31,6 +31,151 @@ func (e *ConflictError) Error() string {
 	return strings.Join(parts, "; ")
 }
 
+type PresetError struct {
+	Ref string
+	Err error
+}
+
+func (e *PresetError) Error() string {
+	return "preset " + e.Ref + ": " + e.Err.Error()
+}
+
+func (e *PresetError) Unwrap() error {
+	return e.Err
+}
+
+type LayoutConfig struct {
+	Root       string
+	Base       []byte
+	BaseSkills string
+	Foreign    string
+	Stash      string
+}
+
+type LayoutResult struct {
+	Skills   []string
+	OldFiles string
+	Exclude  string
+}
+
+func ApplyLayout(cfg LayoutConfig) (LayoutResult, error) {
+	var res LayoutResult
+	if cfg.Stash != "" {
+		if _, err := os.Stat(cfg.Stash); err != nil {
+			return res, fmt.Errorf("%w: %w", ErrNoStash, err)
+		}
+	}
+	if found := Foreign(cfg.Root); len(found) > 0 {
+		if cfg.Foreign != "preserve" && cfg.Foreign != "clean" {
+			return res, &ForeignError{Found: found}
+		}
+		var err error
+		if res.OldFiles, err = ClearForeign(cfg.Root, found, cfg.Foreign == "preserve"); err != nil {
+			return res, err
+		}
+	}
+	if conflicts := PreflightBase(cfg.Root); len(conflicts) > 0 {
+		return res, &ConflictError{Conflicts: conflicts}
+	}
+	var err error
+	if res.Skills, err = ApplyBase(cfg.Root, cfg.Base, cfg.BaseSkills); err != nil {
+		return res, err
+	}
+	path, ok, err := WriteGitExclude(cfg.Root)
+	if err != nil {
+		return res, err
+	}
+	if ok {
+		res.Exclude = path
+	}
+	if cfg.Stash != "" {
+		return res, RestoreResume(cfg.Root, cfg.Stash)
+	}
+	return res, nil
+}
+
+type AddConfig struct {
+	Root          string
+	LocalPresets  string
+	RemotePresets string
+	Refs          []string
+	Skills        bool
+	Agents        bool
+}
+
+type AddResult struct {
+	Pruned  []string
+	Presets []AddedPreset
+}
+
+type AddedPreset struct {
+	Ref     string
+	Skills  int
+	Section bool
+	Servers []string
+}
+
+func AddPresets(cfg AddConfig) (AddResult, error) {
+	var res AddResult
+	var err error
+	if res.Pruned, err = PruneDeadSkillLinks(cfg.Root); err != nil {
+		return res, err
+	}
+
+	presets := make([]*Preset, 0, len(cfg.Refs))
+	var conflicts []Conflict
+	if cfg.Agents {
+		conflicts = PreflightAgentsFile(cfg.Root)
+	}
+	for _, ref := range cfg.Refs {
+		p, err := FindPreset(cfg.LocalPresets, cfg.RemotePresets, ref)
+		if err != nil {
+			return res, &PresetError{Ref: ref, Err: err}
+		}
+		presets = append(presets, p)
+		if cfg.Skills {
+			conflicts = append(conflicts, PreflightPresetSkills(cfg.Root, p.Skills)...)
+		}
+	}
+	if len(conflicts) > 0 {
+		return res, &ConflictError{Conflicts: conflicts}
+	}
+
+	for _, p := range presets {
+		added, err := addPreset(cfg, p)
+		if err != nil {
+			return res, &PresetError{Ref: p.Ref, Err: err}
+		}
+		res.Presets = append(res.Presets, added)
+	}
+	return res, nil
+}
+
+func addPreset(cfg AddConfig, p *Preset) (AddedPreset, error) {
+	added := AddedPreset{Ref: p.Ref}
+	if cfg.Skills {
+		if err := LinkSkills(cfg.Root, p.SkillsDir(), p.Skills); err != nil {
+			return added, err
+		}
+		added.Skills = len(p.Skills)
+	}
+	if cfg.Agents {
+		if partial := p.Partial(); partial != "" {
+			if err := UpsertSection(cfg.Root, p.Ref, partial); err != nil {
+				return added, err
+			}
+			added.Section = true
+		}
+	}
+	if cfg.Skills && cfg.Agents {
+		var err error
+		if added.Servers, err = MergePresetMCP(cfg.Root, p); err != nil {
+			return added, err
+		}
+	}
+	return added, nil
+}
+
 func Apply(cfg ApplyConfig) error {
 	var selected []*Preset
 	for _, ref := range cfg.Presets {
@@ -39,7 +184,7 @@ func Apply(cfg ApplyConfig) error {
 		}
 		p, err := FindPreset(cfg.LocalPresets, cfg.RemotePresets, ref)
 		if err != nil {
-			return fmt.Errorf("preset %s: %w", ref, err)
+			return &PresetError{Ref: ref, Err: err}
 		}
 		selected = append(selected, p)
 	}
@@ -74,13 +219,13 @@ func Apply(cfg ApplyConfig) error {
 	}
 	for _, p := range selected {
 		if err := LinkSkills(cfg.Root, p.SkillsDir(), p.Skills); err != nil {
-			return fmt.Errorf("preset %s: %w", p.Ref, err)
+			return &PresetError{Ref: p.Ref, Err: err}
 		}
 		if err := UpsertSection(cfg.Root, p.Ref, p.Partial()); err != nil {
-			return fmt.Errorf("preset %s: %w", p.Ref, err)
+			return &PresetError{Ref: p.Ref, Err: err}
 		}
 		if _, err := MergePresetMCP(cfg.Root, p); err != nil {
-			return fmt.Errorf("preset %s: %w", p.Ref, err)
+			return &PresetError{Ref: p.Ref, Err: err}
 		}
 	}
 	return nil
