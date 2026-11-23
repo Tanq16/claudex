@@ -88,6 +88,17 @@ const app = {
         status.innerHTML = store.loading ? '<i data-lucide="loader-circle" class="size-4 animate-spin"></i>' : '';
         ui.icons(navLinks);
         ui.icons(status);
+        app.renderSessions();
+    },
+
+    renderSessions() {
+        const here = app.current === 'project' ? app.params[0] : null;
+        const recent = (store.state?.projects ?? []).filter((p) => p.active).sort((a, b) => b.lastActive - a.lastActive).slice(0, 4);
+        const sep = '<span aria-hidden="true" class="h-4 w-px shrink-0 bg-surface1"></span>';
+        document.getElementById('nav-sessions').innerHTML = recent.map((p) => {
+            const on = p.name === here;
+            return `<a href="#/project/${ui.esc(encodeURIComponent(p.name))}" data-tip="${ui.esc(p.name)}" data-tip-side="bottom" class="min-w-0 max-w-48 truncate rounded-md px-3 text-sm leading-9 transition-colors ${ui.cls.focus} ${on ? 'text-text' : 'text-overlay1 hover:text-text'}" ${on ? 'aria-current="page"' : ''}>${ui.esc(p.name)}</a>`;
+        }).join(sep);
     },
 };
 
