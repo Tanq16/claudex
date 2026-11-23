@@ -260,7 +260,7 @@ func (s *Server) api(fn func(r *http.Request) (any, error)) http.HandlerFunc {
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	if err := json.MarshalWrite(w, v); err != nil {
+	if err := json.MarshalWrite(w, v, json.Deterministic(true)); err != nil {
 		log.Error().Err(err).Msg("failed to encode a response")
 	}
 }

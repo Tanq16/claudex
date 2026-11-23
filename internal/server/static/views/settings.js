@@ -215,7 +215,14 @@ views.settings = (() => {
                 ${ui.segmented({ name: 'defaults-mode', value: s.dmode, options: [{ value: 'keys', label: 'Keys', icon: 'list' }, { value: 'json', label: 'JSON', icon: 'braces' }] })}
                 ${s.dmode === 'keys' ? `<span class="min-w-40 flex-1">${ui.search({ name: 'defaults-query', value: s.dquery, placeholder: 'Filter active keys', attrs: 'data-field="defaults.query" aria-label="Filter keys"' })}</span>` : ''}
             </div>
-            ${s.dmode === 'json' ? jsonView() : keysView(d)}`;
+            ${s.dmode === 'json' ? jsonView() : `<div data-keys class="contents">${keysView(d)}</div>`}`;
+    };
+
+    const renderKeys = () => {
+        const host = s.el?.querySelector('[data-keys]');
+        if (!host) return render();
+        host.innerHTML = keysView(s.defaults);
+        ui.icons(host);
     };
 
     const builtinCard = (p) => `<li class="flex flex-col gap-3 rounded-2xl bg-base p-4">
@@ -367,6 +374,7 @@ views.settings = (() => {
     };
 
     const loadSettings = async () => {
+        const before = JSON.stringify([s.data, s.error]);
         try {
             s.data = await api.settings();
             s.error = '';
@@ -374,10 +382,11 @@ views.settings = (() => {
             if (s.data) ui.toast(`Settings refresh failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
             else s.error = err.message;
         }
-        render();
+        if (JSON.stringify([s.data, s.error]) !== before) render();
     };
 
     const loadDefaults = async () => {
+        const before = JSON.stringify([s.defaults, s.defaultsError]);
         try {
             s.defaults = await api.defaults();
             s.defaultsError = '';
@@ -385,7 +394,7 @@ views.settings = (() => {
             if (s.defaults) ui.toast(`Defaults refresh failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' });
             else s.defaultsError = err.message;
         }
-        render();
+        if (JSON.stringify([s.defaults, s.defaultsError]) !== before) render();
     };
 
     const load = () => Promise.all([loadSettings(), loadDefaults()]);
@@ -947,7 +956,7 @@ views.settings = (() => {
                     }
                     if (key === 'defaults.query') {
                         s.dquery = e.target.value;
-                        render();
+                        renderKeys();
                         return;
                     }
                     if (!key?.startsWith('track.')) return;
