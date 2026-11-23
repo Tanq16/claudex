@@ -156,6 +156,7 @@ func (s *Server) Setup() error {
 	s.mux.HandleFunc("GET /api/projects/{name}/context", s.api(s.handleContext))
 
 	s.mux.HandleFunc("GET /api/projects/{name}/tree", s.api(s.handleTree))
+	s.mux.HandleFunc("GET /api/projects/{name}/git", s.api(s.handleGit))
 	s.mux.HandleFunc("GET /api/projects/{name}/file", s.api(s.handleFile))
 	s.mux.HandleFunc("GET /api/projects/{name}/raw", s.handleRaw)
 	s.mux.HandleFunc("POST /api/projects/{name}/files", s.api(s.handleCreateFile))

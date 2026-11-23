@@ -75,6 +75,15 @@ const ui = {
             if (e.target.matches('input[data-name], textarea[data-name]')) ui.emit(e.target, e.target.value);
         });
 
+        let pasted = '';
+        // Chrome reads the clipboard again to insert a paste and inserts nothing if another app changed it since the event.
+        document.addEventListener('paste', (e) => { pasted = e.clipboardData?.getData('text/plain') || ''; }, true);
+        document.addEventListener('paste', (e) => {
+            if (e.defaultPrevented || !pasted || e.target.readOnly || !e.target.matches?.('textarea, input:not([type]), input[type=text], input[type=search], input[type=url], input[type=email], input[type=tel], input[type=password]')) return;
+            e.preventDefault();
+            document.execCommand('insertText', false, pasted);
+        });
+
         document.addEventListener('pointerdown', (e) => {
             const grip = e.target.closest('[data-ui="grip"]');
             if (!grip) return;
@@ -661,7 +670,12 @@ const ui = {
         }, 1500);
     },
 
+    keyedAt: 0,
+
     initScrollObserver() {
+        document.addEventListener('keydown', (e) => {
+            if (e.target === document.body) ui.keyedAt = performance.now();
+        }, true);
         const attach = (root) => {
             if (root.matches?.('[data-scroll]')) ui.scrollbar(root);
             root.querySelectorAll?.('[data-scroll]').forEach((el) => ui.scrollbar(el));
@@ -767,7 +781,13 @@ const ui = {
             clearTimeout(hideTimer);
             hideTimer = setTimeout(hide, 900);
         };
-        el.addEventListener('scroll', show, { passive: true });
+        let touched = 0;
+        const touch = () => { touched = performance.now(); };
+        el.addEventListener('wheel', touch, { passive: true });
+        el.addEventListener('touchmove', touch, { passive: true });
+        el.addEventListener('touchend', touch, { passive: true });
+        el.addEventListener('keydown', touch);
+        el.addEventListener('scroll', () => (dragging || performance.now() - Math.max(touched, ui.keyedAt) < 1000 ? show() : place()), { passive: true });
         el.addEventListener('pointerenter', show);
         el.addEventListener('pointermove', (e) => {
             const r = el.getBoundingClientRect();
