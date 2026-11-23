@@ -456,7 +456,7 @@
         const text = content.replace(/\n$/, '');
         const language = hljs.getLanguage(lang) ? lang : 'plaintext';
         const lines = splitLines(hljs.highlight(text, { language }).value);
-        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="code-lines group/code m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block w-max min-w-full overflow-visible! bg-transparent! p-0! text-subtext1 group-data-wrap/code:w-auto [&>span]:grid [&>span]:grid-cols-[calc(var(--gutter)+2.25rem)_minmax(0,1fr)] [&>span>span]:whitespace-pre [&>span>span]:pr-6 group-data-wrap/code:[&>span>span]:whitespace-pre-wrap group-data-wrap/code:[&>span>span]:wrap-anywhere">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
+        return `<pre data-p-scroller data-scroll data-code ${wrapLines.on ? 'data-wrap' : ''} style="--gutter:${String(lines.length).length}ch" class="group/code m-3 min-h-0 overflow-auto rounded-2xl bg-base py-4 font-mono text-[13px] leading-6 md:m-4 3xl:text-sm 3xl:leading-7"><code class="hljs language-${language} block w-max min-w-full overflow-visible! bg-transparent! p-0! text-subtext1 group-data-wrap/code:w-auto [counter-reset:line] [&>span]:before:sticky [&>span]:before:left-0 [&>span]:before:bg-base [&>span]:before:pr-5 [&>span]:before:pl-4 [&>span]:before:text-right [&>span]:before:text-overlay0 [&>span]:before:select-none [&>span]:before:[counter-increment:line] [&>span]:before:content-[counter(line)] [&>span]:grid [&>span]:grid-cols-[calc(var(--gutter)+2.25rem)_minmax(0,1fr)] [&>span>span]:whitespace-pre [&>span>span]:pr-6 group-data-wrap/code:[&>span>span]:whitespace-pre-wrap group-data-wrap/code:[&>span>span]:wrap-anywhere">${lines.map((l) => `<span><span>${l}</span></span>`).join('')}</code></pre>`;
     };
 
     const readerWell = () => `
@@ -682,10 +682,10 @@
         const [icon, label, tone] = pr ? PR_STATES[pr.draft && pr.state === 'OPEN' ? 'DRAFT' : pr.state] || PR_STATES.OPEN : [];
         host.innerHTML = `
             <p data-tip="${g.detached ? 'Detached HEAD' : ui.esc(g.branch)}" class="flex h-8 items-center gap-2 px-3"><i data-lucide="${g.detached ? 'git-commit-horizontal' : 'git-branch'}" class="size-4 shrink-0 text-overlay1"></i><span class="truncate font-mono text-xs text-subtext1">${ui.esc(g.branch)}</span></p>
-            ${pr ? `<a href="${ui.esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="${ui.esc(pr.title)}" class="flex h-8 items-center gap-2 rounded-xl px-3 text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
+            ${pr ? `<a href="${ui.esc(pr.url)}" target="_blank" rel="noopener noreferrer" data-tip="${ui.esc(pr.title)}" class="flex min-h-8 items-center gap-2 rounded-xl px-3 py-1.5 text-sm transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
                 <i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>
                 <span class="shrink-0 font-mono text-xs text-text">#${pr.number}</span>
-                <span class="min-w-0 flex-1 truncate text-subtext0">${ui.esc(pr.title)}</span>
+                <span class="min-w-0 flex-1 ${ui.cls.rowText} text-subtext0">${ui.esc(pr.title)}</span>
                 ${ui.chip(label, { tone })}
                 ${checksBadge(pr.checks)}
             </a>` : ''}`;
@@ -1256,7 +1256,7 @@
     ui.on('project-toggle-details', () => {
         if (S.tier === 'mobile') {
             const p = project();
-            S.sheet = ui.modal.open({ title: p.name, icon: 'info', subtitle: 'Session details', body: '<div data-p-sheet class="flex flex-col gap-6 pb-2"></div>', onClose: () => { if (S) S.sheet = null; } });
+            S.sheet = ui.modal.open({ title: p.name, icon: 'info', body: '<div data-p-sheet class="flex flex-col gap-6 pb-2"></div>', onClose: () => { if (S) S.sheet = null; } });
             renderSession();
             return;
         }

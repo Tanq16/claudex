@@ -80,8 +80,8 @@ views.settings = (() => {
         const pending = busy(`key:${a.dir}:${k.key}`);
         return `<li class="flex items-center gap-2 rounded-xl bg-surface0/50 py-1.5 pr-1.5 pl-3">
             <p class="min-w-0 flex-1 font-mono text-xs">
-                <span data-tip="${esc(k.key)}" class="block truncate text-subtext1">${esc(k.key)}</span>
-                <span data-tip="${esc(k.value)}" class="block truncate text-blue">${esc(k.value)}</span>
+                <span data-tip="${esc(k.key)}" class="block ${ui.cls.rowText} text-subtext1">${esc(k.key)}</span>
+                <span data-tip="${esc(k.value)}" class="block ${ui.cls.rowText} text-blue">${esc(k.value)}</span>
             </p>
             ${ui.button('Adopt', { icon: pending ? 'loader-circle' : 'import', spin: pending, disabled: pending, size: 'sm', variant: 'ghost', action: 'settings-adopt', attrs })}
             ${ui.iconButton('trash-2', { tip: 'Remove from this account', size: 'sm', variant: 'danger', action: 'settings-remove-key', disabled: pending, attrs })}
@@ -156,7 +156,7 @@ views.settings = (() => {
         const pending = busy(`default:${r.key}`);
         const open = s.open.has(r.key);
         return `<li class="group flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-2xl px-3 py-1.5 transition-colors hover:bg-surface0/50">
-            <span data-tip="${esc(r.key)}" class="min-w-0 flex-1 truncate font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
+            <span data-tip="${esc(r.key)}" class="min-w-0 flex-1 ${ui.cls.rowText} font-mono text-sm text-text">${esc(group ? r.key.slice(group.length + 1) : r.key)}</span>
             ${r.inSchema ? '' : ui.chip('custom', { icon: 'pencil-line' })}
             <span class="flex shrink-0 items-center gap-1 ${['string', 'number', 'integer'].includes(r.kind) ? 'max-sm:basis-full' : ''}">
                 ${pending ? ui.spinner('size-4 text-overlay1') : ''}

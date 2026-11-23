@@ -105,6 +105,7 @@
       .user-md p, .user-md ul, .user-md ol, .user-md pre { margin-bottom: 10px; }
       .user-md code, .user-md pre { background-color: var(--ctp-surface1) !important; }
       .user-md pre { padding: 0.75rem 1rem !important; }
+      .chat-tile pre { background-color: var(--ctp-surface0); }
 
       .mermaid {
         background-color: var(--ctp-base);
@@ -126,9 +127,6 @@
       .mermaid .taskTextOutsideRight, .mermaid .taskTextOutsideLeft { fill: var(--ctp-text) !important; }
       .mermaid .sectionTitle { fill: var(--ctp-mauve) !important; }
       .mermaid .titleText { fill: var(--ctp-mauve) !important; }
-
-      .code-lines code { counter-reset: line; }
-      .code-lines code > span::before { counter-increment: line; content: counter(line); position: sticky; left: 0; padding: 0 1.25rem 0 1rem; text-align: right; color: var(--ctp-overlay0); background-color: var(--ctp-base); user-select: none; }
 
       .callout {
         padding: 1rem;

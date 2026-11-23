@@ -755,7 +755,7 @@ views.chat = (() => {
         list.insertAdjacentHTML('beforeend', `<li data-agent="${ui.esc(block.id)}">
             <button type="button" data-action="chat-detail" class="group flex w-full items-center gap-3 rounded-2xl px-2 py-2 text-left transition-colors hover:bg-surface0/50 ${ui.cls.focus}">
                 ${ui.tile('bot', tone, 'sm')}
-                <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="truncate text-sm text-text">${ui.esc(input.description || 'Agent')}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(input.subagent_type || '')}</span></span><span data-activity class="block truncate font-mono text-xs text-overlay1">Starting</span></span>
+                <span class="min-w-0 flex-1"><span class="flex items-center gap-2"><span class="${ui.cls.rowText} text-sm text-text">${ui.esc(input.description || 'Agent')}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(input.subagent_type || '')}</span></span><span data-activity class="block truncate font-mono text-xs text-overlay1">Starting</span></span>
                 <span data-agent-meta class="flex shrink-0 items-center gap-2 text-xs text-overlay1 tabular-nums"><span data-start="${ts(m) || Date.now()}"></span></span>
                 <span data-state class="flex w-5 shrink-0 justify-end">${ui.spinner(`size-4 text-${tone}`)}</span>
             </button>
@@ -807,7 +807,7 @@ views.chat = (() => {
         if (first) {
             a.el.querySelector('[data-activity]').textContent = first.split('\n')[0];
             const box = a.el.querySelector('[data-summary]');
-            box.className = 'mt-2 rounded-2xl bg-base px-4 py-3';
+            box.className = 'mt-2 rounded-2xl bg-surface0/50 px-4 py-3';
             box.innerHTML = '<div class="markdown-body chat-tile"></div>';
             md.render(box.firstElementChild, first);
         }
@@ -852,7 +852,7 @@ views.chat = (() => {
             const failed = ['failed', 'error', 'killed', 'stopped'].includes(a.state);
             const icon = done ? '<i data-lucide="check" class="size-3.5 text-overlay0"></i>' : failed ? '<i data-lucide="circle-x" class="size-3.5 text-red"></i>' : ui.spinner('size-3.5 text-lavender');
             const time = done || failed ? (a.durationMs ? fmt.dur(a.durationMs) : '') : a.startedAt ? `<span data-start="${a.startedAt}"></span>` : '';
-            return `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><span class="flex size-4 shrink-0 items-center justify-center">${icon}</span><span data-tip="${ui.esc(a.promptPreview || '')}" class="min-w-0 flex-1 truncate text-sm text-subtext1">${ui.esc(a.label || `Agent ${a.index}`)}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(shortModel(a.model))}</span>${done && a.tokens ? `<span class="shrink-0 text-xs text-overlay0 tabular-nums max-sm:hidden">${fmt.tokens(a.tokens)}</span>` : ''}<span class="w-14 shrink-0 text-right text-xs text-overlay1 tabular-nums">${time}</span></li>`;
+            return `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><span class="flex size-4 shrink-0 items-center justify-center">${icon}</span><span data-tip="${ui.esc(a.promptPreview || '')}" class="min-w-0 flex-1 ${ui.cls.rowText} text-sm text-subtext1">${ui.esc(a.label || `Agent ${a.index}`)}</span><span class="shrink-0 text-xs text-overlay0 max-sm:hidden">${ui.esc(shortModel(a.model))}</span>${done && a.tokens ? `<span class="shrink-0 text-xs text-overlay0 tabular-nums max-sm:hidden">${fmt.tokens(a.tokens)}</span>` : ''}<span class="w-14 shrink-0 text-right text-xs text-overlay1 tabular-nums">${time}</span></li>`;
         };
         const section = (title, list) => (list.length ? `<section>${title ? `<p class="${ui.cls.label} px-2 pt-1 pb-1">${ui.esc(title)}</p>` : ''}<ul class="flex flex-col">${list.map(row).join('')}</ul></section>` : '');
         const placed = new Set();
@@ -950,7 +950,7 @@ views.chat = (() => {
         const icon = { completed: 'circle-check', in_progress: 'circle-dot' }[t.status] || 'circle';
         const tone = { completed: 'text-green', in_progress: 'text-mauve' }[t.status] || 'text-overlay0';
         const label = t.status === 'in_progress' && t.activeForm ? t.activeForm : t.subject;
-        return `<li class="flex items-center gap-3 px-1 py-1 text-sm"><i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i><span class="min-w-0 truncate ${t.status === 'completed' ? 'text-overlay0 line-through' : t.status === 'in_progress' ? 'text-text' : 'text-subtext0'}">${ui.esc(label)}</span></li>`;
+        return `<li class="flex items-center gap-3 px-1 py-1 text-sm"><i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i><span class="min-w-0 ${ui.cls.rowText} ${t.status === 'completed' ? 'text-overlay0 line-through' : t.status === 'in_progress' ? 'text-text' : 'text-subtext0'}">${ui.esc(label)}</span></li>`;
     };
 
     const todoCard = (items) => {
@@ -970,7 +970,7 @@ views.chat = (() => {
                 const now = t.items.find((x) => x.status === 'in_progress');
                 const done = t.items.filter((x) => x.status === 'completed').length;
                 closeGroup();
-                append(`<li class="flex items-center gap-2.5 px-2 text-sm ${rise()}"><i data-lucide="${now ? 'circle-dot' : 'circle-check'}" class="size-3.5 shrink-0 ${now ? 'text-mauve' : 'text-green'}"></i><span class="min-w-0 truncate ${now ? 'text-subtext1' : 'text-overlay1'}">${ui.esc(now ? now.activeForm || now.subject : done === t.items.length ? 'All to-dos done' : 'To-dos updated')}</span><span class="shrink-0 text-xs text-overlay0 tabular-nums">${done}/${t.items.length}</span></li>`);
+                append(`<li class="flex items-center gap-2.5 px-2 text-sm ${rise()}"><i data-lucide="${now ? 'circle-dot' : 'circle-check'}" class="size-3.5 shrink-0 ${now ? 'text-mauve' : 'text-green'}"></i><span class="min-w-0 ${ui.cls.rowText} ${now ? 'text-subtext1' : 'text-overlay1'}">${ui.esc(now ? now.activeForm || now.subject : done === t.items.length ? 'All to-dos done' : 'To-dos updated')}</span><span class="shrink-0 text-xs text-overlay0 tabular-nums">${done}/${t.items.length}</span></li>`);
             }
             return;
         }
@@ -1566,9 +1566,9 @@ views.chat = (() => {
         const b = boxOf(C.name);
         const paused = b.held || !b.armed;
         const ok = isLive();
-        const el = paint('[data-chat-outbox]', b.items.map((x) => `<li class="flex h-9 items-center gap-2 rounded-2xl bg-surface0/50 pr-1 pl-3 text-sm">
+        const el = paint('[data-chat-outbox]', b.items.map((x) => `<li class="flex min-h-9 items-center gap-2 rounded-2xl bg-surface0/50 py-0.5 pr-1 pl-3 text-sm">
             <span data-tip="${paused ? 'Held, sends with your next message' : 'Sends when Claude is idle'}" class="flex shrink-0"><i data-lucide="${paused ? 'pause' : 'clock'}" class="size-3.5 text-overlay1"></i></span>
-            <span class="min-w-0 flex-1 truncate text-subtext0">${ui.esc(x.text || x.files.map((f) => f.file.name).join(', '))}</span>
+            <span class="min-w-0 flex-1 ${ui.cls.rowText} text-subtext0">${ui.esc(x.text || x.files.map((f) => f.file.name).join(', '))}</span>
             ${x.files.length ? `<span class="flex shrink-0 items-center gap-1 text-xs text-overlay1 tabular-nums"><i data-lucide="paperclip" class="size-3"></i>${x.files.length}</span>` : ''}
             ${ok ? ui.iconButton('arrow-up', { tip: 'Send now', size: 'sm', action: 'chat-outbox-send', attrs: `data-id="${ui.esc(x.id)}"` }) : ''}
             ${ui.iconButton('x', { tip: 'Remove', size: 'sm', action: 'chat-outbox-remove', attrs: `data-id="${ui.esc(x.id)}"` })}
@@ -1723,7 +1723,7 @@ views.chat = (() => {
         };
         const limits = w.five_hour || w.seven_day ? section('Limits', `<div class="flex flex-col gap-3">${limit('5-hour', w.five_hour, fmt.time)}${limit('Weekly', w.seven_day, fmt.day)}</div>`) : '';
         const tasks = (s.tasks || []).filter((t) => !t.ambient);
-        const taskRow = (t) => `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><i data-lucide="${TASK_KINDS[t.task_type]?.[0] || 'circle-dot'}" class="size-4 shrink-0 text-overlay1"></i><span class="min-w-0 flex-1"><span class="block truncate text-sm text-subtext1">${ui.esc(t.description || t.task_id)}</span>${t.progress?.description ? `<span class="block truncate font-mono text-[11px] text-overlay1">${ui.esc(t.progress.description)}</span>` : ''}</span>${t.startedAt ? `<span data-start="${t.startedAt}" class="text-xs text-overlay1 tabular-nums"></span>` : ''}${ui.iconButton('square', { tip: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(t.task_id)}"` })}</li>`;
+        const taskRow = (t) => `<li class="flex items-center gap-3 rounded-2xl px-2 py-1.5"><i data-lucide="${TASK_KINDS[t.task_type]?.[0] || 'circle-dot'}" class="size-4 shrink-0 text-overlay1"></i><span class="min-w-0 flex-1"><span class="block ${ui.cls.rowText} text-sm text-subtext1">${ui.esc(t.description || t.task_id)}</span>${t.progress?.description ? `<span class="block truncate font-mono text-[11px] text-overlay1">${ui.esc(t.progress.description)}</span>` : ''}</span>${t.startedAt ? `<span data-start="${t.startedAt}" class="text-xs text-overlay1 tabular-nums"></span>` : ''}${ui.iconButton('square', { tip: 'Stop', size: 'sm', variant: 'danger', action: 'chat-task-stop', attrs: `data-task="${ui.esc(t.task_id)}"` })}</li>`;
         const taskList = tasks.length ? section('Tasks', `<ul class="flex flex-col">${tasks.map(taskRow).join('')}</ul>`, ui.count(tasks.length)) : '';
         const todos = s.todos || [];
         const todoList = todos.length ? section('To-dos', `<ul class="flex flex-col px-1">${todos.map(todoRow).join('')}</ul>`, `<span class="text-xs text-overlay1 tabular-nums">${todos.filter((t) => t.status === 'completed').length}/${todos.length}</span>`) : '';
