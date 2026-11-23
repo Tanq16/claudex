@@ -70,11 +70,11 @@ The expected pattern for every check lives in those skills. This file states wha
 | Dependency layer before source | Read the order of the copies |
 | Base image choice | Read the final `FROM` and trace whether anything copied into it is linked against glibc |
 | Runtime packaging | Read how the runtime reaches the final stage |
-| Non-root user | Read for user and group creation, the `USER` instruction, and where it sits relative to the last privileged `RUN` |
+| Root image | Read the final stage for user or group creation and a `USER` instruction, neither of which it carries |
 | Multi-arch build | Read the builder `FROM` for `--platform=$BUILDPLATFORM` and the build command for `TARGETARCH`, and check the publishing step names more than one platform |
 | Version injection | Read for a `VERSION` build argument reaching the artifact's version variable |
-| Fixed UID and GID | Read the user creation for literal numeric IDs |
-| Ownership of copies and volumes | Read the `COPY` instructions and any volume directory creation |
+| HOME in the volume | Read the final stage for `ENV HOME` pointing under the volume |
+| Launch user in compose | Read the compose file for `user: "${PUID:-0}:${PGID:-0}"` |
 | Entrypoint and command split | Read the `ENTRYPOINT` and `CMD` lines |
 | Runtime packages | Read the final stage's installed packages against what the process needs |
 
@@ -91,7 +91,7 @@ The expected pattern for every check lives in those skills. This file states wha
 | Section order | Compare the section order against what the project type calls for |
 | Install paths match reality | Compare the documented install methods against what the release workflow publishes |
 | Config documented | Compare the documented keys against the loader's defaults |
-| Container user documented | When the project ships an image, read the README for the UID and GID and the volume ownership note |
+| Linux launch user documented | When the project ships an image, read the README for `--user "$(id -u):$(id -g)"` and the `PUID` and `PGID` note |
 | Extension disclaimer | For an extension, compare the permissions requested against whether the disclaimer is present |
 
 ## Category 5: Chrome Extension
