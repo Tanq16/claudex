@@ -775,6 +775,7 @@
                         <header class="flex h-14 shrink-0 items-center gap-0.5 pr-2 md:h-16 ${mobile ? 'pl-5' : 'pl-2'}">
                             ${mobile ? '' : panelBtn('panel-left-close', 'Hide files', 'project-toggle-tree')}
                             <h2 data-tip="${ui.esc(p.dir)}" class="min-w-0 flex-1 truncate px-1 font-display text-sm font-medium text-text">${ui.esc(p.name)}</h2>
+                            ${panelBtn('search', 'Find a file', 'project-find')}
                             ${panelBtn('file-plus', 'New file', 'project-new-file')}
                             ${panelBtn('upload', 'Upload files', 'project-upload')}
                             ${panelBtn('chevrons-down-up', 'Collapse all', 'project-collapse')}
@@ -1045,6 +1046,71 @@
         });
     };
 
+    const openFind = () => {
+        const files = [...S.index.values()].filter((n) => n.type !== 'dir');
+        let hits = [];
+        let active = 0;
+        const m = ui.modal.open({
+            title: 'Find a file',
+            icon: 'search',
+            body: `<div class="flex flex-col gap-2 pt-1">
+                ${ui.search({ name: 'find-file', placeholder: 'Search files', attrs: 'autofocus' })}
+                <ul role="listbox" aria-label="Files" data-scroll="lane" class="h-80 overflow-y-auto"></ul>
+            </div>`,
+        });
+        const input = m.el.querySelector('input');
+        const list = m.el.querySelector('[role="listbox"]');
+        const draw = () => {
+            if (!hits.length) {
+                const typed = input.value.trim();
+                list.innerHTML = `<li class="h-full">${ui.empty({ icon: typed ? 'search-x' : 'file-search', title: typed ? 'No matches' : 'Type a file name' })}</li>`;
+            } else {
+                list.innerHTML = hits.map((n, i) => {
+                    const [icon, tone] = fileIcon(n);
+                    const dir = dirname(n.path);
+                    return `<li role="option" aria-selected="${i === active}" data-index="${i}" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${i === active ? 'bg-surface0 text-text' : 'text-subtext0'}">
+                        <i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i>
+                        <span class="min-w-0 flex-1"><span class="block truncate">${ui.esc(n.name)}</span>${dir ? `<span class="block truncate font-mono text-xs text-overlay1">${ui.esc(dir)}</span>` : ''}</span>
+                    </li>`;
+                }).join('');
+            }
+            ui.icons(list);
+            list.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: 'nearest' });
+        };
+        const choose = (i) => {
+            const n = hits[i];
+            if (!n) return;
+            m.close();
+            openFile(n.path);
+        };
+        input.addEventListener('input', () => {
+            const q = input.value.trim();
+            hits = q ? files.map((n) => {
+                const name = ui.fuzzy(q, n.name);
+                return { n, s: name >= 0 ? name + 1000 : ui.fuzzy(q, n.path) };
+            }).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || a.n.path.length - b.n.path.length).slice(0, 50).map((x) => x.n) : [];
+            active = 0;
+            draw();
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); active = Math.min(hits.length - 1, active + 1); draw(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); active = Math.max(0, active - 1); draw(); }
+            else if (e.key === 'Enter') { e.preventDefault(); choose(active); }
+        });
+        list.addEventListener('mousemove', (e) => {
+            const li = e.target.closest('[data-index]');
+            if (li && Number(li.dataset.index) !== active) {
+                active = Number(li.dataset.index);
+                draw();
+            }
+        });
+        list.addEventListener('click', (e) => {
+            const li = e.target.closest('[data-index]');
+            if (li) choose(Number(li.dataset.index));
+        });
+        draw();
+    };
+
     const kvRow = (key = '', value = '', kp = 'Key') => `<li class="flex items-center gap-2"><input name="kv-key" data-kv-key class="${ui.cls.input} font-mono" placeholder="${kp}" value="${ui.esc(key)}" autocomplete="off" spellcheck="false"><input name="kv-value" data-kv-value class="${ui.cls.input} font-mono" placeholder="Value" value="${ui.esc(value)}" autocomplete="off" spellcheck="false">${ui.iconButton('x', { tip: 'Remove row', size: 'sm', attrs: 'data-kv-remove' })}</li>`;
 
     const kvList = (name, label, kp) => `
@@ -1296,6 +1362,7 @@
     ui.on('project-wrap', (b) => wrapLines.toggle(b));
     ui.on('project-copy-file', (b) => S.file?.content !== undefined && ui.copy(S.file.content, b));
     ui.on('project-reload-file', () => openFile(S.selected));
+    ui.on('project-find', () => S.index && openFind());
     ui.on('project-new-file', () => S.index && openNewFile());
     ui.on('project-upload', () => $('[data-p-file-input]').click());
     ui.on('reader-zoom-in', () => reader.view?.increaseScale());
