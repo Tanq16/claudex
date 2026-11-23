@@ -1741,11 +1741,18 @@ views.chat = (() => {
         active: 0,
         items: [],
 
+        token() {
+            const { value, selectionStart: at, selectionEnd } = C.input;
+            if (at !== selectionEnd || /\S/.test(value.charAt(at))) return null;
+            const m = value.slice(0, at).match(/(?:^|\s)\/(\S*)$/);
+            return m && { start: at - m[1].length - 1, end: at, q: m[1] };
+        },
+
         update() {
-            const m = C.input.value.match(/^\/(\S*)$/);
+            const t = slash.token();
             const commands = C.init?.commands || [];
-            if (!m || !commands.length) return slash.close();
-            const q = m[1];
+            if (!t || !commands.length) return slash.close();
+            const q = t.q;
             slash.items = (q ? commands.map((c) => ({ c, s: ui.fuzzy(q, c.name) })).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s).map((x) => x.c) : commands).slice(0, 8);
             slash.active = Math.min(slash.active, Math.max(0, slash.items.length - 1));
             slash.draw();
@@ -1775,10 +1782,12 @@ views.chat = (() => {
         },
 
         choose(name) {
-            C.input.value = `/${name} `;
-            saveDraft();
-            slash.close();
+            const t = slash.token();
+            if (!t) return slash.close();
             C.input.focus();
+            C.input.setSelectionRange(t.start, t.end + (C.input.value.charAt(t.end) === ' ' ? 1 : 0));
+            document.execCommand('insertText', false, `/${name} `);
+            slash.close();
         },
 
         close() {
@@ -1798,7 +1807,8 @@ views.chat = (() => {
             }
             if (e.key === 'Enter' || e.key === 'Tab') {
                 const name = slash.items[slash.active].name;
-                if (e.key === 'Enter' && C.input.value.trim() === `/${name}`) {
+                const t = slash.token();
+                if (!t || (e.key === 'Enter' && t.q === name)) {
                     slash.close();
                     return false;
                 }
