@@ -1,0 +1,12 @@
+{
+  "name": "claudex",
+  "short_name": "claudex",
+  "description": "Run Claude Code across accounts and projects",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#11111b",
+  "theme_color": "#11111b",
+  "icons": [
+    { "src": "/static/icons/logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -127,6 +127,7 @@ func (s *Server) Setup() error {
 		return err
 	}
 	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	s.mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
 
 	s.mux.HandleFunc("GET /api/state", s.api(s.handleState))
 	s.mux.HandleFunc("GET /api/directories", s.api(s.handleDirectories))
@@ -208,6 +209,11 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "text/html")
 	w.Write(data)
+}
+
+func (s *Server) handleServiceWorker(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/javascript")
+	http.ServeFileFS(w, r, staticFiles, "static/sw.js")
 }
 
 type apiError struct {
