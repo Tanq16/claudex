@@ -129,8 +129,8 @@ views.chat = (() => {
                     <div class="flex items-center gap-1.5 pt-2">
                         <span data-chat-attach></span>
                         <span data-chat-model class="min-w-0"></span>
-                        <span data-chat-effort class="max-sm:hidden"></span>
-                        <span data-chat-mode class="max-md:hidden"></span>
+                        <span data-chat-effort></span>
+                        <span data-chat-mode></span>
                         <span data-chat-ring class="ml-auto"></span>
                         <span data-chat-send></span>
                     </div>
@@ -1630,16 +1630,16 @@ views.chat = (() => {
         C.input.disabled = C.loaded && !ok;
         C.input.placeholder = ok || !C.loaded ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
         const sending = boxOf(C.name).sending;
-        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', spin: sending, action: 'chat-send', disabled: !ok });
-        paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })}${send}</span>` : send);
+        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', size: 'sm', spin: sending, action: 'chat-send', disabled: !ok });
+        paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', size: 'sm', action: 'chat-interrupt' })}${send}</span>` : send);
         const list = models();
         const model = list.find((m) => m.value === (snap?.model || 'default'));
         const efforts = model?.efforts?.length ? model.efforts : Object.keys(EFFORTS);
         const off = !ok ? 'disabled' : '';
         paint('[data-chat-attach]', ui.iconButton('paperclip', { tip: 'Attach files', action: 'chat-attach', size: 'sm', disabled: C.loaded && !ok }));
-        paint('[data-chat-model]', ui.select({ name: 'chat-model', value: snap?.model || 'default', pill: true, icon: 'sparkles', options: list, attrs: off }));
-        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.appliedEffort || snap?.effort || '', placeholder: 'Effort', pill: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
-        paint('[data-chat-mode]', ui.select({ name: 'chat-mode', value: snap?.permissionMode || 'default', pill: true, icon: MODES.find((x) => x.value === (snap?.permissionMode || 'default'))?.icon || 'shield', options: MODES, attrs: off }));
+        paint('[data-chat-model]', ui.select({ name: 'chat-model', value: snap?.model || 'default', pill: true, size: 'sm', collapse: true, icon: 'sparkles', options: list, attrs: off }));
+        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.appliedEffort || snap?.effort || '', placeholder: 'Effort', pill: true, size: 'sm', collapse: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
+        paint('[data-chat-mode]', ui.select({ name: 'chat-mode', value: snap?.permissionMode || 'default', pill: true, size: 'sm', collapse: true, icon: MODES.find((x) => x.value === (snap?.permissionMode || 'default'))?.icon || 'shield', options: MODES, attrs: off }));
         paint('[data-chat-ring]', ringHtml());
     };
 

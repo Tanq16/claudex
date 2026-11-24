@@ -281,14 +281,19 @@ const ui = {
         </span>`;
     },
 
-    select({ name, value = '', options, placeholder = 'Select', searchable = false, icon, pill = false, attrs = '' }) {
+    select({ name, value = '', options, placeholder = 'Select', searchable = false, icon, pill = false, size = 'md', collapse = false, attrs = '' }) {
         const current = options.find((o) => o.value === value);
         ui.selectOptions[name] = { options, searchable };
         const lead = current?.dot ? ui.dot(current.dot) : current?.icon ? `<i data-lucide="${current.icon}" class="size-4 shrink-0 text-overlay1"></i>` : icon ? `<i data-lucide="${icon}" class="size-4 shrink-0 text-overlay1"></i>` : '';
-        return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" aria-haspopup="listbox" aria-expanded="false" class="flex ${pill ? 'h-10 w-auto max-w-full rounded-full' : 'w-full rounded-2xl'} items-center gap-2.5 bg-surface0 px-4 py-2.5 text-left text-sm transition-colors hover:bg-surface1 aria-expanded:bg-surface1 disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} pointer-coarse:text-[16px]" ${attrs}>
-            <span data-select-lead class="contents">${lead}</span>
-            <span data-select-label class="min-w-0 flex-1 truncate ${current ? 'text-text' : 'text-overlay0'}">${ui.esc(current ? current.label : placeholder)}</span>
-            <i data-lucide="chevrons-up-down" class="size-4 shrink-0 text-overlay1"></i>
+        const label = current ? current.label : placeholder;
+        const sm = pill && size === 'sm';
+        const shape = !pill ? 'w-full rounded-2xl gap-2.5 px-4 py-2.5 text-sm' : sm ? 'h-8 w-auto max-w-full rounded-full gap-1.5 px-3 text-xs' : 'h-10 w-auto max-w-full rounded-full gap-2.5 px-4 py-2.5 text-sm';
+        const folded = collapse ? `max-sm:justify-center max-sm:px-0 ${sm ? 'max-sm:w-8' : 'max-sm:w-10'}` : '';
+        const hide = collapse ? 'max-sm:hidden' : '';
+        return `<button type="button" data-ui="select" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" ${collapse ? `data-tip="${ui.esc(label)}" data-tip-collapse` : ''} aria-haspopup="listbox" aria-expanded="false" class="flex ${shape} ${folded} items-center bg-surface0 text-left transition-colors hover:bg-surface1 aria-expanded:bg-surface1 disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} pointer-coarse:text-[16px]" ${attrs}>
+            <span data-select-lead class="contents ${sm ? '[&_svg]:size-3.5' : ''}">${lead}</span>
+            <span data-select-label ${collapse ? 'data-label' : ''} class="min-w-0 flex-1 truncate ${hide} ${current ? 'text-text' : 'text-overlay0'}">${ui.esc(label)}</span>
+            <i data-lucide="chevrons-up-down" class="${sm ? 'size-3.5' : 'size-4'} shrink-0 text-overlay1 ${hide}"></i>
         </button>`;
     },
 
@@ -334,6 +339,7 @@ const ui = {
             const label = button.querySelector('[data-select-label]');
             label.textContent = opt.label;
             label.classList.replace('text-overlay0', 'text-text');
+            if (button.hasAttribute('data-tip-collapse')) button.dataset.tip = opt.label;
             const l = button.querySelector('[data-select-lead]');
             if (opt.dot || opt.icon) { l.innerHTML = lead(opt); ui.icons(l); }
             ui.popover.close();
