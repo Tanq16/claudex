@@ -8,13 +8,22 @@ import (
 	"encoding/json/jsontext"
 	"encoding/json/v2"
 	"errors"
+	"image"
+	_ "image/jpeg"
+	"image/png"
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"time"
+
+	"golang.org/x/image/draw"
 )
 
-const maxAge = 7 * 24 * time.Hour
+const (
+	maxAge      = 7 * 24 * time.Hour
+	thumbHeight = 288
+)
 
 var (
 	fileName = regexp.MustCompile(`^[0-9a-f]{64}\.[a-z0-9]+$`)
@@ -59,6 +68,41 @@ func (s *Store) Path(name string) (string, bool) {
 	path := filepath.Join(s.dir, name)
 	_, err := os.Stat(path)
 	return path, err == nil
+}
+
+func (s *Store) Thumb(path string) (string, error) {
+	thumb := strings.TrimSuffix(path, filepath.Ext(path)) + ".thumb.png"
+	if _, err := os.Stat(thumb); err == nil {
+		return thumb, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	cfg, format, err := image.DecodeConfig(bytes.NewReader(data))
+	if errors.Is(err, image.ErrFormat) {
+		return path, nil
+	}
+	if err != nil {
+		return "", err
+	}
+	if (format != "png" && format != "jpeg") || cfg.Height <= thumbHeight {
+		return path, nil
+	}
+	src, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return "", err
+	}
+	dst := image.NewRGBA(image.Rect(0, 0, max(1, cfg.Width*thumbHeight/cfg.Height), thumbHeight))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), src, src.Bounds(), draw.Src, nil)
+	var buf bytes.Buffer
+	if err := png.Encode(&buf, dst); err != nil {
+		return "", err
+	}
+	if err := writeOnce(thumb, buf.Bytes()); err != nil {
+		return "", err
+	}
+	return thumb, nil
 }
 
 func (s *Store) Rewrite(raw []byte) ([]byte, error) {

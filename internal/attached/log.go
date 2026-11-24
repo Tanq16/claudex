@@ -26,10 +26,11 @@ type entry struct {
 }
 
 type eventLog struct {
-	epoch   string
-	entries []entry
-	last    uint64
-	size    int
+	epoch    string
+	entries  []entry
+	last     uint64
+	size     int
+	complete bool
 }
 
 func (l *eventLog) append(name string, data []byte, anchor string) Event {
@@ -42,8 +43,26 @@ func (l *eventLog) append(name string, data []byte, anchor string) Event {
 			l.size -= len(e.data)
 		}
 		l.entries = slices.Delete(l.entries, 0, drop)
+		l.complete = false
 	}
 	return l.event(l.entries[len(l.entries)-1])
+}
+
+func (l *eventLog) first() uint64 {
+	return l.last + 1 - uint64(len(l.entries))
+}
+
+func (l *eventLog) restart(seq uint64) {
+	first := l.first()
+	if seq < first {
+		return
+	}
+	drop := int(seq - first)
+	for _, e := range l.entries[:drop] {
+		l.size -= len(e.data)
+	}
+	l.entries = slices.Clone(l.entries[drop:])
+	l.complete = true
 }
 
 func (l *eventLog) id(seq uint64) string {
@@ -63,7 +82,7 @@ func (l *eventLog) since(cursor string) ([]Event, bool) {
 	if err != nil || seq > l.last {
 		return nil, false
 	}
-	first := l.last + 1 - uint64(len(l.entries))
+	first := l.first()
 	if seq+1 < first {
 		return nil, false
 	}

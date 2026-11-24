@@ -97,6 +97,7 @@ type Session struct {
 	mu       sync.Mutex
 	log      eventLog
 	r        reduced
+	resetAt  uint64
 	version  uint64
 	subs     map[*Subscription]struct{}
 	waiting  map[string]chan reply
@@ -306,6 +307,13 @@ func (s *Session) handle(line []byte) {
 	s.mu.Lock()
 	c := s.r.reduce(kind, line)
 	s.publishLocked(s.log.append("message", line, c.anchor))
+	if c.reset {
+		s.resetAt = s.log.last
+	}
+	if s.resetAt > 0 && !s.r.tasksRunning() {
+		s.log.restart(s.resetAt)
+		s.resetAt = 0
+	}
 	if c.snapshot {
 		s.changedLocked()
 	}

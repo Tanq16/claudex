@@ -269,7 +269,7 @@ views.chat = (() => {
                 if (item.name === 'reset') await applyReset(item.data, item.id);
                 else if (item.name === 'session') applySnapshot(item.data);
                 else if (accept(item.id)) {
-                    C.events.push(item);
+                    record(item);
                     dispatch(item);
                     if (item.data?.type === 'result') {
                         boxOf(C.name).waiting = false;
@@ -292,6 +292,14 @@ views.chat = (() => {
         return true;
     };
 
+    const record = (ev) => {
+        if (ev.data?.type === 'conversation_reset') {
+            C.history = [];
+            C.events = [];
+        }
+        C.events.push(ev);
+    };
+
     const dispatch = (item) => {
         if (item.name === 'approval') resolveApproval(item.data);
         else if (item.name === 'message') handle(item.data);
@@ -307,7 +315,7 @@ views.chat = (() => {
         C.snap = data.session;
         for (const ev of events) {
             if (!accept(ev.id)) continue;
-            C.events.push(ev);
+            record(ev);
             safe(() => dispatch({ name: ev.event, data: ev.data }));
         }
         for (const raw of C.snap.pending || []) {
@@ -511,7 +519,7 @@ views.chat = (() => {
         append(`<li class="flex items-center gap-3 text-xs text-${tone} ${rise()}"><span class="h-px flex-1 bg-surface0"></span><i data-lucide="${icon}" class="size-3.5 shrink-0"></i><span class="max-w-[80%] text-center wrap-anywhere">${ui.esc(text)}</span><span class="h-px flex-1 bg-surface0"></span></li>`);
     };
 
-    const thumbs = (urls, cls = '') => (urls.length ? `<div class="flex flex-wrap gap-2 ${cls}">${urls.map((u) => `<button type="button" data-action="chat-image" data-src="${ui.esc(u)}" class="group relative overflow-hidden rounded-2xl bg-base ${ui.cls.focus}"><img src="${ui.esc(u)}" alt="" loading="lazy" class="h-36 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"><span class="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-crust/70 text-text opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"><i data-lucide="maximize-2" class="size-3.5"></i></span></button>`).join('')}</div>` : '');
+    const thumbs = (urls, cls = '') => (urls.length ? `<div class="flex flex-wrap gap-2 ${cls}">${urls.map((u) => `<button type="button" data-action="chat-image" data-src="${ui.esc(u)}" class="group relative overflow-hidden rounded-2xl bg-base ${ui.cls.focus}"><img src="${ui.esc(u.startsWith('/api/images/') ? `${u}?thumb` : u)}" alt="" loading="lazy" class="h-36 w-auto max-w-full object-contain transition-transform duration-300 group-hover:scale-[1.03]"><span class="absolute right-2 bottom-2 flex size-7 items-center justify-center rounded-full bg-crust/70 text-text opacity-0 backdrop-blur-sm transition-opacity group-hover:opacity-100"><i data-lucide="maximize-2" class="size-3.5"></i></span></button>`).join('')}</div>` : '');
 
     const sourceUrls = (content, type) => (Array.isArray(content) ? content.filter((b) => b.type === type && b.source?.type === 'url' && b.source.url).map((b) => b.source.url) : []);
     const imageUrls = (content) => sourceUrls(content, 'image');

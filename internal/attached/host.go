@@ -191,6 +191,9 @@ func (h *Host) History(name string) (Anchor, bool) {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if s.log.complete {
+		return Anchor{}, true
+	}
 	return Anchor{Before: s.log.anchor(), Whole: s.continued}, true
 }
 
