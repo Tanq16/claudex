@@ -19,7 +19,6 @@ type skillFrontmatter struct {
 func TestEmbeddedSkillFrontmatter(t *testing.T) {
 	sources := map[string]fs.FS{
 		"default-skills": DefaultSkillsFS,
-		"presets":        PresetsFS,
 	}
 
 	found := 0

@@ -37,7 +37,7 @@ Per account it writes `statusline.sh` into the account directory and points `set
 
 A key taken out of the defaults is deleted from each account the next time `configure` or the web UI applies them, but only from accounts ClaudeX wrote it to. The `statusLine` keys are always set by ClaudeX. An account whose `settings.json` is not valid JSON is skipped rather than overwritten. `configure` also lists the keys in each account that the defaults do not cover.
 
-The global defaults are a Claude Code plugin at `~/.config/claudex/global/`, carrying an `.lsp.json` that wires `gopls`, `pyright-langserver`, and `typescript-language-server`, plus the built-in presets extracted into `~/.config/claudex/presets/`.
+The global defaults are a Claude Code plugin at `~/.config/claudex/global/`, carrying an `.lsp.json` that wires `gopls`, `pyright-langserver`, and `typescript-language-server`, plus the base skills extracted into `~/.config/claudex/base-skills/`.
 
 `-A` configures one account instead of all of them. `-l/--label` overrides the account label in the statusline and requires `-A`; without it the label comes from the directory name, where `.claude` is `first`, `.claude2` is `second`, `.claude3` is `third`, and anything else uses the numeric suffix.
 
@@ -67,13 +67,11 @@ A preset is a directory holding a `preset.yaml`, an optional `AGENTS.partial.md`
 A preset is addressed by its directory name, and a pulled one is qualified with the repository slug so two repositories can ship the same name.
 
 ```bash
-claudex apply-preset private                     # local, by name; several apply in order
+claudex apply-preset house-rules                 # local, by name; several apply in order
 claudex apply-preset tanq16-presets/go-strict    # pulled, by <slug>/<name>
 ```
 
 `--skills` links only the skills and leaves `AGENTS.md` alone. `--agents` writes only the section and links no skills. Neither flag applies the whole preset, MCP servers included; passing one narrows the run to that half.
-
-One preset ships in the binary. `private` carries 21 skills covering Go conventions, containers, release workflows, and testing, plus the author's development, pull request, and operating rules as an `AGENTS.md` section.
 
 The manifest keys:
 
@@ -124,5 +122,5 @@ Moves every session of the current directory, with its history entries, out of t
 
 ## Notes
 
-- **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`, which is rewritten from the binary along with the built-in presets.
-- **Built-in presets are refreshed from the binary.** `~/.config/claudex/presets/private/` is rewritten at every `serve` start and whenever a preset command runs, so edits to it do not survive. Presets you create yourself are never touched.
+- **Skills are symlinks.** Preset skills point back into `~/.config/claudex/presets/`, so editing a preset changes every project that applied it. The four base skills from `apply` point into `~/.config/claudex/base-skills/`.
+- **Base skills are refreshed from the binary.** `~/.config/claudex/base-skills/` is rewritten at every `serve` start and whenever a preset command runs, so edits to it do not survive.
