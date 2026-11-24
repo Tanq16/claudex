@@ -114,13 +114,13 @@ views.chat = (() => {
 
     const html = () => `
         <div data-chat-scroller data-scroll="lane" class="min-h-0 flex-1 overflow-y-auto px-4">
-            <ol data-chat-log data-column class="mx-auto flex w-full flex-col gap-4 py-4 transition-[max-width] duration-300 ease-out ${column.cls()}"></ol>
+            <ol data-chat-log data-column class="mx-auto flex w-full flex-col gap-4 py-4 transition-[max-width] duration-300 ease-out data-status:pb-13 ${column.cls()}"></ol>
         </div>
         <footer class="shrink-0 px-3 pb-3 sm:px-4">
             <div data-column class="relative mx-auto w-full transition-[max-width] duration-300 ease-out ${column.cls()}">
-                <span data-chat-jump hidden class="absolute bottom-full left-1/2 z-10 mb-2 flex -translate-x-1/2 rounded-full shadow-lg shadow-shade/60 [animation:fade-in_.15s_ease-out]">${ui.iconButton('arrow-down', { tip: 'Jump to latest', variant: 'secondary', action: 'chat-jump' })}</span>
+                <div data-chat-status class="peer pointer-events-none absolute inset-x-0 bottom-full z-10 mb-2 flex items-center gap-2 text-xs *:pointer-events-auto"></div>
+                <span data-chat-jump hidden class="absolute bottom-full left-1/2 z-10 mb-2 flex -translate-x-1/2 rounded-full shadow-lg shadow-shade/60 peer-[:not(:empty)]:mb-11 [animation:fade-in_.15s_ease-out]">${ui.iconButton('arrow-down', { tip: 'Jump to latest', variant: 'secondary', action: 'chat-jump' })}</span>
                 <div data-chat-banner></div>
-                <div data-chat-status class="flex h-9 items-center gap-2 px-2 text-xs"></div>
                 <ul data-chat-outbox hidden class="mb-2 flex flex-col gap-1"></ul>
                 <form data-chat-composer novalidate class="cursor-text rounded-3xl bg-surface0/50 p-2 transition-shadow focus-within:ring-2 focus-within:ring-mauve/40 data-drag:ring-2 data-drag:ring-mauve/40">
                     <div data-chat-files hidden class="flex flex-wrap items-center gap-2 px-2 pt-2 pb-1"></div>
@@ -129,8 +129,8 @@ views.chat = (() => {
                     <div class="flex items-center gap-1.5 pt-2">
                         <span data-chat-attach></span>
                         <span data-chat-model class="min-w-0"></span>
-                        <span data-chat-effort class="max-sm:hidden"></span>
-                        <span data-chat-mode class="max-md:hidden"></span>
+                        <span data-chat-effort></span>
+                        <span data-chat-mode></span>
                         <span data-chat-ring class="ml-auto"></span>
                         <span data-chat-send></span>
                     </div>
@@ -1630,16 +1630,16 @@ views.chat = (() => {
         C.input.disabled = C.loaded && !ok;
         C.input.placeholder = ok || !C.loaded ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
         const sending = boxOf(C.name).sending;
-        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', spin: sending, action: 'chat-send', disabled: !ok });
-        paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', action: 'chat-interrupt' })}${send}</span>` : send);
+        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', size: 'sm', spin: sending, action: 'chat-send', disabled: !ok });
+        paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', size: 'sm', action: 'chat-interrupt' })}${send}</span>` : send);
         const list = models();
         const model = list.find((m) => m.value === (snap?.model || 'default'));
         const efforts = model?.efforts?.length ? model.efforts : Object.keys(EFFORTS);
         const off = !ok ? 'disabled' : '';
         paint('[data-chat-attach]', ui.iconButton('paperclip', { tip: 'Attach files', action: 'chat-attach', size: 'sm', disabled: C.loaded && !ok }));
-        paint('[data-chat-model]', ui.select({ name: 'chat-model', value: snap?.model || 'default', pill: true, icon: 'sparkles', options: list, attrs: off }));
-        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.appliedEffort || snap?.effort || '', placeholder: 'Effort', pill: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
-        paint('[data-chat-mode]', ui.select({ name: 'chat-mode', value: snap?.permissionMode || 'default', pill: true, icon: MODES.find((x) => x.value === (snap?.permissionMode || 'default'))?.icon || 'shield', options: MODES, attrs: off }));
+        paint('[data-chat-model]', ui.select({ name: 'chat-model', value: snap?.model || 'default', pill: true, size: 'sm', collapse: true, icon: 'sparkles', options: list, attrs: off }));
+        paint('[data-chat-effort]', ui.select({ name: 'chat-effort', value: snap?.appliedEffort || snap?.effort || '', placeholder: 'Effort', pill: true, size: 'sm', collapse: true, icon: 'gauge', options: efforts.map((v) => ({ value: v, label: EFFORTS[v] || v })), attrs: off }));
+        paint('[data-chat-mode]', ui.select({ name: 'chat-mode', value: snap?.permissionMode || 'default', pill: true, size: 'sm', collapse: true, icon: MODES.find((x) => x.value === (snap?.permissionMode || 'default'))?.icon || 'shield', options: MODES, attrs: off }));
         paint('[data-chat-ring]', ringHtml());
     };
 
@@ -1672,9 +1672,15 @@ views.chat = (() => {
         const tasks = (snap?.tasks || []).filter((t) => !t.ambient);
         const pills = Object.entries(TASK_KINDS).map(([kind, [icon]]) => {
             const n = tasks.filter((t) => t.task_type === kind).length;
-            return n ? `<button type="button" data-action="chat-tasks" aria-expanded="false" data-tip="${fmt.plural(n, TASK_KINDS[kind][1].toLowerCase())}" class="flex h-7 items-center gap-1.5 rounded-full bg-surface0 px-2.5 text-text transition-colors hover:bg-surface1">${kind === 'local_bash' ? ui.dot('green', { pulse: true }) : ''}<i data-lucide="${icon}" class="size-3.5 text-overlay1"></i>${n}</button>` : '';
+            return n ? `<button type="button" data-action="chat-tasks" aria-expanded="false" data-tip="${fmt.plural(n, TASK_KINDS[kind][1].toLowerCase())}" class="flex h-7 items-center gap-1.5 rounded-full bg-surface0 px-2.5 text-text shadow-lg shadow-shade/60 transition-colors hover:bg-surface1">${kind === 'local_bash' ? ui.dot('green', { pulse: true }) : ''}<i data-lucide="${icon}" class="size-3.5 text-overlay1"></i>${n}</button>` : '';
         }).join('');
-        paint('[data-chat-status]', `<span class="flex min-w-0 flex-1 items-center gap-2">${left}</span><span class="flex shrink-0 items-center gap-1.5">${pills}</span>`);
+        const status = left ? `<span class="flex h-7 min-w-0 items-center gap-2 rounded-full bg-surface0 px-3 shadow-lg shadow-shade/60">${left}</span>` : '';
+        const html = status + (pills ? `<span class="ml-auto flex shrink-0 items-center gap-1.5">${pills}</span>` : '');
+        paint('[data-chat-status]', html);
+        if (C.log.hasAttribute('data-status') !== !!html) {
+            C.log.toggleAttribute('data-status', !!html);
+            if (html && C.stick) scrollDown();
+        }
         tick();
     };
 
