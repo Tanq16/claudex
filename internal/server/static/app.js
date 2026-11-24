@@ -114,17 +114,17 @@ ui.on('new-session', () => views.newSession.open());
 const column = {
     confined: localStorage.getItem('claudex.column') === 'confined',
     cls: () => (column.confined ? 'max-w-4xl' : 'max-w-full'),
-    toggle(b) {
+    toggle() {
         column.confined = !column.confined;
         try { localStorage.setItem('claudex.column', column.confined ? 'confined' : 'full'); } catch {}
         document.querySelectorAll('[data-column]').forEach((n) => {
             n.classList.toggle('max-w-4xl', column.confined);
             n.classList.toggle('max-w-full', !column.confined);
         });
-        b.setAttribute('aria-pressed', String(column.confined));
+        document.querySelectorAll('[data-action="column-toggle"]').forEach((b) => b.setAttribute('aria-pressed', String(column.confined)));
     },
 };
-ui.on('column-toggle', (b) => column.toggle(b));
+ui.on('column-toggle', () => column.toggle());
 
 const fmt = {
     tokens(n) {
