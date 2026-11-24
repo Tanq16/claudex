@@ -100,12 +100,8 @@ func runApply(cmd *cobra.Command, args []string) {
 }
 
 func presetsDir() string {
-	dir := u.PresetsDir()
-	if err := workspace.Extract(embedded.PresetsFS, "presets", dir); err != nil {
-		u.PrintFatal("failed to lay down the built-in presets", err)
-	}
 	baseSkillsDir()
-	return dir
+	return u.PresetsDir()
 }
 
 func baseSkillsDir() string {

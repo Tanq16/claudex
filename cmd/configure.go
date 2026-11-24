@@ -19,7 +19,7 @@ var configureFlags struct {
 
 var configureCmd = &cobra.Command{
 	Use:   "configure",
-	Short: "Provision all accounts (settings + statusline) and lay down the global defaults: language servers and presets",
+	Short: "Provision all accounts (settings + statusline) and lay down the global defaults: language servers and base skills",
 	Args:  cobra.NoArgs,
 	Run:   runConfigure,
 }
@@ -103,7 +103,7 @@ func applyGlobalDefaults() {
 
 	u.PrintSuccess("Refreshed global defaults")
 	u.PrintGeneric("  plugin:  " + u.AbbreviatePath(globalDir) + " (language servers)")
-	u.PrintGeneric("  presets: " + u.AbbreviatePath(presetsDir()))
+	u.PrintGeneric("  skills:  " + u.AbbreviatePath(baseSkillsDir()))
 }
 
 func init() {

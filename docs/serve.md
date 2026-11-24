@@ -7,7 +7,7 @@ claudex serve                                   # http://127.0.0.1:8080, project
 claudex serve --root ~/code -p 9000
 ```
 
-`serve` also builds the global plugin and lays down the built-in presets and base skills under `~/.config/claudex/` at every start.
+`serve` also builds the global plugin and lays down the base skills under `~/.config/claudex/` at every start.
 
 ## Session modes
 
