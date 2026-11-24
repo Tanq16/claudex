@@ -240,7 +240,7 @@ func (s *Session) wait(stdout *os.File) {
 		exit.Error = err.Error()
 	}
 	s.mu.Lock()
-	s.r.snap.State, s.r.snap.Exit, s.r.pending = StateExited, exit, nil
+	s.r.snap.State, s.r.snap.Turn, s.r.snap.Exit, s.r.pending = StateExited, false, exit, nil
 	s.r.snap.Tasks = []Task{}
 	s.changedLocked()
 	s.mu.Unlock()

@@ -31,7 +31,10 @@ import (
 //go:embed static
 var staticFiles embed.FS
 
-const maxJSONBody = 32 << 20
+const (
+	maxJSONBody = 32 << 20
+	gzipMin     = 1 << 10
+)
 
 type Config struct {
 	Host string
@@ -48,6 +51,7 @@ type Server struct {
 	launcher    session.Launcher
 	host        *attached.Host
 	images      *images.Store
+	assets      map[string]func() (*asset, error)
 	mu          sync.Mutex
 	mux         *http.ServeMux
 	schemaTried atomic.Bool
@@ -123,7 +127,10 @@ func (s *Server) Setup() error {
 	if err != nil {
 		return err
 	}
-	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	if s.assets, err = loadAssets(staticFS); err != nil {
+		return fmt.Errorf("indexing the static assets: %w", err)
+	}
+	s.mux.HandleFunc("GET /static/", s.handleStatic)
 	s.mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
 
 	s.mux.HandleFunc("GET /api/state", s.api(s.handleState))
@@ -261,7 +268,20 @@ func (s *Server) api(fn func(r *http.Request) (any, error)) http.HandlerFunc {
 			writeError(w, status, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, v)
+		data, err := json.Marshal(v, json.Deterministic(true))
+		if err != nil {
+			log.Error().Err(err).Str("method", r.Method).Str("path", r.URL.Path).Msg("failed to encode a response")
+			writeError(w, http.StatusInternalServerError, "the response could not be encoded")
+			return
+		}
+		h := w.Header()
+		h.Set("Content-Type", "application/json")
+		h.Add("Vary", "Accept-Encoding")
+		if len(data) >= gzipMin && acceptsGzip(r) {
+			h.Set("Content-Encoding", "gzip")
+			data = gzipped(data)
+		}
+		w.Write(data)
 	}
 }
 

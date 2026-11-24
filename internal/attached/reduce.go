@@ -56,6 +56,7 @@ type Snapshot struct {
 	PID            int              `json:"pid"`
 	StartedAt      int64            `json:"startedAt"`
 	State          string           `json:"state"`
+	Turn           bool             `json:"turn"`
 	Status         string           `json:"status,omitzero"`
 	SessionID      string           `json:"sessionId,omitzero"`
 	Model          string           `json:"model,omitzero"`
@@ -124,6 +125,9 @@ func (r *reduced) reduce(kind string, line []byte) change {
 		}
 		if json.Unmarshal(line, &m, lenient) == nil && m.State != "" {
 			r.snap.State = m.State
+			if m.State == StateIdle {
+				r.snap.Turn = false
+			}
 			return change{snapshot: true}
 		}
 	case "system/status":
@@ -145,6 +149,7 @@ func (r *reduced) reduce(kind string, line []byte) change {
 			PermissionMode string `json:"permissionMode"`
 		}
 		if json.Unmarshal(line, &m, lenient) == nil {
+			r.snap.Turn = true
 			r.snap.SessionID = cmp.Or(m.SessionID, r.snap.SessionID)
 			settings := r.resolveModel(m.Model)
 			settings = r.setPermissionMode(m.PermissionMode) || settings
@@ -199,6 +204,11 @@ func (r *reduced) reduce(kind string, line []byte) change {
 		}
 		if json.Unmarshal(line, &m, lenient) == nil {
 			delete(r.taskInfo, m.TaskID)
+		}
+	case "result":
+		if r.snap.Turn {
+			r.snap.Turn = false
+			return change{snapshot: true}
 		}
 	case "rate_limit_event":
 		var m struct {
