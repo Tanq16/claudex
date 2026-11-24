@@ -406,8 +406,9 @@ const ui = {
             const outside = (e) => {
                 if (!el.contains(e.target) && !anchor.contains(e.target)) ui.popover.close();
             };
-            setTimeout(() => document.addEventListener('pointerdown', outside), 0);
-            ui.popover.current = { el, close: () => { document.removeEventListener('pointerdown', outside); el.remove(); onClose?.(); } };
+            const listening = new AbortController();
+            setTimeout(() => document.addEventListener('pointerdown', outside, { signal: listening.signal }), 0);
+            ui.popover.current = { el, close: () => { listening.abort(); el.remove(); onClose?.(); } };
             return el;
         },
 
