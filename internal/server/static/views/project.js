@@ -269,16 +269,16 @@
         paint($('[data-p-session-head]'), `
             <h2 class="min-w-0 flex-1 truncate font-display text-sm font-medium text-text">Session</h2>
             ${primary(p, 'sm')}
+            ${narrowButton('sm')}
             ${ui.iconButton('panel-right-close', { tip: 'Hide session details', action: 'project-toggle-details', size: 'sm' })}`);
-        paint($('[data-p-rail="right"]'), `${ui.iconButton('panel-right-open', { tip: 'Show session details', action: 'project-toggle-details' })}${railActions(p)}`);
+        paint($('[data-p-rail-actions]'), `${ui.iconButton('panel-right-open', { tip: 'Show session details', action: 'project-toggle-details' })}${railActions(p)}`);
         paint($('[data-p-bar]'), `
             ${ui.iconButton('folder-tree', { tip: 'Files', action: 'project-toggle-tree' })}
             <div class="flex min-w-0 flex-1 items-center gap-2 px-1">
                 <h1 class="truncate font-display text-xl text-text">${ui.esc(p.name)}</h1>
                 <span data-tip="${p.active ? 'Active' : 'Inactive'}" class="size-2 shrink-0 rounded-full ${p.active ? 'bg-green' : 'bg-overlay0'}"></span>
-            </div>
-            ${primary(p, 'md')}
-            ${ui.iconButton('info', { tip: 'Session details', action: 'project-toggle-details' })}`);
+            </div>`);
+        paint($('[data-p-bar-actions]'), `${primary(p, 'md')}${ui.iconButton('info', { tip: 'Session details', action: 'project-toggle-details' })}`);
         paint($('[data-p-details-body]'), detailsHtml(p));
         if (S.sheet?.el.isConnected) paint(S.sheet.el.querySelector('[data-p-sheet]'), detailsHtml(p));
         if (isAttached(p)) views.chat.paintLive();
@@ -366,6 +366,7 @@
             S.selected = null;
             S.file = null;
             renderViewer(true);
+            renderPaneSwitch();
             return;
         }
         S.selected = path;
@@ -390,10 +391,31 @@
     };
 
     const crumbs = (path) => {
-        const parts = path ? path.split('/') : [];
-        const pill = (label, target, last, icon) => `<button type="button" data-action="project-crumb" data-path="${ui.esc(target)}" ${last ? 'aria-current="page"' : ''} class="flex min-w-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${last ? 'bg-surface0 text-text' : 'bg-surface0/40 text-overlay1 hover:bg-surface0 hover:text-text max-sm:hidden'}">${icon ? `<i data-lucide="${icon}" class="size-3.5 shrink-0"></i>` : ''}<span class="truncate">${ui.esc(label)}</span></button>`;
-        const sep = '<i data-lucide="chevron-right" class="size-3 shrink-0 text-overlay0 max-sm:hidden"></i>';
-        return [pill(S.name, '', !parts.length, 'folder-git-2'), ...parts.map((part, i) => pill(part, parts.slice(0, i + 1).join('/'), i === parts.length - 1))].join(sep);
+        if (!path) return '';
+        const parts = path.split('/');
+        const name = parts.pop();
+        const pill = 'flex h-6 shrink-0 items-center rounded-full bg-surface0/40 px-3 text-xs font-medium text-overlay1 transition-colors hover:bg-surface0 hover:text-text';
+        const sep = '<i data-lucide="chevron-right" class="size-3 shrink-0 text-overlay0"></i>';
+        return `<span data-crumbs-more hidden class="flex shrink-0 items-center gap-1"><button type="button" data-action="project-crumbs-more" aria-label="Show folders" aria-haspopup="menu" aria-expanded="false" class="${pill} ${ui.cls.focus}"><i data-lucide="ellipsis" class="size-3.5"></i></button>${sep}</span>
+            ${parts.map((part, i) => `<span data-crumb class="flex shrink-0 items-center gap-1"><button type="button" data-action="project-crumb" data-path="${ui.esc(parts.slice(0, i + 1).join('/'))}" class="${pill} ${ui.cls.focus}">${ui.esc(part)}</button>${sep}</span>`).join('')}
+            <span aria-current="page" class="flex h-6 min-w-0 items-center rounded-full bg-surface0 px-3 text-xs font-medium text-text"><span class="truncate">${ui.esc(name)}</span></span>`;
+    };
+
+    const fitCrumbs = () => {
+        const nav = S && $('[data-p-crumbs]');
+        const file = nav?.querySelector('[aria-current]');
+        if (!file) return;
+        const more = nav.querySelector('[data-crumbs-more]');
+        const folders = [...nav.querySelectorAll('[data-crumb]')];
+        folders.forEach((c) => { c.hidden = false; });
+        more.hidden = true;
+        file.classList.add('shrink-0');
+        for (const c of folders) {
+            if (nav.scrollWidth <= nav.clientWidth) break;
+            more.hidden = false;
+            c.hidden = true;
+        }
+        file.classList.remove('shrink-0');
     };
 
     const fileMeta = (f) => {
@@ -424,14 +446,15 @@
         const textual = ok && (f.kind === 'markdown' || f.kind === 'code');
         const rendered = ok && f.kind === 'markdown' && S.mode === 'rendered';
         header.innerHTML = `
-            <nav aria-label="Path" class="flex min-w-0 flex-1 flex-wrap items-center gap-1">${crumbs(S.selected || '')}</nav>
+            <nav data-p-crumbs aria-label="Path" class="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">${crumbs(S.selected || '')}</nav>
             <p class="flex items-center gap-2 text-xs text-overlay1">${S.loading ? '<i data-lucide="loader-circle" class="size-3.5 animate-spin"></i>' : ''}<span class="hidden sm:inline">${ui.esc(fileMeta(f))}</span></p>
             ${ok && f.kind === 'pdf' ? readerControls() : ''}
             ${ok && f.kind === 'markdown' ? ui.segmented({ name: 'project-mode', value: S.mode, options: [{ value: 'rendered', label: 'Rendered', icon: 'eye', compact: true }, { value: 'source', label: 'Source', icon: 'code', compact: true }] }) : ''}
             ${textual && !rendered ? ui.iconButton('wrap-text', { tip: 'Wrap lines', size: 'sm', pressed: wrapLines.on, action: 'project-wrap' }) : ''}
-            ${rendered ? `<span data-p-contents hidden>${ui.iconButton('list', { tip: 'Contents', size: 'sm', action: 'project-contents' })}</span><span class="max-md:hidden">${ui.iconButton('fold-horizontal', { tip: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>` : ''}
+            ${rendered ? `<span data-p-contents hidden>${ui.iconButton('list', { tip: 'Contents', size: 'sm', action: 'project-contents' })}</span>` : ''}
             ${textual ? ui.iconButton('copy', { tip: 'Copy file contents', action: 'project-copy-file', size: 'sm' }) : ''}`;
         ui.icons(header);
+        requestAnimationFrame(fitCrumbs);
     };
 
     const splitLines = (html) => {
@@ -714,24 +737,28 @@
 
     const panelBtn = (icon, tip, action, attrs = '') => ui.iconButton(icon, { tip, action, size: 'sm', attrs });
 
-    const viewerHtml = (head) => `
-        <header data-p-viewer-header class="flex ${head} shrink-0 flex-wrap items-center gap-2 px-3 md:px-4 3xl:px-6"></header>
+    const viewerHtml = () => `
+        <header data-p-viewer-header class="flex min-h-14 shrink-0 flex-wrap items-center gap-2 px-3 py-2 md:min-h-16 md:px-4 3xl:px-6"></header>
         <div data-p-content class="relative flex min-h-0 flex-1 flex-col"></div>`;
 
     const centerHtml = () => (S.centerMode === 'attached'
-        ? `<header data-p-center-tabs class="flex min-h-14 shrink-0 items-center gap-2 px-3 py-2 md:min-h-16 md:px-4 3xl:px-6"></header>
-            <div data-p-pane="chat" class="flex min-h-0 flex-1 flex-col">${views.chat.html()}</div>
-            <div data-p-pane="file" hidden class="flex min-h-0 flex-1 flex-col">${viewerHtml('pb-2')}</div>`
-        : viewerHtml('min-h-14 py-2 md:min-h-16'));
+        ? `<div data-p-pane="chat" class="flex min-h-0 flex-1 flex-col">${views.chat.html()}</div>
+            <div data-p-pane="file" hidden class="flex min-h-0 flex-1 flex-col">${viewerHtml()}</div>`
+        : viewerHtml());
 
-    const renderTabs = () => {
-        const host = $('[data-p-center-tabs]');
-        if (!host) return;
-        const options = [{ value: 'chat', label: 'Chat', icon: 'message-square' }];
-        if (S.selected) options.push({ value: 'file', label: S.selected.split('/').pop(), icon: fileIcon(S.index.get(S.selected) || { name: S.selected })[0] });
-        host.innerHTML = `<span class="min-w-0 overflow-x-auto">${ui.segmented({ name: 'project-pane', value: S.pane, options })}</span>
-            <span class="ml-auto ${S.pane === 'chat' ? '' : 'hidden'}">${ui.iconButton('fold-horizontal', { tip: 'Narrow column', size: 'sm', pressed: column.confined, action: 'column-toggle' })}</span>`;
-        ui.icons(host);
+    const narrowButton = (size) => ui.iconButton('fold-horizontal', { tip: 'Narrow column', size, pressed: column.confined, action: 'column-toggle' });
+
+    const renderPaneSwitch = () => {
+        const attached = S.centerMode === 'attached';
+        const options = [
+            { value: 'chat', label: 'Chat', icon: 'message-square' },
+            { value: 'file', label: 'Preview', icon: S.selected ? fileIcon(S.index.get(S.selected) || { name: S.selected })[0] : 'file', disabled: !S.selected },
+        ];
+        S.el.querySelectorAll('[data-p-pane-switch]').forEach((host) => {
+            const kind = host.dataset.pPaneSwitch;
+            host.innerHTML = attached ? ui.segmented({ name: 'project-pane', value: S.pane, full: kind === 'side', vertical: kind === 'rail', ground: kind === 'bar', options: kind === 'bar' ? options.map((o) => ({ ...o, compact: true })) : options }) : '';
+            ui.icons(host);
+        });
     };
 
     const showPane = (which) => {
@@ -740,14 +767,12 @@
         S.pane = which;
         S.el.querySelectorAll('[data-p-pane]').forEach((el) => { el.hidden = el.dataset.pPane !== which; });
         if (which === 'chat') views.chat.restoreScroll();
-        renderTabs();
+        renderPaneSwitch();
     };
 
     const mountCenter = () => {
-        if (S.centerMode === 'attached') {
-            views.chat.mount($('[data-p-pane="chat"]'), S.name, { onSession: renderSession, onTurnEnd: reloadTree });
-            renderTabs();
-        }
+        if (S.centerMode === 'attached') views.chat.mount($('[data-p-pane="chat"]'), S.name, { onSession: renderSession, onTurnEnd: reloadTree });
+        renderPaneSwitch();
         const content = $('[data-p-content]');
         content.addEventListener('click', markdownLinks);
         new ResizeObserver(() => {
@@ -755,6 +780,7 @@
             renderOutline();
             spy();
         }).observe(content);
+        new ResizeObserver(fitCrumbs).observe($('[data-p-viewer-header]'));
     };
 
     const layout = () => {
@@ -766,7 +792,12 @@
         const rail = (side, cls, inner = '') => `<nav data-p-rail="${side}" aria-label="${side === 'left' ? 'Files' : 'Session'}" hidden class="${cls} flex shrink-0 flex-col items-center gap-1 pt-2 md:pt-3 [animation:fade-in_.2s_ease-out]">${inner}</nav>`;
         return `
             <section data-project class="relative flex h-full flex-col gap-3">
-                ${mobile ? '<header data-p-bar class="flex shrink-0 items-center gap-1"></header>' : ''}
+                ${mobile ? `
+                <header class="flex shrink-0 items-center gap-1">
+                    <div data-p-bar class="flex min-w-0 flex-1 items-center gap-1"></div>
+                    <div data-p-pane-switch="bar" class="empty:hidden"></div>
+                    <div data-p-bar-actions class="flex shrink-0 items-center gap-1"></div>
+                </header>` : ''}
                 <div class="flex min-h-0 flex-1">
                     ${mobile
                         ? '<button type="button" data-p-scrim data-action="project-drawer-close" aria-label="Close files" hidden class="fixed inset-0 z-30 bg-crust/70 backdrop-blur-sm [animation:fade-in_.15s_ease-out]"></button>'
@@ -788,9 +819,10 @@
                     ${mobile ? '' : `
                     <aside data-p-details aria-label="Session details" class="ml-3 flex flex-col rounded-3xl bg-mantle 3xl:ml-4">
                         <header data-p-session-head class="flex h-14 shrink-0 items-center gap-1.5 pr-2 pl-5 md:h-16"></header>
+                        <div data-p-pane-switch="side" class="min-w-64 shrink-0 px-3 pb-3 empty:hidden"></div>
                         <section data-scroll="lane" class="min-h-0 min-w-64 flex-1 overflow-y-auto px-3 pb-5"><div data-p-details-body class="flex flex-col gap-6"></div></section>
                     </aside>
-                    ${rail('right', 'ml-3 3xl:ml-4')}`}
+                    ${rail('right', 'ml-3 3xl:ml-4', `<div data-p-rail-actions class="flex flex-col items-center gap-1"></div><div data-p-pane-switch="rail" class="my-1 empty:hidden"></div>${narrowButton('md')}`)}`}
                 </div>
                 <input type="file" multiple hidden data-p-file-input>
                 <div data-p-drop aria-hidden="true" class="pointer-events-none absolute inset-0 z-50 hidden items-end justify-center rounded-3xl bg-mauve/15 pb-10 [animation:fade-in_.12s_ease-out]">
@@ -1344,11 +1376,12 @@
         renderTree();
         markSelected();
     });
-    ui.on('project-crumb', (el) => {
-        const path = el.dataset.path;
-        if (path === S.selected) return;
-        revealDir(path);
-    });
+    ui.on('project-crumb', (el) => revealDir(el.dataset.path));
+    ui.on('project-crumbs-more', (b) => ui.menu(b, [...S.el.querySelectorAll('[data-crumb][hidden] [data-path]')].map((c) => ({
+        icon: 'folder',
+        label: c.textContent,
+        onSelect: () => revealDir(c.dataset.path),
+    })), { align: 'start' }));
     ui.on('project-open-target', (el) => {
         const node = S.index.get(el.dataset.path);
         if (node?.type === 'dir') revealDir(node.path);

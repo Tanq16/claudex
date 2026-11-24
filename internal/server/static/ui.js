@@ -258,12 +258,14 @@ const ui = {
         return `<button type="button" role="switch" data-ui="switch" data-name="${ui.esc(name)}" aria-checked="${checked}" aria-label="${ui.esc(label)}" ${disabled ? 'disabled' : ''} class="group flex h-6 w-11 shrink-0 items-center rounded-full bg-surface1 p-0.5 transition-colors aria-checked:bg-mauve disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus}"><span class="size-5 rounded-full bg-text transition-transform group-aria-checked:translate-x-5 group-aria-checked:bg-crust"></span></button>`;
     },
 
-    segmented({ name, value, options, full = false, ground = false }) {
+    segmented({ name, value, options, full = false, ground = false, vertical = false }) {
         const fill = ui.tracks[ground ? 'ground' : 'panel'];
-        return `<span role="radiogroup" data-ui="radiogroup" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" class="${full ? 'flex w-full' : 'inline-flex max-w-full overflow-x-auto'} items-center gap-1 rounded-full ${fill.track} p-1">
+        const track = vertical ? 'inline-flex flex-col' : full ? 'flex w-full' : 'inline-flex max-w-full overflow-x-auto';
+        return `<span role="radiogroup" data-ui="radiogroup" data-name="${ui.esc(name)}" data-value="${ui.esc(value)}" class="${track} items-center gap-1 rounded-full ${fill.track} p-1">
             ${options.map((o) => {
                 const on = o.value === value;
-                return `<button type="button" role="radio" data-ui="radio" data-value="${ui.esc(o.value)}" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${o.disabled ? 'disabled' : ''} class="group flex ${full ? 'flex-1' : ''} min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-sm font-medium text-overlay1 transition-colors hover:text-text ${fill.on} aria-checked:text-text disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus}">${o.icon ? `<i data-lucide="${o.icon}" class="size-4 shrink-0 group-aria-checked:text-mauve"></i>` : ''}<span class="truncate ${o.icon && o.compact ? 'max-sm:hidden' : ''}">${ui.esc(o.label)}</span>${o.count !== undefined ? `<span class="${ui.cls.count} ${fill.count} text-subtext0 group-aria-checked:bg-mauve/15 group-aria-checked:text-mauve">${o.count}</span>` : ''}</button>`;
+                const radio = `<button type="button" role="radio" data-ui="radio" data-value="${ui.esc(o.value)}" aria-checked="${on}" tabindex="${on ? 0 : -1}" ${vertical || o.compact ? `aria-label="${ui.esc(o.label)}" ${o.disabled ? '' : `data-tip="${ui.esc(o.label)}"`} ${o.compact ? 'data-tip-collapse' : ''}` : ''} ${o.disabled ? 'disabled' : ''} class="group flex ${full ? 'flex-1' : ''} min-w-0 items-center justify-center gap-2 whitespace-nowrap rounded-full ${vertical ? 'size-8' : 'px-3.5 py-1.5'} text-sm font-medium text-overlay1 transition-colors hover:text-text ${fill.on} aria-checked:text-text disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus}">${o.icon ? `<i data-lucide="${o.icon}" class="size-4 shrink-0 group-aria-checked:text-mauve"></i>` : ''}${vertical ? '' : `<span ${o.compact ? 'data-label' : ''} class="truncate ${o.icon && o.compact ? 'max-sm:hidden' : ''}">${ui.esc(o.label)}</span>`}${o.count !== undefined ? `<span class="${ui.cls.count} ${fill.count} text-subtext0 group-aria-checked:bg-mauve/15 group-aria-checked:text-mauve">${o.count}</span>` : ''}</button>`;
+                return vertical && o.disabled ? `<span data-tip="${ui.esc(o.label)}" class="inline-flex">${radio}</span>` : radio;
             }).join('')}
         </span>`;
     },
@@ -507,12 +509,12 @@ const ui = {
         },
     },
 
-    menu(anchor, items) {
+    menu(anchor, items, { align = 'end' } = {}) {
         anchor.setAttribute('aria-expanded', 'true');
         const el = ui.popover.open(anchor, `<div data-scroll class="max-h-[min(28rem,70dvh)] overflow-y-auto">${items.map((item, i) => (item === '-' ? '<span class="my-1 block h-px"></span>' : `
             <button type="button" data-menu-index="${i}" ${item.disabled ? 'disabled' : ''} class="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${ui.cls.focus} ${item.danger ? 'text-red hover:bg-red/15' : 'text-subtext0 hover:bg-surface0 hover:text-text'}">
                 <i data-lucide="${item.icon}" class="size-4 shrink-0"></i><span class="min-w-0 flex-1"><span class="block">${ui.esc(item.label)}</span>${item.hint ? `<span class="block text-xs text-overlay1">${ui.esc(item.hint)}</span>` : ''}</span>${item.keys ? `<span class="flex gap-1">${ui.kbd(item.keys)}</span>` : ''}
-            </button>`)).join('')}</div>`, { align: 'end', width: 260, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
+            </button>`)).join('')}</div>`, { align, width: 260, onClose: () => anchor.setAttribute('aria-expanded', 'false') });
         el.addEventListener('click', (e) => {
             const b = e.target.closest('[data-menu-index]');
             if (!b) return;
