@@ -264,10 +264,18 @@ func (s *Server) handleContext(r *http.Request) (any, error) {
 }
 
 func (s *Server) handleImage(w http.ResponseWriter, r *http.Request) {
-	path, ok := s.images.Path(r.PathValue("file"))
+	name := r.PathValue("file")
+	path, ok := s.images.Path(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "no such image")
 		return
+	}
+	if r.URL.Query().Has("thumb") {
+		if thumb, err := s.images.Thumb(path); err != nil {
+			log.Warn().Err(err).Str("image", name).Msg("could not make a thumbnail")
+		} else {
+			path = thumb
+		}
 	}
 	w.Header().Set("Cache-Control", "private, max-age=604800, immutable")
 	http.ServeFile(w, r, path)
