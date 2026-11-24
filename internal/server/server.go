@@ -48,6 +48,7 @@ type Server struct {
 	launcher    session.Launcher
 	host        *attached.Host
 	images      *images.Store
+	assets      map[string]func() (*asset, error)
 	mu          sync.Mutex
 	mux         *http.ServeMux
 	schemaTried atomic.Bool
@@ -123,7 +124,10 @@ func (s *Server) Setup() error {
 	if err != nil {
 		return err
 	}
-	s.mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticFS))))
+	if s.assets, err = loadAssets(staticFS); err != nil {
+		return fmt.Errorf("indexing the static assets: %w", err)
+	}
+	s.mux.HandleFunc("GET /static/", s.handleStatic)
 	s.mux.HandleFunc("GET /sw.js", s.handleServiceWorker)
 
 	s.mux.HandleFunc("GET /api/state", s.api(s.handleState))
