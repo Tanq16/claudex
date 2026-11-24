@@ -775,7 +775,7 @@
                         <header class="flex h-14 shrink-0 items-center gap-0.5 pr-2 md:h-16 ${mobile ? 'pl-5' : 'pl-2'}">
                             ${mobile ? '' : panelBtn('panel-left-close', 'Hide files', 'project-toggle-tree')}
                             <h2 data-tip="${ui.esc(p.dir)}" class="min-w-0 flex-1 truncate px-1 font-display text-sm font-medium text-text">${ui.esc(p.name)}</h2>
-                            ${panelBtn('search', 'Find a file', 'project-find')}
+                            ${panelBtn('search', 'Find a file or folder', 'project-find')}
                             ${panelBtn('file-plus', 'New file', 'project-new-file')}
                             ${panelBtn('upload', 'Upload files', 'project-upload')}
                             ${panelBtn('chevrons-down-up', 'Collapse all', 'project-collapse')}
@@ -1047,15 +1047,15 @@
     };
 
     const openFind = () => {
-        const files = [...S.index.values()].filter((n) => n.type !== 'dir');
+        const nodes = [...S.index.values()].filter((n) => n.path);
         let hits = [];
         let active = 0;
         const m = ui.modal.open({
-            title: 'Find a file',
+            title: 'Find a file or folder',
             icon: 'search',
             body: `<div class="flex flex-col gap-2 pt-1">
-                ${ui.search({ name: 'find-file', placeholder: 'Search files', attrs: 'autofocus' })}
-                <ul role="listbox" aria-label="Files" data-scroll="lane" class="h-80 overflow-y-auto"></ul>
+                ${ui.search({ name: 'find-file', placeholder: 'Search files and folders', attrs: 'autofocus' })}
+                <ul role="listbox" aria-label="Files and folders" data-scroll="lane" class="h-80 overflow-y-auto"></ul>
             </div>`,
         });
         const input = m.el.querySelector('input');
@@ -1063,10 +1063,10 @@
         const draw = () => {
             if (!hits.length) {
                 const typed = input.value.trim();
-                list.innerHTML = `<li class="h-full">${ui.empty({ icon: typed ? 'search-x' : 'file-search', title: typed ? 'No matches' : 'Type a file name' })}</li>`;
+                list.innerHTML = `<li class="h-full">${ui.empty({ icon: typed ? 'search-x' : 'file-search', title: typed ? 'No matches' : 'Type a name' })}</li>`;
             } else {
                 list.innerHTML = hits.map((n, i) => {
-                    const [icon, tone] = fileIcon(n);
+                    const [icon, tone] = n.type === 'dir' ? ['folder', 'text-overlay1'] : fileIcon(n);
                     const dir = dirname(n.path);
                     return `<li role="option" aria-selected="${i === active}" data-index="${i}" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm ${i === active ? 'bg-surface0 text-text' : 'text-subtext0'}">
                         <i data-lucide="${icon}" class="size-4 shrink-0 ${tone}"></i>
@@ -1081,11 +1081,12 @@
             const n = hits[i];
             if (!n) return;
             m.close();
-            openFile(n.path);
+            if (n.type === 'dir') revealDir(n.path);
+            else openFile(n.path);
         };
         input.addEventListener('input', () => {
             const q = input.value.trim();
-            hits = q ? files.map((n) => {
+            hits = q ? nodes.map((n) => {
                 const name = ui.fuzzy(q, n.name);
                 return { n, s: name >= 0 ? name + 1000 : ui.fuzzy(q, n.path) };
             }).filter((x) => x.s >= 0).sort((a, b) => b.s - a.s || a.n.path.length - b.n.path.length).slice(0, 50).map((x) => x.n) : [];
