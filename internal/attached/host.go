@@ -21,6 +21,7 @@ var noSession = []byte(`{"session":null,"init":null,"events":[]}`)
 
 type Summary struct {
 	State     string `json:"state"`
+	Turn      bool   `json:"turn"`
 	Pending   int    `json:"pending"`
 	Epoch     string `json:"epoch"`
 	StartedAt int64  `json:"startedAt"`
@@ -166,7 +167,7 @@ func (h *Host) Summary() map[string]Summary {
 	out := map[string]Summary{}
 	for name, s := range h.list() {
 		s.mu.Lock()
-		out[name] = Summary{State: s.r.snap.State, Pending: len(s.r.pending), Epoch: s.log.epoch, StartedAt: s.startedAt.UnixMilli()}
+		out[name] = Summary{State: s.r.snap.State, Turn: s.r.snap.Turn, Pending: len(s.r.pending), Epoch: s.log.epoch, StartedAt: s.startedAt.UnixMilli()}
 		s.mu.Unlock()
 	}
 	return out

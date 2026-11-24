@@ -1505,6 +1505,7 @@ views.chat = (() => {
     };
 
     const stateOf = (name) => (C?.name === name && C.loaded ? C.snap?.state : live.summary[name]?.state);
+    const turnOf = (name) => !!(C?.name === name && C.loaded ? C.snap?.turn : live.summary[name]?.turn);
 
     const saveBox = (name) => {
         const b = boxOf(name);
@@ -1520,14 +1521,14 @@ views.chat = (() => {
     const observe = (name) => {
         const b = boxOf(name);
         const state = stateOf(name);
-        if (state !== 'idle') b.waiting = false;
+        if (turnOf(name)) b.waiting = false;
         if (state && state !== 'idle' && state !== 'exited') b.armed = true;
         flush(name);
     };
 
     const flush = (name) => {
         const b = boxOf(name);
-        if (!b.items.length || b.held || !b.armed || b.waiting || stateOf(name) !== 'idle') return;
+        if (!b.items.length || b.held || !b.armed || b.waiting || !LIVE.has(stateOf(name)) || turnOf(name)) return;
         const [item] = b.items.splice(Math.max(0, b.items.findIndex((x) => x.id === b.next)), 1);
         b.next = null;
         b.waiting = true;
@@ -1575,7 +1576,7 @@ views.chat = (() => {
         const paused = b.held || !b.armed;
         const ok = isLive();
         const el = paint('[data-chat-outbox]', b.items.map((x) => `<li class="flex min-h-9 items-center gap-2 rounded-2xl bg-surface0/50 py-0.5 pr-1 pl-3 text-sm">
-            <span data-tip="${paused ? 'Held, sends with your next message' : 'Sends when Claude is idle'}" class="flex shrink-0"><i data-lucide="${paused ? 'pause' : 'clock'}" class="size-3.5 text-overlay1"></i></span>
+            <span data-tip="${paused ? 'Held, sends with your next message' : 'Sends when the current turn ends'}" class="flex shrink-0"><i data-lucide="${paused ? 'pause' : 'clock'}" class="size-3.5 text-overlay1"></i></span>
             <span class="min-w-0 flex-1 ${ui.cls.rowText} text-subtext0">${ui.esc(x.text || x.files.map((f) => f.file.name).join(', '))}</span>
             ${x.files.length ? `<span class="flex shrink-0 items-center gap-1 text-xs text-overlay1 tabular-nums"><i data-lucide="paperclip" class="size-3"></i>${x.files.length}</span>` : ''}
             ${ok ? ui.iconButton('arrow-up', { tip: 'Send now', size: 'sm', action: 'chat-outbox-send', attrs: `data-id="${ui.esc(x.id)}"` }) : ''}
@@ -1638,7 +1639,7 @@ views.chat = (() => {
         C.input.disabled = C.loaded && !ok;
         C.input.placeholder = ok || !C.loaded ? 'Message, or / for commands' : snap?.state === 'starting' ? 'Starting claude' : 'No session is running';
         const sending = boxOf(C.name).sending;
-        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: busy ? 'Queue' : 'Send', variant: 'primary', size: 'sm', spin: sending, action: 'chat-send', disabled: !ok });
+        const send = ui.iconButton(sending ? 'loader-circle' : 'arrow-up', { tip: snap?.turn ? 'Queue' : 'Send', variant: 'primary', size: 'sm', spin: sending, action: 'chat-send', disabled: !ok });
         paint('[data-chat-send]', busy ? `<span class="flex items-center gap-1.5">${ui.iconButton('square', { tip: 'Stop', variant: 'danger', size: 'sm', action: 'chat-interrupt' })}${send}</span>` : send);
         const list = models();
         const model = list.find((m) => m.value === (snap?.model || 'default'));
@@ -1922,7 +1923,7 @@ views.chat = (() => {
         box.held = false;
         box.armed = true;
         saveBox(C.name);
-        if (!BUSY.has(C.snap?.state)) return flush(C.name);
+        if (!turnOf(C.name)) return flush(C.name);
         api.interrupt(C.name).catch((err) => ui.toast(`Stop failed: ${err.message}`, { tone: 'red', icon: 'circle-alert' }));
     });
     ui.on('chat-outbox-remove', (b) => {
