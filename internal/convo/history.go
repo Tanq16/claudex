@@ -51,21 +51,8 @@ func History(configDir, projectPath, before string) (Conversation, error) {
 	if err != nil || len(files) == 0 {
 		return conv, err
 	}
-	path := files[0]
-	if before != "" {
-		path = ""
-		for _, f := range files {
-			if data, err := os.ReadFile(f); err == nil && bytes.Contains(data, []byte(before)) {
-				path = f
-				break
-			}
-		}
-		if path == "" {
-			return conv, nil
-		}
-	}
-	data, err := os.ReadFile(path)
-	if err != nil {
+	path, data, err := holding(files, before)
+	if err != nil || path == "" {
 		return conv, err
 	}
 	conv.SessionID = strings.TrimSuffix(filepath.Base(path), ".jsonl")
@@ -93,6 +80,19 @@ func History(configDir, projectPath, before string) (Conversation, error) {
 		})
 	}
 	return conv, nil
+}
+
+func holding(files []string, anchor string) (string, []byte, error) {
+	if anchor == "" {
+		data, err := os.ReadFile(files[0])
+		return files[0], data, err
+	}
+	for _, f := range files {
+		if data, err := os.ReadFile(f); err == nil && bytes.Contains(data, []byte(anchor)) {
+			return f, data, nil
+		}
+	}
+	return "", nil, nil
 }
 
 func transcripts(dir string) ([]string, error) {
