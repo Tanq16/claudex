@@ -789,7 +789,7 @@
         const treeCls = mobile
             ? 'fixed inset-y-3 left-3 z-40 flex w-[min(21rem,calc(100vw-3rem))] flex-col rounded-3xl bg-mantle shadow-2xl shadow-shade transition-transform duration-200'
             : 'mr-3 flex flex-col rounded-3xl bg-mantle 3xl:mr-4';
-        const rail = (side, cls, inner = '') => `<nav data-p-rail="${side}" aria-label="${side === 'left' ? 'Files' : 'Session'}" hidden class="${cls} flex shrink-0 flex-col items-center gap-1 pt-2 md:pt-3 [animation:fade-in_.2s_ease-out]">${inner}</nav>`;
+        const rail = (side, cls, inner = '') => `<nav data-p-rail="${side}" aria-label="${side === 'left' ? 'Files' : 'Session'}" class="${cls} flex w-10 shrink-0 flex-col items-center gap-1 pt-2 md:pt-3">${inner}</nav>`;
         return `
             <section data-project class="relative flex h-full flex-col gap-3">
                 ${mobile ? `
@@ -801,7 +801,7 @@
                 <div class="flex min-h-0 flex-1">
                     ${mobile
                         ? '<button type="button" data-p-scrim data-action="project-drawer-close" aria-label="Close files" hidden class="fixed inset-0 z-30 bg-crust/70 backdrop-blur-sm [animation:fade-in_.15s_ease-out]"></button>'
-                        : rail('left', 'mr-3 3xl:mr-4', ui.iconButton('panel-left-open', { tip: 'Show files', action: 'project-toggle-tree' }))}
+                        : rail('left', '-mr-10', ui.iconButton('panel-left-open', { tip: 'Show files', action: 'project-toggle-tree' }))}
                     <aside data-p-tree aria-label="Files" class="${treeCls}" ${mobile ? 'style="transform:translateX(calc(-100% - 1.5rem))"' : ''}>
                         <header class="flex h-14 shrink-0 items-center gap-0.5 pr-2 md:h-16 ${mobile ? 'pl-5' : 'pl-2'}">
                             ${mobile ? '' : panelBtn('panel-left-close', 'Hide files', 'project-toggle-tree')}
@@ -815,14 +815,14 @@
                         <section data-p-git aria-label="Git" class="flex shrink-0 flex-col gap-0.5 px-2 pb-2 empty:hidden"></section>
                         <ul role="tree" data-p-tree-list data-scroll class="min-h-0 flex-1 overflow-y-auto px-2 pb-3"></ul>
                     </aside>
-                    <section data-p-center class="flex min-w-0 flex-1 flex-col rounded-3xl bg-mantle">${centerHtml()}</section>
+                    <section data-p-center class="flex min-w-0 flex-1 flex-col rounded-3xl bg-mantle data-rail-left:ml-13 data-rail-right:mr-13 3xl:data-rail-left:ml-14 3xl:data-rail-right:mr-14">${centerHtml()}</section>
                     ${mobile ? '' : `
                     <aside data-p-details aria-label="Session details" class="ml-3 flex flex-col rounded-3xl bg-mantle 3xl:ml-4">
                         <header data-p-session-head class="flex h-14 shrink-0 items-center gap-1.5 pr-2 pl-5 md:h-16"></header>
                         <div data-p-pane-switch="side" class="min-w-64 shrink-0 px-3 pb-3 empty:hidden"></div>
                         <section data-scroll="lane" class="min-h-0 min-w-64 flex-1 overflow-y-auto px-3 pb-5"><div data-p-details-body class="flex flex-col gap-6"></div></section>
                     </aside>
-                    ${rail('right', 'ml-3 3xl:ml-4', `<div data-p-rail-actions class="flex flex-col items-center gap-1"></div><div data-p-pane-switch="rail" class="my-1 empty:hidden"></div>${narrowButton('md')}`)}`}
+                    ${rail('right', '-ml-10', `<div data-p-rail-actions class="flex flex-col items-center gap-1"></div><div data-p-pane-switch="rail" class="my-1 empty:hidden"></div>${narrowButton('md')}`)}`}
                 </div>
                 <input type="file" multiple hidden data-p-file-input>
                 <div data-p-drop aria-hidden="true" class="pointer-events-none absolute inset-0 z-50 hidden items-end justify-center rounded-3xl bg-mauve/15 pb-10 [animation:fade-in_.12s_ease-out]">
@@ -866,13 +866,22 @@
         S.el.innerHTML = layout();
         const root = $('[data-project]');
         if (S.tier !== 'mobile') {
-            const rail = (side, collapsed) => { $(`[data-p-rail="${side}"]`).hidden = !collapsed; };
-            S.panels.tree = ui.sidebar($('[data-p-tree]'), { key: `project.tree.${S.tier}`, min: 200, max: 560, initial: S.tier === 'wide' ? 340 : 280 });
-            S.panels.tree.onToggle = (c) => rail('left', c);
-            rail('left', S.panels.tree.collapsed);
-            S.panels.details = ui.sidebar($('[data-p-details]'), { key: `project.details.${S.tier}`, min: 280, max: 560, initial: S.tier === 'wide' ? 400 : 330, side: 'right', collapsed: S.tier === 'laptop' });
-            S.panels.details.onToggle = (c) => rail('right', c);
-            rail('right', S.panels.details.collapsed);
+            const center = $('[data-p-center]');
+            const rail = (side, panel, collapsed) => {
+                const el = $(`[data-p-rail="${side}"]`);
+                el.style.transition = center.style.transition = panel.style.transition;
+                el.style.opacity = collapsed ? '1' : '0';
+                el.inert = !collapsed;
+                center.toggleAttribute(`data-rail-${side}`, collapsed);
+            };
+            const tree = $('[data-p-tree]');
+            const details = $('[data-p-details]');
+            S.panels.tree = ui.sidebar(tree, { key: `project.tree.${S.tier}`, min: 200, max: 560, initial: S.tier === 'wide' ? 340 : 280 });
+            S.panels.tree.onToggle = (c) => rail('left', tree, c);
+            rail('left', tree, S.panels.tree.collapsed);
+            S.panels.details = ui.sidebar(details, { key: `project.details.${S.tier}`, min: 280, max: 560, initial: S.tier === 'wide' ? 400 : 330, side: 'right', collapsed: S.tier === 'laptop' });
+            S.panels.details.onToggle = (c) => rail('right', details, c);
+            rail('right', details, S.panels.details.collapsed);
         }
         $('[data-p-file-input]').addEventListener('change', (e) => {
             const files = [...e.target.files];
@@ -1349,7 +1358,7 @@
     ui.on('project-toggle-tree', () => {
         if (S.tier === 'mobile') return setDrawer(!S.drawer);
         S.panels.tree.toggle();
-        $(S.panels.tree.collapsed ? '[data-p-rail="left"] button' : '[data-p-tree] header button')?.focus();
+        $(S.panels.tree.collapsed ? '[data-p-rail="left"] button' : '[data-p-tree] header button')?.focus({ preventScroll: true });
     });
     ui.on('project-drawer-close', () => setDrawer(false));
     ui.on('project-toggle-details', () => {
@@ -1360,7 +1369,7 @@
             return;
         }
         S.panels.details.toggle();
-        $(S.panels.details.collapsed ? '[data-p-rail="right"] button' : '[data-p-session-head] [data-action="project-toggle-details"]')?.focus();
+        $(S.panels.details.collapsed ? '[data-p-rail="right"] button' : '[data-p-session-head] [data-action="project-toggle-details"]')?.focus({ preventScroll: true });
     });
     ui.on('project-tree', (el) => {
         const path = el.dataset.path;
