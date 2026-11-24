@@ -31,7 +31,10 @@ import (
 //go:embed static
 var staticFiles embed.FS
 
-const maxJSONBody = 32 << 20
+const (
+	maxJSONBody = 32 << 20
+	gzipMin     = 1 << 10
+)
 
 type Config struct {
 	Host string
@@ -265,7 +268,20 @@ func (s *Server) api(fn func(r *http.Request) (any, error)) http.HandlerFunc {
 			writeError(w, status, err.Error())
 			return
 		}
-		writeJSON(w, http.StatusOK, v)
+		data, err := json.Marshal(v, json.Deterministic(true))
+		if err != nil {
+			log.Error().Err(err).Str("method", r.Method).Str("path", r.URL.Path).Msg("failed to encode a response")
+			writeError(w, http.StatusInternalServerError, "the response could not be encoded")
+			return
+		}
+		h := w.Header()
+		h.Set("Content-Type", "application/json")
+		h.Add("Vary", "Accept-Encoding")
+		if len(data) >= gzipMin && acceptsGzip(r) {
+			h.Set("Content-Encoding", "gzip")
+			data = gzipped(data)
+		}
+		w.Write(data)
 	}
 }
 
