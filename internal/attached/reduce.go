@@ -107,6 +107,7 @@ type reduced struct {
 type change struct {
 	snapshot bool
 	settings bool
+	reset    bool
 	anchor   string
 }
 
@@ -157,7 +158,7 @@ func (r *reduced) reduce(kind string, line []byte) change {
 			r.snap.SessionID = m.NewConversationID
 			r.snap.Todos = []Todo{}
 			clear(r.todoCalls)
-			return change{snapshot: true}
+			return change{snapshot: true, reset: true}
 		}
 	case "system/background_tasks_changed":
 		var m struct {
@@ -350,6 +351,10 @@ func (r *reduced) refreshTask(id string) bool {
 	}
 	r.snap.Tasks[i] = r.enrich(r.snap.Tasks[i])
 	return true
+}
+
+func (r *reduced) tasksRunning() bool {
+	return slices.ContainsFunc(r.snap.Tasks, func(t Task) bool { return !t.Ambient })
 }
 
 func (r *reduced) setPermissionMode(mode string) bool {

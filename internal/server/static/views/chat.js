@@ -269,7 +269,7 @@ views.chat = (() => {
                 if (item.name === 'reset') await applyReset(item.data, item.id);
                 else if (item.name === 'session') applySnapshot(item.data);
                 else if (accept(item.id)) {
-                    C.events.push(item);
+                    record(item);
                     dispatch(item);
                     if (item.data?.type === 'result') {
                         boxOf(C.name).waiting = false;
@@ -292,6 +292,14 @@ views.chat = (() => {
         return true;
     };
 
+    const record = (ev) => {
+        if (ev.data?.type === 'conversation_reset') {
+            C.history = [];
+            C.events = [];
+        }
+        C.events.push(ev);
+    };
+
     const dispatch = (item) => {
         if (item.name === 'approval') resolveApproval(item.data);
         else if (item.name === 'message') handle(item.data);
@@ -307,7 +315,7 @@ views.chat = (() => {
         C.snap = data.session;
         for (const ev of events) {
             if (!accept(ev.id)) continue;
-            C.events.push(ev);
+            record(ev);
             safe(() => dispatch({ name: ev.event, data: ev.data }));
         }
         for (const raw of C.snap.pending || []) {
